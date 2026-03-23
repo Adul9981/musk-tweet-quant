@@ -63,8 +63,7 @@ function App() {
   const [cashBalance, setCashBalance] = useState(1000);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet'>('input');
-  const [polymarketUrl, setPolymarketUrl] = useState('https://polymarket.com/event/will-elon-musk-post-more-than-500-tweets-in-7-days');
-  const REFERRAL_CODE = 'via=serene77mc-g6kj';
+  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-17-march-24#EbvxQTM?via=serene77mc-g6kj';
 
   const analysis: AnalysisResult = useMemo(() => {
     return analyzePredictionMarket(
@@ -147,17 +146,15 @@ function App() {
                 {analysis.strategy.phase === 'late' && '后期收缩'}
                 {analysis.strategy.phase === 'endgame' && '最后24H'}
               </span>
-              {polymarketUrl && (
-                <a
-                  href={`${polymarketUrl}?${REFERRAL_CODE}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
-                >
-                  <span>进入 Polymarket 下注</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
+              <a
+                href={POLYMARKET_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+              >
+                <span>进入 Polymarket 下注</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
           </div>
         </div>
@@ -188,26 +185,6 @@ function App() {
         </div>
       </nav>
 
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center gap-2 text-sm">
-            <span className="text-white/80">实时分析数据，辅助你的预测决策</span>
-            <span className="text-white/30">|</span>
-            {polymarketUrl && (
-              <a
-                href={`${polymarketUrl}?${REFERRAL_CODE}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 font-semibold hover:underline"
-              >
-                前往 Polymarket 参与预测市场
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-
       <main className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'input' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -226,17 +203,6 @@ function App() {
                       onChange={(e) => setTimeParams({ ...timeParams, marketTitle: e.target.value })}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
                     />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs text-gray-500 mb-1">Polymarket 市场链接</label>
-                    <input
-                      type="url"
-                      value={polymarketUrl}
-                      onChange={(e) => setPolymarketUrl(e.target.value)}
-                      placeholder="https://polymarket.com/event/..."
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">填入 Polymarket 市场页面的链接，邀新码将自动附加</p>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">总时长 (小时)</label>
