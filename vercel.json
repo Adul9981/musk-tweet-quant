@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "musk-tweet-quant",
   "builds": [
     {
       "src": "package.json",
