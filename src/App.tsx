@@ -46,14 +46,8 @@ const defaultVelocitySnapshot: VelocitySnapshot = {
 
 const defaultOrderBook: OrderBookEntry[] = [
   { id: generateId(), lowerBound: 220, upperBound: 239, yesPrice: 5 },
-  { id: generateId(), lowerBound: 240, upperBound: 259, yesPrice: 8 },
   { id: generateId(), lowerBound: 260, upperBound: 279, yesPrice: 15 },
-  { id: generateId(), lowerBound: 280, upperBound: 299, yesPrice: 22 },
   { id: generateId(), lowerBound: 300, upperBound: 319, yesPrice: 25 },
-  { id: generateId(), lowerBound: 320, upperBound: 339, yesPrice: 18 },
-  { id: generateId(), lowerBound: 340, upperBound: 359, yesPrice: 12 },
-  { id: generateId(), lowerBound: 360, upperBound: 379, yesPrice: 8 },
-  { id: generateId(), lowerBound: 380, upperBound: 399, yesPrice: 5 },
 ];
 
 const defaultPortfolio: PortfolioEntry[] = [];
