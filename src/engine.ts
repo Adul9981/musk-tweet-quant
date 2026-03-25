@@ -7,7 +7,7 @@ import type {
   AnalysisResult,
   IntervalAnalysis,
   StrategyOutput,
-  VelocityWeights,
+  VelocityStatus,
   ReverseEngineeringEntry,
 } from './types';
 
@@ -60,14 +60,6 @@ const calculateReverseVelocity = (
     minVelocity: remainingHours > 0 ? Math.max(0, tweetsNeededLower / remainingHours) : 0,
     maxVelocity: remainingHours > 0 ? Math.max(0, tweetsNeededUpper / remainingHours) : Infinity,
   };
-};
-
-const calculateVelocityWeights = (remainingHours: number, totalDuration: number): VelocityWeights => {
-  let rawGlobalWeight = remainingHours / totalDuration;
-  rawGlobalWeight = Math.max(0.20, Math.min(0.85, rawGlobalWeight));
-  const globalWeight = rawGlobalWeight;
-  const microWeight = 1 - globalWeight;
-  return { globalWeight, microWeight };
 };
 
 const calculateReverseEngineering = (
@@ -144,10 +136,22 @@ export const analyzePredictionMarket = (
       ? tweetsDifference / velocitySnapshot.hoursSinceSnapshot
       : 0;
 
-  const velocityWeights = calculateVelocityWeights(remainingHours, timeParams.totalDuration);
+  let compositeVelocity: number;
+  let velocityStatus: VelocityStatus;
 
-  const compositeVelocity =
-    (globalVelocity * velocityWeights.globalWeight) + (microVelocity * velocityWeights.microWeight);
+  if (microVelocity > globalVelocity && globalVelocity > 0) {
+    compositeVelocity = (globalVelocity * 0.7) + (microVelocity * 0.3);
+    velocityStatus = {
+      state: 'surge',
+      message: '🔥 动能爆发，已引入 30% 微观权重',
+    };
+  } else {
+    compositeVelocity = globalVelocity;
+    velocityStatus = {
+      state: 'normal',
+      message: '💤 常规静默，采用全局底色计算',
+    };
+  }
 
   const expectedCenter = baseParams.currentTweetCount + compositeVelocity * remainingHours;
 
@@ -203,7 +207,7 @@ export const analyzePredictionMarket = (
     strategy,
     remainingHoursDecimal,
     elapsedHours,
-    velocityWeights,
+    velocityStatus,
     reverseEngineering,
   };
 };

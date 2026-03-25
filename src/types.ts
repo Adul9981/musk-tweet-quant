@@ -48,9 +48,9 @@ export interface IntervalAnalysis {
   position: number;
 }
 
-export interface VelocityWeights {
-  globalWeight: number;
-  microWeight: number;
+export interface VelocityStatus {
+  state: 'surge' | 'normal';
+  message: string;
 }
 
 export interface ReverseEngineeringEntry {
@@ -81,6 +81,6 @@ export interface AnalysisResult {
   strategy: StrategyOutput;
   remainingHoursDecimal: number;
   elapsedHours: number;
-  velocityWeights: VelocityWeights;
+  velocityStatus: VelocityStatus;
   reverseEngineering: ReverseEngineeringEntry[];
 }

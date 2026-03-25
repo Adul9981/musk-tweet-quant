@@ -22,7 +22,7 @@ import type {
   PortfolioEntry,
   AnalysisResult,
 } from './types';
-import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatWeight } from './engine';
+import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice } from './engine';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -282,9 +282,8 @@ function App() {
                     <span className="text-sm text-gray-600 font-medium">综合时速：</span>
                     <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)} 条/小时</span>
                   </div>
-                  <div className="mt-2 pt-2 border-t border-teal-200/50 flex items-center justify-between text-xs text-gray-500">
-                    <span>当前权重分配</span>
-                    <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
+                  <div className="mt-2 pt-2 border-t border-teal-200/50 text-xs text-gray-500">
+                    {analysis.velocityStatus.message}
                   </div>
                 </div>
               </section>
@@ -573,11 +572,8 @@ function App() {
                       <span className="text-sm font-semibold text-gray-700">综合时速</span>
                       <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)}/h</span>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <div className="flex justify-between items-center text-xs text-gray-400">
-                        <span>权重分配</span>
-                        <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
-                      </div>
+                    <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
+                      {analysis.velocityStatus.message}
                     </div>
                   </div>
                 </section>
