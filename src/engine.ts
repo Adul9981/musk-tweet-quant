@@ -7,6 +7,8 @@ import type {
   AnalysisResult,
   IntervalAnalysis,
   StrategyOutput,
+  VelocityWeights,
+  ReverseEngineeringEntry,
 } from './types';
 
 const erf = (x: number): number => {
@@ -60,6 +62,46 @@ const calculateReverseVelocity = (
   };
 };
 
+const calculateVelocityWeights = (remainingHours: number, totalDuration: number): VelocityWeights => {
+  let rawGlobalWeight = remainingHours / totalDuration;
+  rawGlobalWeight = Math.max(0.20, Math.min(0.85, rawGlobalWeight));
+  const globalWeight = rawGlobalWeight;
+  const microWeight = 1 - globalWeight;
+  return { globalWeight, microWeight };
+};
+
+const calculateReverseEngineering = (
+  currentCount: number,
+  remainingHours: number,
+  intervals: IntervalAnalysis[]
+): ReverseEngineeringEntry[] => {
+  return intervals.map((interval) => {
+    const tweetsNeededMin = interval.lowerBound - currentCount;
+    const tweetsNeededMax = interval.upperBound - currentCount;
+
+    let status: 'busted' | 'active' | 'passed' = 'active';
+    if (currentCount > interval.upperBound) {
+      status = 'busted';
+    } else if (currentCount > interval.lowerBound) {
+      status = 'passed';
+    }
+
+    const minVelocity = remainingHours > 0 ? Math.max(0, tweetsNeededMin) / remainingHours : 0;
+    const maxVelocity = remainingHours > 0 ? Math.max(0, tweetsNeededMax) / remainingHours : Infinity;
+
+    return {
+      id: interval.id,
+      lowerBound: interval.lowerBound,
+      upperBound: interval.upperBound,
+      tweetsNeededMin: Math.max(0, tweetsNeededMin),
+      tweetsNeededMax: Math.max(0, tweetsNeededMax),
+      minVelocity,
+      maxVelocity,
+      status,
+    };
+  });
+};
+
 const determineSignal = (alpha: number, remainingHours: number): 'buy' | 'sell' | 'hold' => {
   if (remainingHours <= 24) return 'hold';
   if (alpha < 0.8) return 'sell';
@@ -97,14 +139,17 @@ export const analyzePredictionMarket = (
     elapsedHours > 0 ? baseParams.currentTweetCount / elapsedHours : 0;
 
   const tweetsDifference = baseParams.currentTweetCount - velocitySnapshot.snapshotCount;
-  const dynamicVelocity =
+  const microVelocity =
     velocitySnapshot.hoursSinceSnapshot > 0 && tweetsDifference > 0
       ? tweetsDifference / velocitySnapshot.hoursSinceSnapshot
       : 0;
 
-  const effectiveVelocity = dynamicVelocity > 0 ? dynamicVelocity : globalVelocity;
+  const velocityWeights = calculateVelocityWeights(remainingHours, timeParams.totalDuration);
 
-  const expectedCenter = baseParams.currentTweetCount + effectiveVelocity * remainingHours;
+  const compositeVelocity =
+    (globalVelocity * velocityWeights.globalWeight) + (microVelocity * velocityWeights.microWeight);
+
+  const expectedCenter = baseParams.currentTweetCount + compositeVelocity * remainingHours;
 
   const currentSigma = calculateDynamicSigma(remainingHours, timeParams.totalDuration);
 
@@ -140,18 +185,26 @@ export const analyzePredictionMarket = (
     };
   });
 
+  const reverseEngineering = calculateReverseEngineering(
+    baseParams.currentTweetCount,
+    remainingHours,
+    intervals
+  );
+
   const strategy = generateStrategy(intervals, portfolio, remainingHours);
 
   return {
     globalVelocity,
-    dynamicVelocity: effectiveVelocity,
-    compositeVelocity: effectiveVelocity,
+    microVelocity,
+    compositeVelocity,
     expectedCenter,
     currentSigma,
     intervals,
     strategy,
     remainingHoursDecimal,
     elapsedHours,
+    velocityWeights,
+    reverseEngineering,
   };
 };
 
@@ -224,6 +277,10 @@ export const formatMarketPrice = (value: number): string => {
   return `${(value * 100).toFixed(1)}%`;
 };
 
+export const formatWeight = (weight: number): string => {
+  return `${(weight * 100).toFixed(0)}%`;
+};
+
 export const generateTweetContent = (
   analysis: AnalysisResult,
   marketTitle: string,
@@ -240,7 +297,7 @@ export const generateTweetContent = (
 
   let tweet = `📊 ${marketTitle} 实时追踪\n\n`;
   tweet += `🎯 当前推文数: ${currentTweetCount}\n`;
-  tweet += `⚡ 动态时速: ${formatVelocity(analysis.dynamicVelocity)} 条/小时\n`;
+  tweet += `⚡ 综合时速: ${formatVelocity(analysis.compositeVelocity)} 条/小时\n`;
   tweet += `⏰ 剩余时间: ${remainingText}\n\n`;
 
   if (topAlpha) {

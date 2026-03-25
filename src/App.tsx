@@ -22,7 +22,7 @@ import type {
   PortfolioEntry,
   AnalysisResult,
 } from './types';
-import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice } from './engine';
+import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatWeight } from './engine';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -36,20 +36,24 @@ const defaultTimeParams: TimeParams = {
 };
 
 const defaultBaseParams: BaseParams = {
-  currentTweetCount: 350,
+  currentTweetCount: 250,
 };
 
 const defaultVelocitySnapshot: VelocitySnapshot = {
-  snapshotCount: 350,
+  snapshotCount: 250,
   hoursSinceSnapshot: 1,
 };
 
 const defaultOrderBook: OrderBookEntry[] = [
-  { id: generateId(), lowerBound: 350, upperBound: 399, yesPrice: 15 },
-  { id: generateId(), lowerBound: 400, upperBound: 419, yesPrice: 28 },
-  { id: generateId(), lowerBound: 420, upperBound: 449, yesPrice: 32 },
-  { id: generateId(), lowerBound: 450, upperBound: 479, yesPrice: 22 },
-  { id: generateId(), lowerBound: 480, upperBound: 499, yesPrice: 12 },
+  { id: generateId(), lowerBound: 220, upperBound: 239, yesPrice: 5 },
+  { id: generateId(), lowerBound: 240, upperBound: 259, yesPrice: 8 },
+  { id: generateId(), lowerBound: 260, upperBound: 279, yesPrice: 15 },
+  { id: generateId(), lowerBound: 280, upperBound: 299, yesPrice: 22 },
+  { id: generateId(), lowerBound: 300, upperBound: 319, yesPrice: 25 },
+  { id: generateId(), lowerBound: 320, upperBound: 339, yesPrice: 18 },
+  { id: generateId(), lowerBound: 340, upperBound: 359, yesPrice: 12 },
+  { id: generateId(), lowerBound: 360, upperBound: 379, yesPrice: 8 },
+  { id: generateId(), lowerBound: 380, upperBound: 399, yesPrice: 5 },
 ];
 
 const defaultPortfolio: PortfolioEntry[] = [];
@@ -281,8 +285,12 @@ function App() {
                 </div>
                 <div className="mt-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 font-medium">计算所得动态时速：</span>
-                    <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.dynamicVelocity)} 条/小时</span>
+                    <span className="text-sm text-gray-600 font-medium">综合时速：</span>
+                    <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)} 条/小时</span>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-teal-200/50 flex items-center justify-between text-xs text-gray-500">
+                    <span>当前权重分配</span>
+                    <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
                   </div>
                 </div>
               </section>
@@ -376,7 +384,7 @@ function App() {
                   </div>
                   <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
                     <p className="text-xs text-gray-500 mb-1">动态时速</p>
-                    <p className="text-2xl font-bold text-emerald-600">{formatVelocity(analysis.dynamicVelocity)}</p>
+                    <p className="text-2xl font-bold text-emerald-600">{formatVelocity(analysis.microVelocity)}</p>
                     <p className="text-xs text-gray-400">条/小时</p>
                   </div>
                   <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 text-center border border-violet-100">
@@ -515,13 +523,67 @@ function App() {
                     <span className="text-sm font-semibold text-teal-600">{formatVelocity(analysis.globalVelocity)}/h</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-500">动态时速</span>
-                    <span className="text-sm font-semibold text-emerald-600">{formatVelocity(analysis.dynamicVelocity)}/h</span>
+                    <span className="text-sm text-gray-500">微观时速</span>
+                    <span className="text-sm font-semibold text-emerald-600">{formatVelocity(analysis.microVelocity)}/h</span>
                   </div>
                   <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
                     <span className="text-sm font-semibold text-gray-700">综合时速</span>
                     <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)}/h</span>
                   </div>
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <div className="flex justify-between items-center text-xs text-gray-400">
+                      <span>权重分配</span>
+                      <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
+                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-purple-500" />
+                  目标区间时速倒推雷达
+                </h2>
+                <div className="space-y-2">
+                  {analysis.reverseEngineering.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-xl border ${
+                        item.status === 'busted'
+                          ? 'bg-gray-100 border-gray-300'
+                          : item.status === 'passed'
+                          ? 'bg-amber-50 border-amber-200'
+                          : 'bg-purple-50 border-purple-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">
+                            {item.status === 'busted' ? '❌' : item.status === 'passed' ? '⚠️' : '🎯'}
+                          </span>
+                          <span className="font-semibold text-gray-800">
+                            [{item.lowerBound}-{item.upperBound}]
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          {item.status === 'busted' ? (
+                            <span className="text-xs text-gray-500 font-medium">已击穿</span>
+                          ) : item.status === 'passed' ? (
+                            <span className="text-xs text-amber-600 font-medium">已突破下限</span>
+                          ) : (
+                            <span className="text-xs text-purple-600 font-medium">
+                              还需 {item.tweetsNeededMin} ~ {item.tweetsNeededMax} 条
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {item.status === 'active' && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          要求均速：{formatVelocity(item.minVelocity)} ~ {formatVelocity(item.maxVelocity)} 条/小时
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </section>
             </div>
@@ -587,8 +649,8 @@ function App() {
                   </p>
                 </div>
                 <div className="bg-emerald-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">动态时速</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatVelocity(analysis.dynamicVelocity)}/h</p>
+                  <p className="text-xs text-gray-500">综合时速</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatVelocity(analysis.compositeVelocity)}/h</p>
                 </div>
               </div>
             </section>

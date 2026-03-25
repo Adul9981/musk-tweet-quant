@@ -48,6 +48,22 @@ export interface IntervalAnalysis {
   position: number;
 }
 
+export interface VelocityWeights {
+  globalWeight: number;
+  microWeight: number;
+}
+
+export interface ReverseEngineeringEntry {
+  id: string;
+  lowerBound: number;
+  upperBound: number;
+  tweetsNeededMin: number;
+  tweetsNeededMax: number;
+  minVelocity: number;
+  maxVelocity: number;
+  status: 'busted' | 'active' | 'passed';
+}
+
 export interface StrategyOutput {
   phase: 'early' | 'mid' | 'late' | 'endgame';
   orders: string[];
@@ -57,7 +73,7 @@ export interface StrategyOutput {
 
 export interface AnalysisResult {
   globalVelocity: number;
-  dynamicVelocity: number;
+  microVelocity: number;
   compositeVelocity: number;
   expectedCenter: number;
   currentSigma: number;
@@ -65,4 +81,6 @@ export interface AnalysisResult {
   strategy: StrategyOutput;
   remainingHoursDecimal: number;
   elapsedHours: number;
+  velocityWeights: VelocityWeights;
+  reverseEngineering: ReverseEngineeringEntry[];
 }
