@@ -63,7 +63,7 @@ function App() {
   const [cashBalance, setCashBalance] = useState(1000);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet'>('input');
-  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-17-march-24#EbvxQTM?via=serene77mc-g6kj';
+  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-20-march-27?r=adul#npOUGOn';
 
   const analysis: AnalysisResult = useMemo(() => {
     return analyzePredictionMarket(
