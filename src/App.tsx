@@ -398,188 +398,190 @@ function App() {
         )}
 
         {activeTab === 'strategy' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-teal-500" />
-                  盘口价值比雷达
-                </h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-xs text-gray-500 border-b border-gray-200">
-                        <th className="text-left py-3 px-2 font-semibold">区间</th>
-                        <th className="text-right py-3 px-2 font-semibold">市场价</th>
-                        <th className="text-right py-3 px-2 font-semibold">真实概率</th>
-                        <th className="text-right py-3 px-2 font-semibold">Alpha</th>
-                        <th className="text-center py-3 px-2 font-semibold">信号</th>
-                        <th className="text-right py-3 px-2 font-semibold">最低时速</th>
-                        <th className="text-right py-3 px-2 font-semibold">最高时速</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analysis.intervals
-                        .sort((a, b) => b.alpha - a.alpha)
-                        .map((interval) => (
-                          <tr
-                            key={interval.id}
-                            className={`border-b border-gray-100 ${interval.alpha > 1.05 ? 'bg-teal-50/50' : interval.alpha < 0.8 ? 'bg-rose-50/50' : ''}`}
-                          >
-                            <td className="py-3 px-2 font-semibold text-gray-800">
-                              [{interval.lowerBound}-{interval.upperBound}]
-                            </td>
-                            <td className="py-3 px-2 text-right text-gray-600">
-                              {formatMarketPrice(interval.marketPrice)}
-                            </td>
-                            <td className="py-3 px-2 text-right text-teal-600 font-medium">
-                              {formatPercent(interval.trueProbability)}
-                            </td>
-                            <td className={`py-3 px-2 text-right font-bold ${getSignalColor(interval.alpha)}`}>
-                              {interval.alpha.toFixed(2)}
-                            </td>
-                            <td className="py-3 px-2 text-center">
-                              <span className={`px-2 py-1 rounded-lg text-xs font-semibold border ${getSignalBg(interval.alpha)}`}>
-                                {interval.signal === 'buy' && '买入'}
-                                {interval.signal === 'sell' && '卖出'}
-                                {interval.signal === 'hold' && '观望'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-2 text-right text-gray-400 text-xs">
-                              {interval.minVelocity === Infinity ? '∞' : formatVelocity(interval.minVelocity)}
-                            </td>
-                            <td className="py-3 px-2 text-right text-gray-400 text-xs">
-                              {interval.maxVelocity === Infinity ? '∞' : formatVelocity(interval.maxVelocity)}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              {analysis.strategy.alerts.length > 0 && (
-                <section className="bg-white rounded-2xl p-5 border border-rose-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-rose-600 mb-4 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    实时警报
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-teal-500" />
+                    盘口价值比雷达
                   </h2>
-                  <div className="space-y-2">
-                    {analysis.strategy.alerts.map((alert, i) => (
-                      <div key={i} className="bg-rose-50 rounded-xl p-3 text-sm text-gray-700 border-l-4 border-rose-400">
-                        {alert}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-xs text-gray-500 border-b border-gray-200">
+                          <th className="text-left py-3 px-2 font-semibold">区间</th>
+                          <th className="text-right py-3 px-2 font-semibold">市场价</th>
+                          <th className="text-right py-3 px-2 font-semibold">真实概率</th>
+                          <th className="text-right py-3 px-2 font-semibold">Alpha</th>
+                          <th className="text-center py-3 px-2 font-semibold">信号</th>
+                          <th className="text-right py-3 px-2 font-semibold">最低时速</th>
+                          <th className="text-right py-3 px-2 font-semibold">最高时速</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.intervals
+                          .sort((a, b) => b.alpha - a.alpha)
+                          .map((interval) => (
+                            <tr
+                              key={interval.id}
+                              className={`border-b border-gray-100 ${interval.alpha > 1.05 ? 'bg-teal-50/50' : interval.alpha < 0.8 ? 'bg-rose-50/50' : ''}`}
+                            >
+                              <td className="py-3 px-2 font-semibold text-gray-800">
+                                [{interval.lowerBound}-{interval.upperBound}]
+                              </td>
+                              <td className="py-3 px-2 text-right text-gray-600">
+                                {formatMarketPrice(interval.marketPrice)}
+                              </td>
+                              <td className="py-3 px-2 text-right text-teal-600 font-medium">
+                                {formatPercent(interval.trueProbability)}
+                              </td>
+                              <td className={`py-3 px-2 text-right font-bold ${getSignalColor(interval.alpha)}`}>
+                                {interval.alpha.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-2 text-center">
+                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold border ${getSignalBg(interval.alpha)}`}>
+                                  {interval.signal === 'buy' && '买入'}
+                                  {interval.signal === 'sell' && '卖出'}
+                                  {interval.signal === 'hold' && '观望'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2 text-right text-gray-400 text-xs">
+                                {interval.minVelocity === Infinity ? '∞' : formatVelocity(interval.minVelocity)}
+                              </td>
+                              <td className="py-3 px-2 text-right text-gray-400 text-xs">
+                                {interval.maxVelocity === Infinity ? '∞' : formatVelocity(interval.maxVelocity)}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                {analysis.strategy.alerts.length > 0 && (
+                  <section className="bg-white rounded-2xl p-5 border border-rose-200 shadow-sm">
+                    <h2 className="text-base font-semibold text-rose-600 mb-4 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      实时警报
+                    </h2>
+                    <div className="space-y-2">
+                      {analysis.strategy.alerts.map((alert, i) => (
+                        <div key={i} className="bg-rose-50 rounded-xl p-3 text-sm text-gray-700 border-l-4 border-rose-400">
+                          {alert}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
+                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-purple-500" />
+                    目标区间时速倒推雷达
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {analysis.reverseEngineering.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-xl border ${
+                          item.status === 'busted'
+                            ? 'bg-gray-100 border-gray-300'
+                            : item.status === 'passed'
+                            ? 'bg-amber-50 border-amber-200'
+                            : 'bg-purple-50 border-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">
+                              {item.status === 'busted' ? '❌' : item.status === 'passed' ? '⚠️' : '🎯'}
+                            </span>
+                            <span className="font-semibold text-gray-800">
+                              [{item.lowerBound}-{item.upperBound}]
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs">
+                          {item.status === 'busted' ? (
+                            <span className="text-gray-500 font-medium">已击穿</span>
+                          ) : item.status === 'passed' ? (
+                            <span className="text-amber-600 font-medium">已突破下限</span>
+                          ) : (
+                            <>
+                              <div className="text-purple-600 font-medium">
+                                还需 {item.tweetsNeededMin} ~ {item.tweetsNeededMax} 条
+                              </div>
+                              <div className="text-gray-500 mt-1">
+                                均速：{formatVelocity(item.minVelocity)} ~ {formatVelocity(item.maxVelocity)}/h
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </section>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-6">
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-teal-500" />
-                  冷血执行官指令
-                </h2>
-                {analysis.strategy.orders.length > 0 ? (
+              <div className="space-y-6">
+                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-teal-500" />
+                    冷血执行官指令
+                  </h2>
+                  {analysis.strategy.orders.length > 0 ? (
+                    <div className="space-y-2">
+                      {analysis.strategy.orders.map((order, i) => (
+                        <div key={i} className="bg-gray-50 rounded-xl p-3 text-sm font-mono text-gray-700 border border-gray-200">
+                          {order}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">暂无操作指令</p>
+                  )}
+                </section>
+
+                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-teal-500" />
+                    策略建议
+                  </h2>
                   <div className="space-y-2">
-                    {analysis.strategy.orders.map((order, i) => (
-                      <div key={i} className="bg-gray-50 rounded-xl p-3 text-sm font-mono text-gray-700 border border-gray-200">
-                        {order}
+                    {analysis.strategy.recommendations.map((rec, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm">
+                        <span className="text-teal-500 mt-0.5">•</span>
+                        <span className="text-gray-600">{rec}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-gray-400 text-sm">暂无操作指令</p>
-                )}
-              </section>
+                </section>
 
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-teal-500" />
-                  策略建议
-                </h2>
-                <div className="space-y-2">
-                  {analysis.strategy.recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-teal-500 mt-0.5">•</span>
-                      <span className="text-gray-600">{rec}</span>
+                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                  <h2 className="text-base font-semibold text-gray-800 mb-4">速度分析</h2>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-500">全局均速</span>
+                      <span className="text-sm font-semibold text-teal-600">{formatVelocity(analysis.globalVelocity)}/h</span>
                     </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4">速度分析</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-500">全局均速</span>
-                    <span className="text-sm font-semibold text-teal-600">{formatVelocity(analysis.globalVelocity)}/h</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-500">微观时速</span>
-                    <span className="text-sm font-semibold text-emerald-600">{formatVelocity(analysis.microVelocity)}/h</span>
-                  </div>
-                  <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-700">综合时速</span>
-                    <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)}/h</span>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-gray-100">
-                    <div className="flex justify-between items-center text-xs text-gray-400">
-                      <span>权重分配</span>
-                      <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
+                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-500">微观时速</span>
+                      <span className="text-sm font-semibold text-emerald-600">{formatVelocity(analysis.microVelocity)}/h</span>
                     </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-purple-500" />
-                  目标区间时速倒推雷达
-                </h2>
-                <div className="space-y-2">
-                  {analysis.reverseEngineering.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`p-3 rounded-xl border ${
-                        item.status === 'busted'
-                          ? 'bg-gray-100 border-gray-300'
-                          : item.status === 'passed'
-                          ? 'bg-amber-50 border-amber-200'
-                          : 'bg-purple-50 border-purple-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">
-                            {item.status === 'busted' ? '❌' : item.status === 'passed' ? '⚠️' : '🎯'}
-                          </span>
-                          <span className="font-semibold text-gray-800">
-                            [{item.lowerBound}-{item.upperBound}]
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          {item.status === 'busted' ? (
-                            <span className="text-xs text-gray-500 font-medium">已击穿</span>
-                          ) : item.status === 'passed' ? (
-                            <span className="text-xs text-amber-600 font-medium">已突破下限</span>
-                          ) : (
-                            <span className="text-xs text-purple-600 font-medium">
-                              还需 {item.tweetsNeededMin} ~ {item.tweetsNeededMax} 条
-                            </span>
-                          )}
-                        </div>
+                    <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-700">综合时速</span>
+                      <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)}/h</span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <div className="flex justify-between items-center text-xs text-gray-400">
+                        <span>权重分配</span>
+                        <span>全局 {formatWeight(analysis.velocityWeights.globalWeight)} / 微观 {formatWeight(analysis.velocityWeights.microWeight)}</span>
                       </div>
-                      {item.status === 'active' && (
-                        <div className="mt-1 text-xs text-gray-500">
-                          要求均速：{formatVelocity(item.minVelocity)} ~ {formatVelocity(item.maxVelocity)} 条/小时
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </section>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         )}
