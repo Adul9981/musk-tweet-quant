@@ -24,7 +24,6 @@ import type {
   AnalysisResult,
 } from './types';
 import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatMultiplier } from './engine';
-import { ActivityHeatmap } from './components/ActivityHeatmap';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -631,8 +630,6 @@ function App() {
                     </div>
                   </div>
                 </section>
-
-                <ActivityHeatmap />
               </div>
             </div>
           </div>
