@@ -24,6 +24,7 @@ import type {
   AnalysisResult,
 } from './types';
 import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatMultiplier } from './engine';
+import { ActivityHeatmap } from './components/ActivityHeatmap';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -611,7 +612,7 @@ function App() {
                 </section>
 
                 <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800 mb-4">速度分析</h2>
+                  <h2 className="text-base font-semibold text-gray-800">速度分析</h2>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                       <span className="text-sm text-gray-500">全局均速</span>
@@ -630,6 +631,8 @@ function App() {
                     </div>
                   </div>
                 </section>
+
+                <ActivityHeatmap />
               </div>
             </div>
           </div>
