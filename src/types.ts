@@ -83,4 +83,5 @@ export interface AnalysisResult {
   elapsedHours: number;
   velocityStatus: VelocityStatus;
   reverseEngineering: ReverseEngineeringEntry[];
+  elonMultiplier: number;
 }

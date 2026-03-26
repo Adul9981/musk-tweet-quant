@@ -30,11 +30,15 @@ const normalCDF = (x: number, mean: number, stdDev: number): number => {
   return 0.5 * (1 + erf((x - mean) / (stdDev * Math.sqrt(2))));
 };
 
-const calculateDynamicSigma = (remainingHours: number, totalDuration: number): number => {
-  const remainingRatio = remainingHours / totalDuration;
-  const baseSigma = 50;
-  const minSigma = 8;
-  return minSigma + (baseSigma - minSigma) * Math.pow(remainingRatio, 0.5);
+const calculateDynamicSigma = (
+  remainingHours: number,
+  compositeVelocity: number,
+  elonMultiplier: number
+): number => {
+  const expectedRemaining = Math.max(0, remainingHours * compositeVelocity);
+  const basePoissonSigma = Math.sqrt(expectedRemaining);
+  const dynamicSigma = basePoissonSigma * elonMultiplier;
+  return Math.max(8, dynamicSigma);
 };
 
 const calculateIntervalProbability = (
@@ -120,7 +124,8 @@ export const analyzePredictionMarket = (
   baseParams: BaseParams,
   velocitySnapshot: VelocitySnapshot,
   orderBook: OrderBookEntry[],
-  portfolio: Portfolio
+  portfolio: Portfolio,
+  elonMultiplier: number = 2.2
 ): AnalysisResult => {
   const remainingHoursDecimal =
     timeParams.remainingDays * 24 + timeParams.remainingHours + timeParams.remainingMinutes / 60;
@@ -155,7 +160,7 @@ export const analyzePredictionMarket = (
 
   const expectedCenter = baseParams.currentTweetCount + compositeVelocity * remainingHours;
 
-  const currentSigma = calculateDynamicSigma(remainingHours, timeParams.totalDuration);
+  const currentSigma = calculateDynamicSigma(remainingHours, compositeVelocity, elonMultiplier);
 
   const intervals: IntervalAnalysis[] = orderBook.map((entry) => {
     const normalizedPrice = normalizeYesPrice(entry.yesPrice);
@@ -209,6 +214,7 @@ export const analyzePredictionMarket = (
     elapsedHours,
     velocityStatus,
     reverseEngineering,
+    elonMultiplier,
   };
 };
 
@@ -281,8 +287,8 @@ export const formatMarketPrice = (value: number): string => {
   return `${(value * 100).toFixed(1)}%`;
 };
 
-export const formatWeight = (weight: number): string => {
-  return `${(weight * 100).toFixed(0)}%`;
+export const formatMultiplier = (value: number): string => {
+  return value.toFixed(1);
 };
 
 export const generateTweetContent = (

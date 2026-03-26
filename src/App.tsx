@@ -13,6 +13,7 @@ import {
   Copy,
   BarChart3,
   ExternalLink,
+  Info,
 } from 'lucide-react';
 import type {
   TimeParams,
@@ -22,7 +23,7 @@ import type {
   PortfolioEntry,
   AnalysisResult,
 } from './types';
-import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice } from './engine';
+import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatMultiplier } from './engine';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -61,6 +62,8 @@ function App() {
   const [cashBalance, setCashBalance] = useState(1000);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet'>('input');
+  const [elonMultiplier, setElonMultiplier] = useState(2.2);
+  const [showTooltip, setShowTooltip] = useState(false);
   const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-20-march-27?r=adul#npOUGOn';
 
   const analysis: AnalysisResult = useMemo(() => {
@@ -69,9 +72,10 @@ function App() {
       baseParams,
       velocitySnapshot,
       orderBook,
-      { cashBalance, positions: portfolioPositions }
+      { cashBalance, positions: portfolioPositions },
+      elonMultiplier
     );
-  }, [timeParams, baseParams, velocitySnapshot, orderBook, portfolioPositions, cashBalance]);
+  }, [timeParams, baseParams, velocitySnapshot, orderBook, portfolioPositions, cashBalance, elonMultiplier]);
 
   const addOrderBookEntry = () => {
     const lastEntry = orderBook[orderBook.length - 1];
@@ -284,6 +288,55 @@ function App() {
                   </div>
                   <div className="mt-2 pt-2 border-t border-teal-200/50 text-xs text-gray-500">
                     {analysis.velocityStatus.message}
+                  </div>
+                </div>
+
+                <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 font-medium">Elon 发疯系数</span>
+                      <button
+                        className="relative"
+                        onMouseEnter={() => setShowTooltip(true)}
+                        onMouseLeave={() => setShowTooltip(false)}
+                        onClick={() => setShowTooltip(!showTooltip)}
+                      >
+                        <Info className="w-4 h-4 text-purple-500 cursor-help" />
+                        {showTooltip && (
+                          <div className="absolute top-8 left-0 z-50 w-80 p-4 bg-white rounded-xl shadow-xl border border-gray-200 text-xs text-gray-600 leading-relaxed">
+                            <div className="font-semibold text-gray-800 mb-2">🧠 什么是 Elon 发疯系数？</div>
+                            <p className="mb-3">在统计学中，标准的离散事件（如机器发推）方差等于均值（乘数为 1.0）。但马斯克的发推习惯具有极强的"阵发性（过度离散）"。此系数用于放大模型的标准差 (σ)，以容纳他突然断网或狂暴刷屏的尾部风险。</p>
+                            <div className="font-semibold text-gray-800 mb-2">🎛️ 交易员调参指南：</div>
+                            <ul className="space-y-1">
+                              <li><span className="font-medium text-green-600">1.0 - 1.5 (冷静模式)：</span>极其自律或正在忙于极其严肃的线下事件（如法庭听证、深度闭门会议）。模型会收紧预测，中心红心概率大幅提升。</li>
+                              <li><span className="font-medium text-blue-600">2.0 - 2.5 (默认网瘾)：</span>日常状态。会睡觉，但醒来后会密集回复和转推。推荐默认值 2.2。</li>
+                              <li><span className="font-medium text-red-600">3.0 - 5.0 (狂暴模式)：</span>大事件触发（如大选日、星舰发射、财报发布、重大舆论战）。他会疯狂刷屏，模型会极大地拉宽防守网格，帮助寻找极左或极右的错杀机会。</li>
+                            </ul>
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                    <span className="text-lg font-bold text-purple-600">{formatMultiplier(elonMultiplier)}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="5.0"
+                      step="0.1"
+                      value={elonMultiplier}
+                      onChange={(e) => setElonMultiplier(Number(e.target.value))}
+                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    />
+                    <input
+                      type="number"
+                      min="1.0"
+                      max="5.0"
+                      step="0.1"
+                      value={elonMultiplier}
+                      onChange={(e) => setElonMultiplier(Number(e.target.value))}
+                      className="w-16 bg-white border border-purple-200 rounded-lg px-2 py-1 text-sm text-center focus:border-purple-400 focus:outline-none"
+                    />
                   </div>
                 </div>
               </section>
