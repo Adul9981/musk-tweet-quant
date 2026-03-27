@@ -206,7 +206,7 @@ export function TweetHeatmap() {
 
   const stats = getStats();
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const cellSize = 34;
+  const cellSize = 38;
 
   return (
     <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
@@ -277,17 +277,17 @@ export function TweetHeatmap() {
       )}
 
       {data.length > 0 && (
-        <div className="overflow-x-auto pb-2">
+        <div className="overflow-x-auto pb-4">
           <div className="inline-block">
-            <div className="flex gap-0 mb-1 pl-12">
+            <div className="flex gap-1 mb-1 pl-14">
               {hours.map(hour => (
                 <div
                   key={hour}
                   className="flex flex-col items-center"
                   style={{ width: cellSize }}
                 >
-                  <span className="text-[10px] text-yellow-400 font-medium">{hour}点</span>
-                  <span className="text-[8px] text-gray-500">{getETFromBeijing(hour).replace(' ET', '')}</span>
+                  <span className="text-xs text-yellow-400 font-medium">{hour}点</span>
+                  <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
                   {hour === currentBJHour && (
                     <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
                   )}
@@ -296,8 +296,8 @@ export function TweetHeatmap() {
             </div>
           
             {uniqueDates.map((date) => (
-              <div key={date} className="flex items-center gap-0 mb-0.5">
-                <div className="w-12 text-xs text-gray-300 text-right pr-2 font-medium">
+              <div key={date} className="flex items-center gap-1 mb-1">
+                <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
                   {getDayLabel(date)}
                 </div>
                 {hours.map(hour => {
@@ -310,7 +310,7 @@ export function TweetHeatmap() {
                     <div
                       key={hour}
                       className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                        isCurrentHour ? 'ring-1 ring-cyan-400 ring-offset-0' : ''
+                        isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
                       }`}
                       style={{
                         width: cellSize,
@@ -324,23 +324,23 @@ export function TweetHeatmap() {
                       }}
                       onMouseLeave={() => setHoveredCell(null)}
                     >
-                      {!isEmpty && count > 3 && (
+                      {!isEmpty && (
                         <span 
-                          className="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
+                          className="absolute inset-0 flex items-center justify-center text-xs font-bold"
                           style={{ 
-                            color: '#1a1a2e',
+                            color: count <= 7 ? '#1a1a2e' : '#ffffff',
                           }}
                         >
                           {count}
                         </span>
                       )}
                       {isCurrentHour && (
-                        <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-1 border-r-1 border-b-1 border-l-transparent border-r-transparent border-b-cyan-400" />
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
                       )}
                     </div>
                   );
                 })}
-                <span className="text-xs text-gray-500 pl-2 w-12">
+                <span className="text-sm text-gray-500 pl-2 w-14">
                   {formatDate(date).split(' ')[0]}
                 </span>
               </div>
