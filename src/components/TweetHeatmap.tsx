@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
@@ -52,13 +52,12 @@ const generateMockHeatmapData = (): HeatmapData[] => {
 };
 
 const getColorForCount = (count: number): string => {
-  if (count === 0) return '#1a1a2e';
-  if (count <= 2) return '#2d1f1f';
-  if (count <= 5) return '#4a2c2a';
-  if (count <= 8) return '#c75b39';
-  if (count <= 12) return '#e8845f';
-  if (count <= 16) return '#f0a868';
-  return '#f5d485';
+  if (count === 0) return '#0d4f4f';
+  if (count <= 3) return '#f5e6a3';
+  if (count <= 7) return '#f5d066';
+  if (count <= 12) return '#f5b833';
+  if (count <= 18) return '#e69500';
+  return '#cc7000';
 };
 
 const formatDate = (dateStr: string): string => {
@@ -80,13 +79,11 @@ interface TweetHeatmapProps {
 
 export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
   const [data, setData] = useState<HeatmapData[]>(externalData || generateMockHeatmapData());
-  const [isLoading, setIsLoading] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importError, setImportError] = useState('');
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastRefresh] = useState<Date>(new Date());
 
   const uniqueDates = useMemo(() => {
     const dates = [...new Set(data.map(d => d.date))].sort();
@@ -95,20 +92,16 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
 
   const fetchData = async () => {
     if (!apiEndpoint) return;
-    setIsLoading(true);
     try {
       const response = await fetch(apiEndpoint);
       if (response.ok) {
         const result = await response.json();
         if (result.heatmap) {
           setData(result.heatmap);
-          setLastRefresh(new Date());
         }
       }
     } catch (error) {
       console.error('Failed to fetch heatmap data:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -150,102 +143,101 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
   const getStats = () => {
     const recentData = data.filter(d => uniqueDates.includes(d.date));
     const totalTweets = recentData.reduce((sum, d) => sum + d.count, 0);
-    const activeHours = recentData.filter(d => d.count > 0).length;
     const avgPerDay = totalTweets / uniqueDates.length;
     const peakHour = recentData.reduce((max, d) => d.count > max.count ? d : max, recentData[0] || { hour: 0, count: 0 });
-    return { totalTweets, activeHours, avgPerDay, peakHour };
+    return { totalTweets, avgPerDay, peakHour };
   };
 
   const stats = getStats();
   const hours = Array.from({ length: 24 }, (_, i) => i);
+  const cellSize = 36;
 
   return (
-    <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-5 border border-gray-700/50">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-base font-semibold text-gray-100 flex items-center gap-2">
-            <svg className="w-5 h-5 text-orange-400" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="3" y="3" width="18" height="18" rx="2" opacity="0.2" />
-              <path d="M7 7h2v10H7V7zm4 3h2v7h-2v-7zm4-5h2v12h-2V5z" />
-            </svg>
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <span className="text-2xl">♟</span>
             马斯克发推热力图
           </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            过去15天 · 24小时分布 · 
-            <span className="text-orange-400 ml-1">
+          <p className="text-sm text-gray-400 mt-1">
+            过去15天 · 24小时分布
+            <span className="text-yellow-400 ml-2">
               共 {stats.totalTweets} 条
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span className="text-xs text-gray-500">
-            更新: {lastRefresh.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+            生成: {lastRefresh.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
           </span>
           <button
-            onClick={fetchData}
-            disabled={isLoading || !apiEndpoint}
-            className="p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-300 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-          <button
             onClick={exportData}
-            className="p-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-300 rounded-lg transition-colors"
+            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-300 rounded-lg transition-colors"
+            title="导出数据"
           >
             <Download className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowImport(!showImport)}
-            className="text-xs px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-300 rounded-lg transition-colors border border-gray-600/30"
+            className="text-sm px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-colors border border-gray-600/30"
           >
-            {showImport ? '收起' : '导入'}
+            {showImport ? '收起' : '导入数据'}
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="inline-block min-w-full">
-          <div className="flex gap-1 mb-2 pl-12">
+      <div className="overflow-x-auto pb-4">
+        <div className="inline-block">
+          <div className="flex gap-1 mb-1 pl-16">
             {hours.map(hour => (
               <div
                 key={hour}
-                className="text-xs text-gray-500 text-center"
-                style={{ width: '20px', fontSize: '9px' }}
+                className="text-xs text-gray-500 text-center font-mono"
+                style={{ width: cellSize }}
               >
-                {hour % 3 === 0 ? hour.toString().padStart(2, '0') : ''}
+                {hour.toString().padStart(2, '0')}
               </div>
             ))}
           </div>
           
           {uniqueDates.map((date) => (
             <div key={date} className="flex items-center gap-1 mb-1">
-              <div className="w-11 text-xs text-gray-500 text-right pr-2 text-[10px]">
+              <div className="w-14 text-sm text-gray-400 text-right pr-3 font-medium">
                 {getDayLabel(date)}
               </div>
               {hours.map(hour => {
                 const cellData = data.find(d => d.date === date && d.hour === hour);
                 const count = cellData?.count || 0;
+                const isEmpty = count === 0;
+                
                 return (
                   <div
                     key={hour}
-                    className="rounded-sm cursor-pointer transition-all hover:scale-110 hover:z-10"
+                    className="relative rounded cursor-pointer transition-all hover:scale-105 hover:z-10 hover:ring-2 hover:ring-white/30"
                     style={{
-                      width: '18px',
-                      height: '18px',
+                      width: cellSize,
+                      height: cellSize,
                       backgroundColor: getColorForCount(count),
                     }}
-                    onMouseEnter={(e) => {
-                      if (cellData) {
-                        setHoveredCell(cellData);
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
-                      }
-                    }}
+                    onMouseEnter={() => setHoveredCell(cellData || null)}
                     onMouseLeave={() => setHoveredCell(null)}
-                  />
+                  >
+                    {!isEmpty && (
+                      <span 
+                        className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                        style={{ 
+                          color: count <= 7 ? '#1a1a2e' : '#ffffff',
+                          textShadow: count <= 7 ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
-              <span className="text-xs text-gray-400 pl-2 text-[10px]">
+              <span className="text-xs text-gray-500 pl-3 w-16">
                 {formatDate(date)}
               </span>
             </div>
@@ -253,58 +245,62 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500">少</span>
-          {[0, 2, 5, 8, 12, 16, 20].map((level, i) => (
-            <div
-              key={i}
-              className="w-3 h-3 rounded-sm"
-              style={{ backgroundColor: getColorForCount(level) }}
-            />
-          ))}
-          <span className="text-xs text-gray-500 ml-1">多</span>
+      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-700/50">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">图例</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#0d4f4f' }} />
+            <span className="text-xs text-gray-500 mr-3">无</span>
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5e6a3' }} />
+            <span className="text-xs text-gray-500 mr-3">少</span>
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5d066' }} />
+            <span className="text-xs text-gray-500 mr-3">中</span>
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5b833' }} />
+            <span className="text-xs text-gray-500 mr-3">多</span>
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#e69500' }} />
+            <span className="text-xs text-gray-500 mr-3">很多</span>
+            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#cc7000' }} />
+            <span className="text-xs text-gray-500">狂发</span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-6 text-sm">
           <span className="text-gray-500">
-            均值: <span className="text-orange-400 font-medium">{stats.avgPerDay.toFixed(0)}/天</span>
+            日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)} 条</span>
           </span>
           <span className="text-gray-500">
-            高峰: <span className="text-orange-400 font-medium">{stats.peakHour?.hour}:00</span>
+            高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour?.hour}:00</span>
           </span>
         </div>
       </div>
 
       {hoveredCell && (
-        <div
-          className="fixed z-50 bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 shadow-xl pointer-events-none"
-          style={{
-            left: tooltipPos.x,
-            top: tooltipPos.y - 60,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div className="text-xs text-gray-400">{formatDate(hoveredCell.date)}</div>
-          <div className="text-sm font-semibold text-white">
-            {hoveredCell.hour}:00 - {hoveredCell.count} 条推文
+        <div className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 shadow-2xl pointer-events-none">
+          <div className="text-sm text-gray-400">{formatDate(hoveredCell.date)}</div>
+          <div className="text-lg font-bold text-white">
+            {hoveredCell.hour}:00
+          </div>
+          <div className="text-sm mt-1">
+            <span className="text-gray-400">发推 </span>
+            <span className="text-yellow-400 font-bold text-xl">{hoveredCell.count}</span>
+            <span className="text-gray-400"> 条</span>
           </div>
         </div>
       )}
 
       {showImport && (
-        <div className="mt-4 pt-4 border-t border-gray-700/50">
+        <div className="mt-6 pt-4 border-t border-gray-700/50">
           <h4 className="text-sm font-medium text-gray-300 mb-2">导入 JSON 数据</h4>
           <p className="text-xs text-gray-500 mb-3">格式: [{`{date: "2026-03-27", hour: 14, count: 8}`}, ...]</p>
           <textarea
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
             placeholder='[{"date": "2026-03-27", "hour": 14, "count": 8}, ...]'
-            className="w-full h-24 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300 font-mono focus:border-orange-500 focus:outline-none resize-none"
+            className="w-full h-32 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono focus:border-yellow-500 focus:outline-none resize-none"
           />
           {importError && <p className="text-xs text-red-400 mt-2">{importError}</p>}
           <button
             onClick={handleImport}
-            className="mt-3 px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-sm font-medium rounded-lg transition-colors border border-orange-500/30"
+            className="mt-3 px-5 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-sm font-medium rounded-lg transition-colors border border-yellow-500/30"
           >
             应用数据
           </button>
