@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Clock,
   TrendingUp,
@@ -14,6 +14,8 @@ import {
   BarChart3,
   ExternalLink,
   Info,
+  Grid3X3,
+  RefreshCw,
 } from 'lucide-react';
 import type {
   TimeParams,
@@ -24,6 +26,22 @@ import type {
   AnalysisResult,
 } from './types';
 import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatMultiplier } from './engine';
+import { TweetHeatmap } from './components/TweetHeatmap';
+
+interface PolymarketData {
+  question: string;
+  slug: string;
+  endDate: string;
+  volume: number;
+  liquidity: number;
+  conditions: Array<{
+    id: string;
+    question: string;
+    outcome: string;
+    probability: number;
+  }>;
+  lastUpdated: string;
+}
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -61,9 +79,11 @@ function App() {
   const [portfolioPositions] = useState<PortfolioEntry[]>(defaultPortfolio);
   const [cashBalance, setCashBalance] = useState(1000);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet'>('input');
+  const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet' | 'heatmap'>('input');
   const [elonMultiplier, setElonMultiplier] = useState(2.2);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [polymarketData, setPolymarketData] = useState<PolymarketData | null>(null);
+  const [isLoadingPolymarket, setIsLoadingPolymarket] = useState(false);
   const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-20-march-27?r=adul#npOUGOn';
 
   const analysis: AnalysisResult = useMemo(() => {
@@ -76,6 +96,27 @@ function App() {
       elonMultiplier
     );
   }, [timeParams, baseParams, velocitySnapshot, orderBook, portfolioPositions, cashBalance, elonMultiplier]);
+
+  const fetchPolymarketData = async () => {
+    setIsLoadingPolymarket(true);
+    try {
+      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-20-march-27');
+      if (response.ok) {
+        const data = await response.json();
+        setPolymarketData(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Polymarket data:', error);
+    } finally {
+      setIsLoadingPolymarket(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolymarketData();
+    const interval = setInterval(fetchPolymarketData, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const addOrderBookEntry = () => {
     const lastEntry = orderBook[orderBook.length - 1];
@@ -168,6 +209,7 @@ function App() {
             {[
               { id: 'input', label: '数据输入', icon: Target },
               { id: 'strategy', label: '策略输出', icon: BarChart3 },
+              { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
               { id: 'tweet', label: '推文生成', icon: Copy },
             ].map((tab) => (
               <button
@@ -607,10 +649,60 @@ function App() {
                         <span className="text-gray-600">{rec}</span>
                       </div>
                     ))}
-                  </div>
-                </section>
+                </div>
+              </section>
 
-                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+              <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="text-purple-500 font-bold">P</span>
+                    Polymarket 实时数据
+                  </h2>
+                  <button
+                    onClick={fetchPolymarketData}
+                    disabled={isLoadingPolymarket}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-colors"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPolymarket ? 'animate-spin' : ''}`} />
+                    {isLoadingPolymarket ? '刷新中...' : '刷新'}
+                  </button>
+                </div>
+                {polymarketData ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600 font-medium">{polymarketData.question}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-purple-50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500">当前交易量</p>
+                        <p className="text-lg font-bold text-purple-600">${(polymarketData.volume / 1000).toFixed(1)}K</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-gray-500">流动性</p>
+                        <p className="text-lg font-bold text-purple-600">${(polymarketData.liquidity / 1000).toFixed(1)}K</p>
+                      </div>
+                    </div>
+                    <div className="border-t border-purple-100 pt-3">
+                      <p className="text-xs text-gray-500 mb-2">区间概率</p>
+                      <div className="space-y-1">
+                        {polymarketData.conditions.slice(0, 5).map((cond) => (
+                          <div key={cond.id} className="flex justify-between items-center text-xs">
+                            <span className="text-gray-600">{cond.question}</span>
+                            <span className="font-semibold text-purple-600">{Math.round(cond.probability * 100)}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 text-right">
+                      更新于 {new Date(polymarketData.lastUpdated).toLocaleTimeString('zh-CN')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-400">点击刷新加载 Polymarket 数据</p>
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
                   <h2 className="text-base font-semibold text-gray-800">速度分析</h2>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
@@ -632,6 +724,12 @@ function App() {
                 </section>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'heatmap' && (
+          <div className="max-w-6xl mx-auto">
+            <TweetHeatmap />
           </div>
         )}
 
