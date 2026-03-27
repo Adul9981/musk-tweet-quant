@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Download, RefreshCw, ExternalLink, Clock, Loader2 } from 'lucide-react';
+import { Download, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
@@ -35,7 +35,6 @@ const getETFromBeijing = (bjHour: number): string => {
   return `${etHour}:00 ET`;
 };
 
-const MARKET_END_DATE = new Date('2026-04-03T12:00:00Z');
 const CACHE_KEY = 'musk_tweet_heatmap_data';
 const CACHE_TTL = 60 * 60 * 1000;
 
@@ -43,21 +42,6 @@ interface CacheData {
   data: HeatmapData[];
   lastUpdated: string;
   cachedAt: number;
-}
-
-function getTimeRemaining(): string {
-  const now = new Date();
-  const diff = MARKET_END_DATE.getTime() - now.getTime();
-  
-  if (diff <= 0) return '已结束';
-  
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  
-  if (days > 0) return `${days}天 ${hours}小时`;
-  if (hours > 0) return `${hours}小时 ${minutes}分`;
-  return `${minutes}分`;
 }
 
 function getCache(): CacheData | null {
@@ -106,15 +90,7 @@ export function TweetHeatmap() {
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(initialLastUpdated);
-  const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining());
   const [isFromCache, setIsFromCache] = useState(initialIsFromCache);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining(getTimeRemaining());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!needsRefresh) return;
@@ -241,24 +217,15 @@ export function TweetHeatmap() {
             马斯克发推热力图
           </h3>
           <div className="flex items-center gap-4 mt-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <span className="text-gray-400">市场剩余:</span>
-              <span className="text-cyan-400 font-bold">{timeRemaining}</span>
-            </div>
-            <span className="text-gray-500">|</span>
-            <span className="text-gray-400">
-              共 <span className="text-yellow-400 font-semibold">{stats.totalTweets}</span> 条推文
-            </span>
+            {lastUpdated && (
+              <span className="text-xs text-gray-500">
+                {isFromCache && <span className="text-yellow-500/60 mr-1">[缓存]</span>}
+                更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {lastUpdated && (
-            <span className="text-xs text-gray-500">
-              {isFromCache && <span className="text-yellow-500/60 mr-1">[缓存]</span>}
-              更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
           <button
             onClick={() => fetchRealData()}
             disabled={isLoading}
@@ -313,13 +280,16 @@ export function TweetHeatmap() {
         <div className="overflow-x-auto pb-4">
           <div className="inline-block">
             <div className="flex gap-1 mb-1 pl-16">
+              <div className="flex flex-col items-center" style={{ width: cellSize }}>
+                <span className="text-[10px] text-cyan-400 font-medium">北京时间</span>
+              </div>
               {hours.map(hour => (
                 <div
                   key={hour}
                   className="flex flex-col items-center"
                   style={{ width: cellSize }}
                 >
-                  <span className="text-xs text-yellow-400 font-mono">{hour.toString().padStart(2, '0')}</span>
+                  <span className="text-xs text-yellow-400 font-medium">{hour}点</span>
                   <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
                   {hour === currentBJHour && (
                     <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
@@ -373,8 +343,8 @@ export function TweetHeatmap() {
                     </div>
                   );
                 })}
-                <span className="text-sm text-gray-400 pl-3 w-20">
-                  {formatDate(date)}
+                <span className="text-sm text-gray-500 pl-2 w-14">
+                  {formatDate(date).split(' ')[0]}
                 </span>
               </div>
             ))}
@@ -407,11 +377,9 @@ export function TweetHeatmap() {
               <span className="text-gray-400">当前时段</span>
             </div>
             <span className="text-gray-400">
-              日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)}</span>
-            </span>
-            <span className="text-gray-400">
               高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
             </span>
+            <span className="text-gray-500 text-[10px]">默认按北京时间排序，灰色为美东时间</span>
           </div>
         </div>
       )}
