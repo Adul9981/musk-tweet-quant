@@ -48,26 +48,30 @@ export default async function handler(req, res) {
       let hasOldTweet = false;
       
       for (const tweet of data.tweets) {
-        const createdAt = new Date(tweet.tweet_created_at);
+        const createdAtStr = tweet.tweet_created_at;
+        const createdAt = new Date(createdAtStr);
+        
+        if (isNaN(createdAt.getTime())) {
+          continue;
+        }
         
         if (createdAt < cutoffDate) {
           hasOldTweet = true;
           break;
         }
         
-        const date = createdAt.toISOString().split('T')[0];
         const utcHour = createdAt.getUTCHours();
         let hour = utcHour + 8;
-        let tweetDate = date;
+        let tweetDate = new Date(createdAt);
         
         if (hour >= 24) {
           hour = hour - 24;
-          const d = new Date(date);
-          d.setDate(d.getDate() + 1);
-          tweetDate = d.toISOString().split('T')[0];
+          tweetDate.setDate(tweetDate.getDate() + 1);
         }
         
-        const key = `${tweetDate}-${hour}`;
+        const dateStr = `${tweetDate.getFullYear()}-${String(tweetDate.getMonth() + 1).padStart(2, '0')}-${String(tweetDate.getDate()).padStart(2, '0')}`;
+        
+        const key = `${dateStr}-${hour}`;
         tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
       }
       
@@ -82,8 +86,10 @@ export default async function handler(req, res) {
     }
 
     const result = Array.from(tweetsMap.entries()).map(([key, count]) => {
-      const [date, hour] = key.split('-');
-      return { date, hour: parseInt(hour), count };
+      const parts = key.split('-');
+      const date = parts.slice(0, 3).join('-');
+      const hour = parseInt(parts[3]);
+      return { date, hour, count };
     });
 
     const estimatedCost = (pageCount * 20 * 0.0002).toFixed(4);
