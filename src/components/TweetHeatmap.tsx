@@ -273,7 +273,7 @@ export function TweetHeatmap() {
       {data.length > 0 && (
         <div className="overflow-x-auto pb-4">
           <div className="inline-block">
-            <div className="flex gap-1 mb-1 pl-14">
+            <div className="flex gap-1 mb-1 pl-12">
               {hours.map(hour => (
                 <div
                   key={hour}
@@ -291,8 +291,9 @@ export function TweetHeatmap() {
           
             {uniqueDates.map((date) => (
               <div key={date} className="flex items-center gap-1 mb-1">
-                <div className="w-16 text-sm text-gray-300 text-right pr-2 font-semibold">
-                  {formatDate(date)}
+                <div className="w-14 flex flex-col items-end pr-2 leading-tight">
+                  <span className="text-xs text-gray-400">{formatDate(date).split(' ')[0]}</span>
+                  <span className="text-sm text-gray-300 font-semibold">{formatDate(date).split(' ')[1]}</span>
                 </div>
                 {hours.map(hour => {
                   const cellData = data.find(d => d.date === date && d.hour === hour);
