@@ -7,10 +7,13 @@ export default async function handler(req: any, res: any) {
   const ELON_MUSK_USER_ID = '44196397';
 
   try {
-    const allTweets: any[] = [];
+    const tweetsMap = new Map<string, number>();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 20);
     let cursor: string | null = null;
-    const maxPages = 50;
-    
+    let pageCount = 0;
+    const maxPages = 30;
+
     for (let page = 0; page < maxPages; page++) {
       const url = cursor 
         ? `https://api.socialdata.tools/twitter/user/${ELON_MUSK_USER_ID}/tweets?cursor=${encodeURIComponent(cursor)}`
@@ -38,54 +41,54 @@ export default async function handler(req: any, res: any) {
         break;
       }
 
-      allTweets.push(...data.tweets);
+      let hasOldTweet = false;
       
-      if (data.next_cursor) {
-        cursor = data.next_cursor;
-      } else {
+      for (const tweet of data.tweets) {
+        const createdAt = new Date(tweet.tweet_created_at);
+        
+        if (createdAt < cutoffDate) {
+          hasOldTweet = true;
+          break;
+        }
+        
+        const date = createdAt.toISOString().split('T')[0];
+        const utcHour = createdAt.getUTCHours();
+        let hour = utcHour + 8;
+        let tweetDate = date;
+        
+        if (hour >= 24) {
+          hour = hour - 24;
+          const d = new Date(date);
+          d.setDate(d.getDate() + 1);
+          tweetDate = d.toISOString().split('T')[0];
+        }
+        
+        const key = `${tweetDate}-${hour}`;
+        tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
+      }
+      
+      pageCount++;
+      
+      if (hasOldTweet || !data.next_cursor) {
         break;
       }
-
+      
+      cursor = data.next_cursor;
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    const heatmapData = allTweets.map(tweet => {
-      const createdAt = new Date(tweet.tweet_created_at);
-      return {
-        id: tweet.id_str,
-        date: createdAt.toISOString().split('T')[0],
-        hour: createdAt.getUTCHours() + 8,
-        timestamp: createdAt.getTime(),
-        text: tweet.full_text || tweet.text,
-      };
-    }).map(item => {
-      if (item.hour >= 24) {
-        const date = new Date(item.date);
-        date.setDate(date.getDate() + 1);
-        return {
-          ...item,
-          hour: item.hour - 24,
-          date: date.toISOString().split('T')[0],
-        };
-      }
-      return item;
-    });
-
-    const aggregated = new Map<string, number>();
-    for (const item of heatmapData) {
-      const key = `${item.date}-${item.hour}`;
-      aggregated.set(key, (aggregated.get(key) || 0) + 1);
-    }
-
-    const result = Array.from(aggregated.entries()).map(([key, count]) => {
+    const result = Array.from(tweetsMap.entries()).map(([key, count]) => {
       const [date, hour] = key.split('-');
       return { date, hour: parseInt(hour), count };
     });
 
+    const estimatedCost = (pageCount * 20 * 0.0002).toFixed(4);
+
     res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate');
     return res.status(200).json({
       tweets: result,
-      totalTweetsFetched: allTweets.length,
+      pagesFetched: pageCount,
+      estimatedCost: `$${estimatedCost}`,
       lastUpdated: new Date().toISOString(),
     });
   } catch (error) {

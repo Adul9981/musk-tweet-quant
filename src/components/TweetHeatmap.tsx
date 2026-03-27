@@ -89,7 +89,8 @@ export function TweetHeatmap() {
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [totalFetched, setTotalFetched] = useState<number>(0);
+  const [pagesFetched, setPagesFetched] = useState<number>(0);
+  const [estimatedCost, setEstimatedCost] = useState<string>('');
 
   const uniqueDates = useMemo(() => {
     const dates = [...new Set(data.map(d => d.date))].sort();
@@ -114,16 +115,10 @@ export function TweetHeatmap() {
       }
       
       if (result.tweets && result.tweets.length > 0) {
-        const recentTweets = result.tweets.filter((t: HeatmapData) => {
-          const tweetDate = new Date(t.date);
-          const now = new Date();
-          const daysDiff = (now.getTime() - tweetDate.getTime()) / (1000 * 60 * 60 * 24);
-          return daysDiff <= 20;
-        });
-        
-        setData(recentTweets);
+        setData(result.tweets);
         setLastUpdated(new Date(result.lastUpdated));
-        setTotalFetched(result.totalTweetsFetched);
+        setPagesFetched(result.pagesFetched);
+        setEstimatedCost(result.estimatedCost);
       }
     } catch (err) {
       setError('网络请求失败');
@@ -201,9 +196,9 @@ export function TweetHeatmap() {
               共 {stats.totalTweets} 条推文
             </span>
           </p>
-          {totalFetched > 0 && (
+          {pagesFetched > 0 && (
             <p className="text-xs text-gray-500 mt-1">
-              数据来源: SocialData API · 共抓取 {totalFetched} 条推文
+              SocialData · 获取 {pagesFetched} 页 · 预估费用 {estimatedCost}
             </p>
           )}
         </div>
