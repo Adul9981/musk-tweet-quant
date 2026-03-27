@@ -278,7 +278,7 @@ export function TweetHeatmap() {
 
       {data.length > 0 && (
         <div className="overflow-x-auto pb-4">
-          <div className="inline-block">
+          <div className="flex justify-center">
             <div className="flex gap-1 mb-1 pl-14">
               {hours.map(hour => (
                 <div
