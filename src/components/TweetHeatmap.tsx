@@ -22,12 +22,6 @@ const formatDate = (dateStr: string): string => {
   return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`;
 };
 
-const getDayLabel = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return dayNames[date.getDay()];
-};
-
 const getETFromBeijing = (bjHour: number): string => {
   const etHour = bjHour - 13;
   if (etHour < 0) return `${etHour + 24}:00 ET`;
@@ -206,7 +200,7 @@ export function TweetHeatmap() {
 
   const stats = getStats();
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const cellSize = 38;
+  const cellSize = 28;
 
   return (
     <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
@@ -215,6 +209,7 @@ export function TweetHeatmap() {
           <h3 className="text-xl font-bold text-yellow-400 flex items-center gap-3">
             <span className="text-3xl">♟</span>
             马斯克发推热力图
+            <span className="text-xs text-gray-500 font-normal ml-2">北京时间</span>
           </h3>
           <div className="flex items-center gap-4 mt-2">
             {lastUpdated && (
@@ -277,20 +272,17 @@ export function TweetHeatmap() {
       )}
 
       {data.length > 0 && (
-        <div className="overflow-x-auto pb-4">
+        <div className="overflow-x-auto pb-2">
           <div className="inline-block">
-            <div className="flex gap-1 mb-1 pl-16">
-              <div className="flex flex-col items-center" style={{ width: cellSize }}>
-                <span className="text-[10px] text-cyan-400 font-medium">北京时间</span>
-              </div>
+            <div className="flex gap-1 mb-1 pl-24">
               {hours.map(hour => (
                 <div
                   key={hour}
                   className="flex flex-col items-center"
                   style={{ width: cellSize }}
                 >
-                  <span className="text-xs text-yellow-400 font-medium">{hour}点</span>
-                  <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
+                  <span className="text-[10px] text-yellow-400 font-medium">{hour}</span>
+                  <span className="text-[8px] text-gray-500">{getETFromBeijing(hour).replace(':00 ET', '')}</span>
                   {hour === currentBJHour && (
                     <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
                   )}
@@ -299,9 +291,9 @@ export function TweetHeatmap() {
             </div>
           
             {uniqueDates.map((date) => (
-              <div key={date} className="flex items-center gap-1 mb-1">
-                <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
-                  {getDayLabel(date)}
+              <div key={date} className="flex items-center gap-1 mb-0.5">
+                <div className="w-12 text-xs text-gray-400 text-right pr-2 font-medium">
+                  {formatDate(date)}
                 </div>
                 {hours.map(hour => {
                   const cellData = data.find(d => d.date === date && d.hour === hour);
@@ -313,7 +305,7 @@ export function TweetHeatmap() {
                     <div
                       key={hour}
                       className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                        isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
+                        isCurrentHour ? 'ring-1 ring-cyan-400 ring-offset-0' : ''
                       }`}
                       style={{
                         width: cellSize,
@@ -327,25 +319,22 @@ export function TweetHeatmap() {
                       }}
                       onMouseLeave={() => setHoveredCell(null)}
                     >
-                      {!isEmpty && (
+                      {!isEmpty && count > 3 && (
                         <span 
-                          className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                          className="absolute inset-0 flex items-center justify-center text-[9px] font-bold"
                           style={{ 
-                            color: count <= 7 ? '#1a1a2e' : '#ffffff',
+                            color: '#1a1a2e',
                           }}
                         >
                           {count}
                         </span>
                       )}
                       {isCurrentHour && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
+                        <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-1 border-r-1 border-b-1 border-l-transparent border-r-transparent border-b-cyan-400" />
                       )}
                     </div>
                   );
                 })}
-                <span className="text-sm text-gray-500 pl-2 w-14">
-                  {formatDate(date).split(' ')[0]}
-                </span>
               </div>
             ))}
           </div>
@@ -357,29 +346,29 @@ export function TweetHeatmap() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500">图例</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#0d4f4f' }} />
               <span className="text-xs text-gray-500 mr-2">无</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f5e6a3' }} />
               <span className="text-xs text-gray-500 mr-2">1-3</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
-              <span className="text-xs text-gray-500 mr-2">4-7</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
-              <span className="text-xs text-gray-500 mr-2">8-12</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
-              <span className="text-xs text-gray-500 mr-2">13-18</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f5d066' }} />
+              <span className="text-xs text-gray-500 mr-2">4+</span>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f5b833' }} />
+              <span className="text-xs text-gray-500 mr-2">8+</span>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#e69500' }} />
+              <span className="text-xs text-gray-500 mr-2">13+</span>
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#cc7000' }} />
               <span className="text-xs text-gray-500">19+</span>
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full" />
-              <span className="text-gray-400">当前时段</span>
+              <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full" />
+              <span className="text-gray-400">当前</span>
             </div>
             <span className="text-gray-400">
               高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
             </span>
-            <span className="text-gray-500 text-[10px]">默认按北京时间排序，灰色为美东时间</span>
+            <span className="text-gray-500 text-[10px]">灰色数字为美东时间</span>
           </div>
         </div>
       )}
