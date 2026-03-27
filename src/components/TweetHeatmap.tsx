@@ -90,8 +90,14 @@ function isCacheValid(): boolean {
 }
 
 export function TweetHeatmap() {
-  const [data, setData] = useState<HeatmapData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const cached = getCache();
+  const initialData = cached?.data || [];
+  const initialLastUpdated = cached ? new Date(cached.lastUpdated) : null;
+  const initialIsFromCache = !!cached;
+  const needsRefresh = cached && !isCacheValid();
+
+  const [data, setData] = useState<HeatmapData[]>(initialData);
+  const [isLoading, setIsLoading] = useState(!cached);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -99,9 +105,9 @@ export function TweetHeatmap() {
   const [importError, setImportError] = useState('');
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(initialLastUpdated);
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining());
-  const [isFromCache, setIsFromCache] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(initialIsFromCache);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -111,22 +117,26 @@ export function TweetHeatmap() {
   }, []);
 
   useEffect(() => {
-    const cached = getCache();
+    if (!needsRefresh) return;
     
-    if (cached) {
-      setData(cached.data);
-      setLastUpdated(new Date(cached.lastUpdated));
-      setIsFromCache(true);
-      
-      if (isCacheValid()) {
-        setIsLoading(false);
-      } else {
-        fetchRealData(true);
-      }
-    } else {
-      fetchRealData(false);
-    }
-  }, []);
+    const timer = setTimeout(() => {
+      setIsRefreshing(true);
+      fetch('/api/elon-tweets')
+        .then(res => res.json())
+        .then(result => {
+          if (result.tweets?.length > 0) {
+            setData(result.tweets);
+            setLastUpdated(new Date(result.lastUpdated));
+            setCache(result.tweets, result.lastUpdated);
+            setIsFromCache(false);
+          }
+        })
+        .catch(err => console.error('Silent refresh failed:', err))
+        .finally(() => setIsRefreshing(false));
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [needsRefresh]);
 
   const now = useMemo(() => new Date(), []);
   const currentBJHour = now.getHours();
@@ -137,10 +147,8 @@ export function TweetHeatmap() {
     return dates.slice(-15);
   }, [data]);
 
-  const fetchRealData = async (silent: boolean = false) => {
-    if (!silent) {
-      setIsLoading(true);
-    }
+  const fetchRealData = async () => {
+    setIsLoading(true);
     setIsRefreshing(true);
     setError(null);
     
@@ -154,8 +162,6 @@ export function TweetHeatmap() {
         } else {
           setError(result.message || '获取数据失败');
         }
-        if (!silent) setIsLoading(false);
-        setIsRefreshing(false);
         return;
       }
       
@@ -165,14 +171,10 @@ export function TweetHeatmap() {
         setCache(result.tweets, result.lastUpdated);
         setIsFromCache(false);
       } else {
-        if (!silent) {
-          setError('未获取到数据，请稍后重试');
-        }
+        setError('未获取到数据，请稍后重试');
       }
     } catch (err) {
-      if (!silent) {
-        setError('网络请求失败');
-      }
+      setError('网络请求失败');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -258,7 +260,7 @@ export function TweetHeatmap() {
             </span>
           )}
           <button
-            onClick={() => fetchRealData(false)}
+            onClick={() => fetchRealData()}
             disabled={isLoading}
             className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm rounded-lg transition-colors disabled:opacity-50 border border-cyan-500/30"
           >
