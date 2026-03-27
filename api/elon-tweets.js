@@ -1,4 +1,4 @@
-export default async function handler(req: any, res: any) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -7,10 +7,10 @@ export default async function handler(req: any, res: any) {
   const ELON_MUSK_USER_ID = '44196397';
 
   try {
-    const tweetsMap = new Map<string, number>();
+    const tweetsMap = new Map();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 20);
-    let cursor: string | null = null;
+    let cursor = null;
     let pageCount = 0;
     const maxPages = 30;
 
