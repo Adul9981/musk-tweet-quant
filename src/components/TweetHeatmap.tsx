@@ -292,8 +292,8 @@ export function TweetHeatmap() {
             {uniqueDates.map((date) => (
               <div key={date} className="flex items-center gap-1 mb-1">
                 <div className="w-14 flex flex-col items-end pr-2 leading-tight">
-                  <span className="text-xs text-gray-400">{formatDate(date).split(' ')[0]}</span>
-                  <span className="text-sm text-gray-300 font-semibold">{formatDate(date).split(' ')[1]}</span>
+                  <span className="text-sm text-gray-300 font-bold">{formatDate(date).split(' ')[0]}</span>
+                  <span className="text-xs text-gray-500">{formatDate(date).split(' ')[1]}</span>
                 </div>
                 {hours.map(hour => {
                   const cellData = data.find(d => d.date === date && d.hour === hour);
@@ -335,6 +335,9 @@ export function TweetHeatmap() {
                     </div>
                   );
                 })}
+                <span className="text-xs text-gray-500 pl-2 w-6">
+                  {formatDate(date).split(' ')[1]}
+                </span>
               </div>
             ))}
           </div>
