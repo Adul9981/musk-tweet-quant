@@ -279,10 +279,7 @@ export function TweetHeatmap() {
       {data.length > 0 && (
         <div className="overflow-x-auto pb-4">
           <div className="inline-block">
-            <div className="flex gap-1 mb-1 pl-16">
-              <div className="flex flex-col items-center" style={{ width: cellSize }}>
-                <span className="text-[10px] text-cyan-400 font-medium">北京时间</span>
-              </div>
+            <div className="flex gap-1 mb-1 pl-14">
               {hours.map(hour => (
                 <div
                   key={hour}
