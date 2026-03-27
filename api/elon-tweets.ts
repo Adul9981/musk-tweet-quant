@@ -3,7 +3,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const SOCIALDATA_API_KEY = '6343|bMXorF3ZCfDhX0Mw5ZG62pPr4AUAt4zFHd1Jahyv65d59664';
+  const SOCIALDATA_API_KEY = '6344|u73DxVuebPNNW0Je5w1Zoc8W1CQwaFHP64OxPGeH6ea44a00';
   const ELON_MUSK_USER_ID = '44196397';
 
   try {
