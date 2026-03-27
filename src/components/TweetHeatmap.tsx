@@ -10,7 +10,6 @@ interface HeatmapData {
 const SOCIALDATA_API_KEY = '6344|u73DxVuebPNNW0Je5w1Zoc8W1CQwaFHP64OxPGeH6ea44a00';
 const ELON_MUSK_USER_ID = '44196397';
 const SOCIALDATA_API = 'https://api.socialdata.tools';
-const CORS_PROXY = 'https://corsproxy.io/?';
 
 const generateMockHeatmapData = (): HeatmapData[] => {
   const data: HeatmapData[] = [];
@@ -115,10 +114,9 @@ export function TweetHeatmap() {
       const maxPages = 30;
 
       for (let page = 0; page < maxPages; page++) {
-        const baseUrl = cursor 
+        const url = cursor 
           ? `${SOCIALDATA_API}/twitter/user/${ELON_MUSK_USER_ID}/tweets?cursor=${encodeURIComponent(cursor)}`
           : `${SOCIALDATA_API}/twitter/user/${ELON_MUSK_USER_ID}/tweets`;
-        const url = `${CORS_PROXY}${encodeURIComponent(baseUrl)}`;
         
         const response = await fetch(url, {
           headers: {
