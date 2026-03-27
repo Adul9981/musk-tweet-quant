@@ -22,12 +22,6 @@ const formatDate = (dateStr: string): string => {
   return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`;
 };
 
-const getDayLabel = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return dayNames[date.getDay()];
-};
-
 const getETFromBeijing = (bjHour: number): string => {
   const etHour = bjHour - 13;
   if (etHour < 0) return `${etHour + 24}:00 ET`;
@@ -297,8 +291,8 @@ export function TweetHeatmap() {
           
             {uniqueDates.map((date) => (
               <div key={date} className="flex items-center gap-1 mb-1">
-                <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
-                  {getDayLabel(date)}
+                <div className="w-16 text-sm text-gray-300 text-right pr-2 font-semibold">
+                  {formatDate(date)}
                 </div>
                 {hours.map(hour => {
                   const cellData = data.find(d => d.date === date && d.hour === hour);
@@ -340,9 +334,6 @@ export function TweetHeatmap() {
                     </div>
                   );
                 })}
-                <span className="text-sm text-gray-500 pl-2 w-14">
-                  {formatDate(date).split(' ')[0]}
-                </span>
               </div>
             ))}
           </div>
