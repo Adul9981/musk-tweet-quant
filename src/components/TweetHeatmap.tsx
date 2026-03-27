@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Download } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Download, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
@@ -72,38 +72,70 @@ const getDayLabel = (dateStr: string): string => {
   return dayNames[date.getDay()];
 };
 
-const convertToMarketTimezone = (dateStr: string, hour: number): string => {
-  const marketTimezone = 'America/New_York';
-  const marketDate = new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:00:00`);
-  
-  const options: Intl.DateTimeFormatOptions = {
-    timeZone: marketTimezone,
-    hour: '2-digit',
-    hour12: false,
-  };
-  
-  const marketHour = new Intl.DateTimeFormat('en-US', options).format(marketDate);
+const convertToMarketTimezone = (hour: number): string => {
+  const marketHour = hour - 13;
+  if (marketHour < 0) return `${marketHour + 24}:00 ET`;
+  if (marketHour >= 24) return `${marketHour - 24}:00 ET`;
   return `${marketHour}:00 ET`;
 };
 
-interface TweetHeatmapProps {
-  externalData?: HeatmapData[];
-  apiEndpoint?: string;
-  showDualTimezone?: boolean;
-}
-
-export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHeatmapProps) {
-  const [data] = useState<HeatmapData[]>(externalData || generateMockHeatmapData());
+export function TweetHeatmap() {
+  const [data, setData] = useState<HeatmapData[]>(generateMockHeatmapData());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importError, setImportError] = useState('');
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [totalFetched, setTotalFetched] = useState<number>(0);
 
   const uniqueDates = useMemo(() => {
     const dates = [...new Set(data.map(d => d.date))].sort();
     return dates.slice(-15);
   }, [data]);
+
+  const fetchRealData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/elon-tweets');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        if (response.status === 402) {
+          setError('SocialData 余额不足，请充值');
+        } else {
+          setError(result.message || '获取数据失败');
+        }
+        return;
+      }
+      
+      if (result.tweets && result.tweets.length > 0) {
+        const recentTweets = result.tweets.filter((t: HeatmapData) => {
+          const tweetDate = new Date(t.date);
+          const now = new Date();
+          const daysDiff = (now.getTime() - tweetDate.getTime()) / (1000 * 60 * 60 * 24);
+          return daysDiff <= 20;
+        });
+        
+        setData(recentTweets);
+        setLastUpdated(new Date(result.lastUpdated));
+        setTotalFetched(result.totalTweetsFetched);
+      }
+    } catch (err) {
+      setError('网络请求失败');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealData();
+  }, []);
 
   const handleImport = () => {
     try {
@@ -124,10 +156,6 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
     }
   };
 
-  const setData = (newData: HeatmapData[]) => {
-    console.log('Data imported:', newData.length, 'records');
-  };
-
   const exportData = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -141,8 +169,17 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
   const getStats = () => {
     const recentData = data.filter(d => uniqueDates.includes(d.date));
     const totalTweets = recentData.reduce((sum, d) => sum + d.count, 0);
-    const avgPerDay = totalTweets / uniqueDates.length;
-    const peakHour = recentData.reduce((max, d) => d.count > max.count ? d : max, recentData[0] || { hour: 0, count: 0 });
+    const avgPerDay = uniqueDates.length > 0 ? totalTweets / uniqueDates.length : 0;
+    
+    const hourCounts: Record<number, number> = {};
+    for (const d of recentData) {
+      hourCounts[d.hour] = (hourCounts[d.hour] || 0) + d.count;
+    }
+    const peakHour = Object.entries(hourCounts).reduce((max, [hour, count]) => 
+      count > max.count ? { hour: parseInt(hour), count } : max, 
+      { hour: 0, count: 0 }
+    );
+    
     return { totalTweets, avgPerDay, peakHour };
   };
 
@@ -164,11 +201,26 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
               共 {stats.totalTweets} 条推文
             </span>
           </p>
+          {totalFetched > 0 && (
+            <p className="text-xs text-gray-500 mt-1">
+              数据来源: SocialData API · 共抓取 {totalFetched} 条推文
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-500">北京时间 (UTC+8)</span>
-          </div>
+          {lastUpdated && (
+            <span className="text-xs text-gray-500">
+              更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button
+            onClick={fetchRealData}
+            disabled={isLoading}
+            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors disabled:opacity-50"
+            title="从 SocialData 刷新数据"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
           <button
             onClick={exportData}
             className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors"
@@ -184,6 +236,22 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400">
+          {error}
+          {error.includes('余额') && (
+            <a 
+              href="https://socialdata.tools" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="ml-2 underline hover:no-underline"
+            >
+              去充值 <ExternalLink className="w-3 h-3 inline" />
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto pb-4">
         <div className="inline-block">
@@ -219,11 +287,9 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
                       backgroundColor: getColorForCount(count),
                     }}
                     onMouseEnter={(e) => {
-                      if (cellData) {
-                        setHoveredCell(cellData);
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
-                      }
+                      setHoveredCell(cellData || { date, hour, count: 0 });
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
                     }}
                     onMouseLeave={() => setHoveredCell(null)}
                   >
@@ -249,13 +315,11 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
         </div>
       </div>
 
-      {showDualTimezone && (
-        <div className="mt-4 mb-2">
-          <p className="text-xs text-gray-500 text-center">
-            注：小时显示为北京时间 (UTC+8)，括号内为美东时间 (ET)
-          </p>
-        </div>
-      )}
+      <div className="mt-4 mb-2">
+        <p className="text-xs text-gray-500 text-center">
+          注：小时显示为北京时间 (UTC+8)，括号内为美东时间 (ET)
+        </p>
+      </div>
 
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
         <div className="flex items-center gap-3">
@@ -280,7 +344,7 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
             日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)} 条</span>
           </span>
           <span className="text-gray-400">
-            高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour?.hour}:00</span>
+            高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
           </span>
         </div>
       </div>
@@ -297,11 +361,9 @@ export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHea
           <div className="text-sm text-gray-300">{formatDate(hoveredCell.date)}</div>
           <div className="text-lg font-bold text-white">
             {hoveredCell.hour}:00 北京时间
-            {showDualTimezone && (
-              <span className="text-gray-400 text-sm ml-2">
-                ({convertToMarketTimezone(hoveredCell.date, hoveredCell.hour)})
-              </span>
-            )}
+            <span className="text-gray-400 text-sm ml-2">
+              ({convertToMarketTimezone(hoveredCell.hour)})
+            </span>
           </div>
           <div className="text-sm mt-1">
             <span className="text-gray-400">发推 </span>
