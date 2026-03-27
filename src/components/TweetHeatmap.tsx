@@ -1,44 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Download, RefreshCw, ExternalLink, Clock } from 'lucide-react';
+import { Download, RefreshCw, ExternalLink, Clock, Loader2 } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
   hour: number;
   count: number;
 }
-
-const generateMockHeatmapData = (): HeatmapData[] => {
-  const data: HeatmapData[] = [];
-  const now = new Date();
-  
-  for (let dayOffset = 14; dayOffset >= 0; dayOffset--) {
-    const date = new Date(now);
-    date.setDate(date.getDate() - dayOffset);
-    const dateStr = date.toISOString().split('T')[0];
-    
-    for (let hour = 0; hour < 24; hour++) {
-      let baseCount = 0;
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-      
-      if (isWeekend) {
-        if (hour >= 10 && hour <= 23) baseCount = Math.floor(Math.random() * 12) + 2;
-      } else {
-        if (hour >= 6 && hour < 9) baseCount = Math.floor(Math.random() * 6) + 1;
-        else if (hour >= 9 && hour < 12) baseCount = Math.floor(Math.random() * 10) + 4;
-        else if (hour >= 12 && hour < 14) baseCount = Math.floor(Math.random() * 7) + 2;
-        else if (hour >= 14 && hour < 17) baseCount = Math.floor(Math.random() * 9) + 3;
-        else if (hour >= 17 && hour < 20) baseCount = Math.floor(Math.random() * 14) + 5;
-        else if (hour >= 20 && hour < 23) baseCount = Math.floor(Math.random() * 16) + 6;
-        else if (hour >= 23 || hour < 6) baseCount = Math.floor(Math.random() * 5) + 1;
-      }
-      
-      data.push({ date: dateStr, hour, count: Math.min(baseCount, 25) });
-    }
-  }
-  
-  return data;
-};
 
 const getColorForCount = (count: number): string => {
   if (count === 0) return '#0d4f4f';
@@ -86,8 +53,8 @@ function getTimeRemaining(): string {
 }
 
 export function TweetHeatmap() {
-  const [data, setData] = useState<HeatmapData[]>(generateMockHeatmapData());
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState<HeatmapData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
@@ -116,6 +83,7 @@ export function TweetHeatmap() {
   const fetchRealData = async () => {
     setIsLoading(true);
     setError(null);
+    setData([]);
     
     try {
       const response = await fetch('/api/elon-tweets');
@@ -127,6 +95,7 @@ export function TweetHeatmap() {
         } else {
           setError(result.message || '获取数据失败');
         }
+        setIsLoading(false);
         return;
       }
       
@@ -255,108 +224,120 @@ export function TweetHeatmap() {
         </div>
       )}
 
-      <div className="overflow-x-auto pb-4">
-        <div className="inline-block">
-          <div className="flex gap-1 mb-1 pl-16">
-            {hours.map(hour => (
-              <div
-                key={hour}
-                className="flex flex-col items-center"
-                style={{ width: cellSize }}
-              >
-                <span className="text-xs text-yellow-400 font-mono">{hour.toString().padStart(2, '0')}</span>
-                <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
-                {hour === currentBJHour && (
-                  <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
-                )}
+      {isLoading && data.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mb-4" />
+          <p className="text-lg">正在从 SocialData 获取数据...</p>
+          <p className="text-sm text-gray-500 mt-2">约需 10-20 秒</p>
+        </div>
+      )}
+
+      {data.length > 0 && (
+        <div className="overflow-x-auto pb-4">
+          <div className="inline-block">
+            <div className="flex gap-1 mb-1 pl-16">
+              {hours.map(hour => (
+                <div
+                  key={hour}
+                  className="flex flex-col items-center"
+                  style={{ width: cellSize }}
+                >
+                  <span className="text-xs text-yellow-400 font-mono">{hour.toString().padStart(2, '0')}</span>
+                  <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
+                  {hour === currentBJHour && (
+                    <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
+                  )}
+                </div>
+              ))}
+            </div>
+          
+            {uniqueDates.map((date) => (
+              <div key={date} className="flex items-center gap-1 mb-1">
+                <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
+                  {getDayLabel(date)}
+                </div>
+                {hours.map(hour => {
+                  const cellData = data.find(d => d.date === date && d.hour === hour);
+                  const count = cellData?.count || 0;
+                  const isEmpty = count === 0;
+                  const isCurrentHour = date === currentDateStr && hour === currentBJHour;
+                  
+                  return (
+                    <div
+                      key={hour}
+                      className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
+                        isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
+                      }`}
+                      style={{
+                        width: cellSize,
+                        height: cellSize,
+                        backgroundColor: getColorForCount(count),
+                      }}
+                      onMouseEnter={(e) => {
+                        setHoveredCell(cellData || { date, hour, count: 0 });
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
+                      }}
+                      onMouseLeave={() => setHoveredCell(null)}
+                    >
+                      {!isEmpty && (
+                        <span 
+                          className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                          style={{ 
+                            color: count <= 7 ? '#1a1a2e' : '#ffffff',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
+                      {isCurrentHour && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
+                      )}
+                    </div>
+                  );
+                })}
+                <span className="text-sm text-gray-400 pl-3 w-20">
+                  {formatDate(date)}
+                </span>
               </div>
             ))}
           </div>
-          
-          {uniqueDates.map((date) => (
-            <div key={date} className="flex items-center gap-1 mb-1">
-              <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
-                {getDayLabel(date)}
-              </div>
-              {hours.map(hour => {
-                const cellData = data.find(d => d.date === date && d.hour === hour);
-                const count = cellData?.count || 0;
-                const isEmpty = count === 0;
-                const isCurrentHour = date === currentDateStr && hour === currentBJHour;
-                
-                return (
-                  <div
-                    key={hour}
-                    className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                      isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
-                    }`}
-                    style={{
-                      width: cellSize,
-                      height: cellSize,
-                      backgroundColor: getColorForCount(count),
-                    }}
-                    onMouseEnter={(e) => {
-                      setHoveredCell(cellData || { date, hour, count: 0 });
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
-                    }}
-                    onMouseLeave={() => setHoveredCell(null)}
-                  >
-                    {!isEmpty && (
-                      <span 
-                        className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-                        style={{ 
-                          color: count <= 7 ? '#1a1a2e' : '#ffffff',
-                        }}
-                      >
-                        {count}
-                      </span>
-                    )}
-                    {isCurrentHour && (
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
-                    )}
-                  </div>
-                );
-              })}
-              <span className="text-sm text-gray-400 pl-3 w-20">
-                {formatDate(date)}
-              </span>
-            </div>
-          ))}
         </div>
-      </div>
+      )}
 
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">图例</span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
-            <span className="text-xs text-gray-500 mr-2">无</span>
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
-            <span className="text-xs text-gray-500 mr-2">1-3</span>
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
-            <span className="text-xs text-gray-500 mr-2">4-7</span>
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
-            <span className="text-xs text-gray-500 mr-2">8-12</span>
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
-            <span className="text-xs text-gray-500 mr-2">13-18</span>
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
-            <span className="text-xs text-gray-500">19+</span>
+      {data.length > 0 && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500">图例</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
+              <span className="text-xs text-gray-500 mr-2">无</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
+              <span className="text-xs text-gray-500 mr-2">1-3</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
+              <span className="text-xs text-gray-500 mr-2">4-7</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
+              <span className="text-xs text-gray-500 mr-2">8-12</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
+              <span className="text-xs text-gray-500 mr-2">13-18</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
+              <span className="text-xs text-gray-500">19+</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full" />
+              <span className="text-gray-400">当前时段</span>
+            </div>
+            <span className="text-gray-400">
+              日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)}</span>
+            </span>
+            <span className="text-gray-400">
+              高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 bg-cyan-400 rounded-full" />
-            <span className="text-gray-400">当前时段</span>
-          </div>
-          <span className="text-gray-400">
-            日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)}</span>
-          </span>
-          <span className="text-gray-400">
-            高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
-          </span>
-        </div>
-      </div>
+      )}
 
       {hoveredCell && (
         <div 
