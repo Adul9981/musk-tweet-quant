@@ -7,10 +7,6 @@ interface HeatmapData {
   count: number;
 }
 
-const SOCIALDATA_API_KEY = '6344|u73DxVuebPNNW0Je5w1Zoc8W1CQwaFHP64OxPGeH6ea44a00';
-const ELON_MUSK_USER_ID = '44196397';
-const SOCIALDATA_API = 'https://api.socialdata.tools';
-
 const generateMockHeatmapData = (): HeatmapData[] => {
   const data: HeatmapData[] = [];
   const now = new Date();
@@ -106,89 +102,23 @@ export function TweetHeatmap() {
     setError(null);
     
     try {
-      const tweetsMap = new Map<string, number>();
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 20);
-      let cursor: string | null = null;
-      let pageCount = 0;
-      const maxPages = 30;
-
-      for (let page = 0; page < maxPages; page++) {
-        const url = cursor 
-          ? `${SOCIALDATA_API}/twitter/user/${ELON_MUSK_USER_ID}/tweets?cursor=${encodeURIComponent(cursor)}`
-          : `${SOCIALDATA_API}/twitter/user/${ELON_MUSK_USER_ID}/tweets`;
-        
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${SOCIALDATA_API_KEY}`,
-            'Accept': 'application/json',
-          },
-        });
-
+      const response = await fetch('/api/elon-tweets');
+      const result = await response.json();
+      
+      if (!response.ok) {
         if (response.status === 402) {
           setError('SocialData 余额不足，请充值');
-          return;
+        } else {
+          setError(result.message || '获取数据失败');
         }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          setError(`API 错误: ${response.status}`);
-          console.error('SocialData error:', errorText);
-          return;
-        }
-
-        const result = await response.json();
-        
-        if (!result.tweets || result.tweets.length === 0) {
-          break;
-        }
-
-        let hasOldTweet = false;
-        
-        for (const tweet of result.tweets) {
-          const createdAt = new Date(tweet.tweet_created_at);
-          
-          if (createdAt < cutoffDate) {
-            hasOldTweet = true;
-            break;
-          }
-          
-          const date = createdAt.toISOString().split('T')[0];
-          const utcHour = createdAt.getUTCHours();
-          let hour = utcHour + 8;
-          let tweetDate = date;
-          
-          if (hour >= 24) {
-            hour = hour - 24;
-            const d = new Date(date);
-            d.setDate(d.getDate() + 1);
-            tweetDate = d.toISOString().split('T')[0];
-          }
-          
-          const key = `${tweetDate}-${hour}`;
-          tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
-        }
-        
-        pageCount++;
-        
-        if (hasOldTweet || !result.next_cursor) {
-          break;
-        }
-        
-        cursor = result.next_cursor;
-        await new Promise(resolve => setTimeout(resolve, 200));
+        return;
       }
-
-      const aggregatedData = Array.from(tweetsMap.entries()).map(([key, count]) => {
-        const [date, hour] = key.split('-');
-        return { date, hour: parseInt(hour), count };
-      });
-
-      if (aggregatedData.length > 0) {
-        setData(aggregatedData);
-        setLastUpdated(new Date());
-        setPagesFetched(pageCount);
-        setEstimatedCost(`$${(pageCount * 20 * 0.0002).toFixed(4)}`);
+      
+      if (result.tweets && result.tweets.length > 0) {
+        setData(result.tweets);
+        setLastUpdated(new Date(result.lastUpdated));
+        setPagesFetched(result.pagesFetched);
+        setEstimatedCost(result.estimatedCost);
       } else {
         setError('未获取到数据，请稍后重试');
       }
