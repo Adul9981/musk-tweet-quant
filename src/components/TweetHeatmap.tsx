@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Download, RefreshCw, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Download, RefreshCw, ExternalLink, Clock } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
@@ -18,14 +18,11 @@ const generateMockHeatmapData = (): HeatmapData[] => {
     
     for (let hour = 0; hour < 24; hour++) {
       let baseCount = 0;
-      
       const dayOfWeek = date.getDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       
       if (isWeekend) {
-        if (hour >= 10 && hour <= 23) {
-          baseCount = Math.floor(Math.random() * 12) + 2;
-        }
+        if (hour >= 10 && hour <= 23) baseCount = Math.floor(Math.random() * 12) + 2;
       } else {
         if (hour >= 6 && hour < 9) baseCount = Math.floor(Math.random() * 6) + 1;
         else if (hour >= 9 && hour < 12) baseCount = Math.floor(Math.random() * 10) + 4;
@@ -36,15 +33,7 @@ const generateMockHeatmapData = (): HeatmapData[] => {
         else if (hour >= 23 || hour < 6) baseCount = Math.floor(Math.random() * 5) + 1;
       }
       
-      if (dayOfWeek === 4 && hour >= 18 && hour <= 22) baseCount += Math.floor(Math.random() * 8) + 4;
-      if (dayOfWeek === 3 && hour >= 21 && hour <= 23) baseCount += Math.floor(Math.random() * 10) + 5;
-      if (Math.random() < 0.05) baseCount += Math.floor(Math.random() * 15) + 8;
-      
-      data.push({
-        date: dateStr,
-        hour,
-        count: Math.min(baseCount, 25),
-      });
+      data.push({ date: dateStr, hour, count: Math.min(baseCount, 25) });
     }
   }
   
@@ -72,12 +61,29 @@ const getDayLabel = (dateStr: string): string => {
   return dayNames[date.getDay()];
 };
 
-const convertToMarketTimezone = (hour: number): string => {
-  const marketHour = hour - 13;
-  if (marketHour < 0) return `${marketHour + 24}:00 ET`;
-  if (marketHour >= 24) return `${marketHour - 24}:00 ET`;
-  return `${marketHour}:00 ET`;
+const getETFromBeijing = (bjHour: number): string => {
+  const etHour = bjHour - 13;
+  if (etHour < 0) return `${etHour + 24}:00 ET`;
+  if (etHour >= 24) return `${etHour - 24}:00 ET`;
+  return `${etHour}:00 ET`;
 };
+
+const MARKET_END_DATE = new Date('2026-04-03T12:00:00Z');
+
+function getTimeRemaining(): string {
+  const now = new Date();
+  const diff = MARKET_END_DATE.getTime() - now.getTime();
+  
+  if (diff <= 0) return '已结束';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) return `${days}天 ${hours}小时`;
+  if (hours > 0) return `${hours}小时 ${minutes}分`;
+  return `${minutes}分`;
+}
 
 export function TweetHeatmap() {
   const [data, setData] = useState<HeatmapData[]>(generateMockHeatmapData());
@@ -89,8 +95,18 @@ export function TweetHeatmap() {
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [pagesFetched, setPagesFetched] = useState<number>(0);
-  const [estimatedCost, setEstimatedCost] = useState<string>('');
+  const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeRemaining(getTimeRemaining());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const now = useMemo(() => new Date(), []);
+  const currentBJHour = now.getHours();
+  const currentDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const uniqueDates = useMemo(() => {
     const dates = [...new Set(data.map(d => d.date))].sort();
@@ -117,8 +133,6 @@ export function TweetHeatmap() {
       if (result.tweets && result.tweets.length > 0) {
         setData(result.tweets);
         setLastUpdated(new Date(result.lastUpdated));
-        setPagesFetched(result.pagesFetched);
-        setEstimatedCost(result.estimatedCost);
       } else {
         setError('未获取到数据，请稍后重试');
       }
@@ -129,10 +143,6 @@ export function TweetHeatmap() {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchRealData();
-  }, []);
 
   const handleImport = () => {
     try {
@@ -146,7 +156,7 @@ export function TweetHeatmap() {
         setImportError('');
         setShowImport(false);
       } else {
-        setImportError('数据格式错误：需要 [{date, hour, count}, ...]');
+        setImportError('数据格式错误');
       }
     } catch {
       setImportError('JSON 解析失败');
@@ -182,29 +192,29 @@ export function TweetHeatmap() {
 
   const stats = getStats();
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const cellSize = 36;
+  const cellSize = 38;
 
   return (
     <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-xl font-bold text-yellow-400 flex items-center gap-3">
             <span className="text-3xl">♟</span>
             马斯克发推热力图
           </h3>
-          <p className="text-sm text-gray-400 mt-2">
-            <span className="text-gray-300">过去15天 · 24小时分布</span>
-            <span className="text-yellow-400 ml-3 font-semibold">
-              共 {stats.totalTweets} 条推文
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-cyan-400" />
+              <span className="text-gray-400">市场剩余:</span>
+              <span className="text-cyan-400 font-bold">{timeRemaining}</span>
+            </div>
+            <span className="text-gray-500">|</span>
+            <span className="text-gray-400">
+              共 <span className="text-yellow-400 font-semibold">{stats.totalTweets}</span> 条推文
             </span>
-          </p>
-          {pagesFetched > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
-              SocialData · 获取 {pagesFetched} 页 · 预估费用 {estimatedCost}
-            </p>
-          )}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {lastUpdated && (
             <span className="text-xs text-gray-500">
               更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
@@ -213,23 +223,23 @@ export function TweetHeatmap() {
           <button
             onClick={fetchRealData}
             disabled={isLoading}
-            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors disabled:opacity-50"
-            title="从 SocialData 刷新数据"
+            className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm rounded-lg transition-colors disabled:opacity-50 border border-cyan-500/30"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 inline mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? '加载中...' : '刷新数据'}
           </button>
           <button
             onClick={exportData}
-            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors"
-            title="导出数据"
+            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 rounded-lg"
+            title="导出"
           >
             <Download className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowImport(!showImport)}
-            className="text-sm px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-colors border border-gray-600/30"
+            className="text-sm px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 rounded-lg"
           >
-            {showImport ? '收起' : '导入数据'}
+            {showImport ? '收起' : '导入'}
           </button>
         </div>
       </div>
@@ -238,12 +248,7 @@ export function TweetHeatmap() {
         <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400">
           {error}
           {error.includes('余额') && (
-            <a 
-              href="https://socialdata.tools" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="ml-2 underline hover:no-underline"
-            >
+            <a href="https://socialdata.tools" target="_blank" rel="noopener noreferrer" className="ml-2 underline">
               去充值 <ExternalLink className="w-3 h-3 inline" />
             </a>
           )}
@@ -256,10 +261,14 @@ export function TweetHeatmap() {
             {hours.map(hour => (
               <div
                 key={hour}
-                className="text-xs text-gray-400 text-center font-mono"
+                className="flex flex-col items-center"
                 style={{ width: cellSize }}
               >
-                {hour.toString().padStart(2, '0')}
+                <span className="text-xs text-yellow-400 font-mono">{hour.toString().padStart(2, '0')}</span>
+                <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
+                {hour === currentBJHour && (
+                  <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
+                )}
               </div>
             ))}
           </div>
@@ -273,11 +282,14 @@ export function TweetHeatmap() {
                 const cellData = data.find(d => d.date === date && d.hour === hour);
                 const count = cellData?.count || 0;
                 const isEmpty = count === 0;
+                const isCurrentHour = date === currentDateStr && hour === currentBJHour;
                 
                 return (
                   <div
                     key={hour}
-                    className="relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 hover:ring-2 hover:ring-white/30"
+                    className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
+                      isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
+                    }`}
                     style={{
                       width: cellSize,
                       height: cellSize,
@@ -295,11 +307,13 @@ export function TweetHeatmap() {
                         className="absolute inset-0 flex items-center justify-center text-xs font-bold"
                         style={{ 
                           color: count <= 7 ? '#1a1a2e' : '#ffffff',
-                          textShadow: count <= 7 ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
                         }}
                       >
                         {count}
                       </span>
+                    )}
+                    {isCurrentHour && (
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
                     )}
                   </div>
                 );
@@ -312,33 +326,31 @@ export function TweetHeatmap() {
         </div>
       </div>
 
-      <div className="mt-4 mb-2">
-        <p className="text-xs text-gray-500 text-center">
-          注：小时显示为北京时间 (UTC+8)，括号内为美东时间 (ET)
-        </p>
-      </div>
-
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">图例</span>
+          <span className="text-xs text-gray-500">图例</span>
           <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#0d4f4f' }} />
-            <span className="text-xs text-gray-500 mr-3">无</span>
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5e6a3' }} />
-            <span className="text-xs text-gray-500 mr-3">1-3</span>
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5d066' }} />
-            <span className="text-xs text-gray-500 mr-3">4-7</span>
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5b833' }} />
-            <span className="text-xs text-gray-500 mr-3">8-12</span>
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#e69500' }} />
-            <span className="text-xs text-gray-500 mr-3">13-18</span>
-            <div className="w-6 h-6 rounded" style={{ backgroundColor: '#cc7000' }} />
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
+            <span className="text-xs text-gray-500 mr-2">无</span>
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
+            <span className="text-xs text-gray-500 mr-2">1-3</span>
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
+            <span className="text-xs text-gray-500 mr-2">4-7</span>
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
+            <span className="text-xs text-gray-500 mr-2">8-12</span>
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
+            <span className="text-xs text-gray-500 mr-2">13-18</span>
+            <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
             <span className="text-xs text-gray-500">19+</span>
           </div>
         </div>
-        <div className="flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full" />
+            <span className="text-gray-400">当前时段</span>
+          </div>
           <span className="text-gray-400">
-            日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)} 条</span>
+            日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)}</span>
           </span>
           <span className="text-gray-400">
             高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
@@ -351,16 +363,14 @@ export function TweetHeatmap() {
           className="fixed z-50 bg-gray-800 border border-yellow-500/50 rounded-lg px-4 py-3 shadow-2xl pointer-events-none"
           style={{
             left: hoveredPos.x,
-            top: hoveredPos.y - 80,
+            top: hoveredPos.y - 100,
             transform: 'translateX(-50%)',
           }}
         >
           <div className="text-sm text-gray-300">{formatDate(hoveredCell.date)}</div>
-          <div className="text-lg font-bold text-white">
-            {hoveredCell.hour}:00 北京时间
-            <span className="text-gray-400 text-sm ml-2">
-              ({convertToMarketTimezone(hoveredCell.hour)})
-            </span>
+          <div className="text-base font-bold text-white flex items-center gap-3">
+            <span>{hoveredCell.hour.toString().padStart(2, '0')}:00 北京时间</span>
+            <span className="text-gray-400 text-sm">({getETFromBeijing(hoveredCell.hour)})</span>
           </div>
           <div className="text-sm mt-1">
             <span className="text-gray-400">发推 </span>
@@ -371,21 +381,20 @@ export function TweetHeatmap() {
       )}
 
       {showImport && (
-        <div className="mt-6 pt-4 border-t border-gray-700/50">
+        <div className="mt-4 pt-4 border-t border-gray-700/50">
           <h4 className="text-sm font-medium text-gray-300 mb-2">导入 JSON 数据</h4>
-          <p className="text-xs text-gray-500 mb-3">格式: [{`{date: "2026-03-27", hour: 14, count: 8}`}, ...]</p>
           <textarea
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
             placeholder='[{"date": "2026-03-27", "hour": 14, "count": 8}, ...]'
-            className="w-full h-32 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono focus:border-yellow-500 focus:outline-none resize-none"
+            className="w-full h-24 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono resize-none"
           />
           {importError && <p className="text-xs text-red-400 mt-2">{importError}</p>}
           <button
             onClick={handleImport}
-            className="mt-3 px-5 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-sm font-medium rounded-lg transition-colors border border-yellow-500/30"
+            className="mt-2 px-4 py-1.5 bg-yellow-500/20 text-yellow-400 text-sm rounded-lg border border-yellow-500/30"
           >
-            应用数据
+            应用
           </button>
         </div>
       )}
