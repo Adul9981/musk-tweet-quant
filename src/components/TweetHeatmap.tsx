@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Download } from 'lucide-react';
 
 interface HeatmapData {
@@ -72,44 +72,38 @@ const getDayLabel = (dateStr: string): string => {
   return dayNames[date.getDay()];
 };
 
+const convertToMarketTimezone = (dateStr: string, hour: number): string => {
+  const marketTimezone = 'America/New_York';
+  const marketDate = new Date(`${dateStr}T${hour.toString().padStart(2, '0')}:00:00`);
+  
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: marketTimezone,
+    hour: '2-digit',
+    hour12: false,
+  };
+  
+  const marketHour = new Intl.DateTimeFormat('en-US', options).format(marketDate);
+  return `${marketHour}:00 ET`;
+};
+
 interface TweetHeatmapProps {
   externalData?: HeatmapData[];
   apiEndpoint?: string;
+  showDualTimezone?: boolean;
 }
 
-export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
-  const [data, setData] = useState<HeatmapData[]>(externalData || generateMockHeatmapData());
+export function TweetHeatmap({ externalData, showDualTimezone = true }: TweetHeatmapProps) {
+  const [data] = useState<HeatmapData[]>(externalData || generateMockHeatmapData());
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [importError, setImportError] = useState('');
   const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
-  const [lastRefresh] = useState<Date>(new Date());
+  const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
 
   const uniqueDates = useMemo(() => {
     const dates = [...new Set(data.map(d => d.date))].sort();
     return dates.slice(-15);
   }, [data]);
-
-  const fetchData = async () => {
-    if (!apiEndpoint) return;
-    try {
-      const response = await fetch(apiEndpoint);
-      if (response.ok) {
-        const result = await response.json();
-        if (result.heatmap) {
-          setData(result.heatmap);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch heatmap data:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (apiEndpoint) {
-      fetchData();
-    }
-  }, [apiEndpoint]);
 
   const handleImport = () => {
     try {
@@ -128,6 +122,10 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
     } catch {
       setImportError('JSON 解析失败');
     }
+  };
+
+  const setData = (newData: HeatmapData[]) => {
+    console.log('Data imported:', newData.length, 'records');
   };
 
   const exportData = () => {
@@ -156,24 +154,24 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
     <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span className="text-2xl">♟</span>
+          <h3 className="text-xl font-bold text-yellow-400 flex items-center gap-3">
+            <span className="text-3xl">♟</span>
             马斯克发推热力图
           </h3>
-          <p className="text-sm text-gray-400 mt-1">
-            过去15天 · 24小时分布
-            <span className="text-yellow-400 ml-2">
-              共 {stats.totalTweets} 条
+          <p className="text-sm text-gray-400 mt-2">
+            <span className="text-gray-300">过去15天 · 24小时分布</span>
+            <span className="text-yellow-400 ml-3 font-semibold">
+              共 {stats.totalTweets} 条推文
             </span>
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
-            生成: {lastRefresh.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-          </span>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500">北京时间 (UTC+8)</span>
+          </div>
           <button
             onClick={exportData}
-            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 hover:text-gray-300 rounded-lg transition-colors"
+            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 hover:text-white rounded-lg transition-colors"
             title="导出数据"
           >
             <Download className="w-4 h-4" />
@@ -193,7 +191,7 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
             {hours.map(hour => (
               <div
                 key={hour}
-                className="text-xs text-gray-500 text-center font-mono"
+                className="text-xs text-gray-400 text-center font-mono"
                 style={{ width: cellSize }}
               >
                 {hour.toString().padStart(2, '0')}
@@ -203,7 +201,7 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
           
           {uniqueDates.map((date) => (
             <div key={date} className="flex items-center gap-1 mb-1">
-              <div className="w-14 text-sm text-gray-400 text-right pr-3 font-medium">
+              <div className="w-14 text-sm text-gray-300 text-right pr-3 font-semibold">
                 {getDayLabel(date)}
               </div>
               {hours.map(hour => {
@@ -214,13 +212,19 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
                 return (
                   <div
                     key={hour}
-                    className="relative rounded cursor-pointer transition-all hover:scale-105 hover:z-10 hover:ring-2 hover:ring-white/30"
+                    className="relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 hover:ring-2 hover:ring-white/30"
                     style={{
                       width: cellSize,
                       height: cellSize,
                       backgroundColor: getColorForCount(count),
                     }}
-                    onMouseEnter={() => setHoveredCell(cellData || null)}
+                    onMouseEnter={(e) => {
+                      if (cellData) {
+                        setHoveredCell(cellData);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
+                      }
+                    }}
                     onMouseLeave={() => setHoveredCell(null)}
                   >
                     {!isEmpty && (
@@ -237,7 +241,7 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
                   </div>
                 );
               })}
-              <span className="text-xs text-gray-500 pl-3 w-16">
+              <span className="text-sm text-gray-400 pl-3 w-20">
                 {formatDate(date)}
               </span>
             </div>
@@ -245,39 +249,59 @@ export function TweetHeatmap({ externalData, apiEndpoint }: TweetHeatmapProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-700/50">
+      {showDualTimezone && (
+        <div className="mt-4 mb-2">
+          <p className="text-xs text-gray-500 text-center">
+            注：小时显示为北京时间 (UTC+8)，括号内为美东时间 (ET)
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">图例</span>
+          <span className="text-sm text-gray-400">图例</span>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#0d4f4f' }} />
             <span className="text-xs text-gray-500 mr-3">无</span>
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5e6a3' }} />
-            <span className="text-xs text-gray-500 mr-3">少</span>
+            <span className="text-xs text-gray-500 mr-3">1-3</span>
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5d066' }} />
-            <span className="text-xs text-gray-500 mr-3">中</span>
+            <span className="text-xs text-gray-500 mr-3">4-7</span>
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#f5b833' }} />
-            <span className="text-xs text-gray-500 mr-3">多</span>
+            <span className="text-xs text-gray-500 mr-3">8-12</span>
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#e69500' }} />
-            <span className="text-xs text-gray-500 mr-3">很多</span>
+            <span className="text-xs text-gray-500 mr-3">13-18</span>
             <div className="w-6 h-6 rounded" style={{ backgroundColor: '#cc7000' }} />
-            <span className="text-xs text-gray-500">狂发</span>
+            <span className="text-xs text-gray-500">19+</span>
           </div>
         </div>
         <div className="flex items-center gap-6 text-sm">
-          <span className="text-gray-500">
+          <span className="text-gray-400">
             日均: <span className="text-yellow-400 font-semibold">{stats.avgPerDay.toFixed(0)} 条</span>
           </span>
-          <span className="text-gray-500">
+          <span className="text-gray-400">
             高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour?.hour}:00</span>
           </span>
         </div>
       </div>
 
       {hoveredCell && (
-        <div className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 shadow-2xl pointer-events-none">
-          <div className="text-sm text-gray-400">{formatDate(hoveredCell.date)}</div>
+        <div 
+          className="fixed z-50 bg-gray-800 border border-yellow-500/50 rounded-lg px-4 py-3 shadow-2xl pointer-events-none"
+          style={{
+            left: hoveredPos.x,
+            top: hoveredPos.y - 80,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <div className="text-sm text-gray-300">{formatDate(hoveredCell.date)}</div>
           <div className="text-lg font-bold text-white">
-            {hoveredCell.hour}:00
+            {hoveredCell.hour}:00 北京时间
+            {showDualTimezone && (
+              <span className="text-gray-400 text-sm ml-2">
+                ({convertToMarketTimezone(hoveredCell.date, hoveredCell.hour)})
+              </span>
+            )}
           </div>
           <div className="text-sm mt-1">
             <span className="text-gray-400">发推 </span>

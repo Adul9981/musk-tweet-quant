@@ -84,7 +84,7 @@ function App() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [polymarketData, setPolymarketData] = useState<PolymarketData | null>(null);
   const [isLoadingPolymarket, setIsLoadingPolymarket] = useState(false);
-  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-20-march-27?r=adul#npOUGOn';
+  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-27-april-3?r=adul#npOUGOn';
 
   const analysis: AnalysisResult = useMemo(() => {
     return analyzePredictionMarket(
@@ -100,7 +100,7 @@ function App() {
   const fetchPolymarketData = async () => {
     setIsLoadingPolymarket(true);
     try {
-      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-20-march-27');
+      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-27-april-3');
       if (response.ok) {
         const data = await response.json();
         setPolymarketData(data);
