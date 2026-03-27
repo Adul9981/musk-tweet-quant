@@ -36,6 +36,14 @@ const getETFromBeijing = (bjHour: number): string => {
 };
 
 const MARKET_END_DATE = new Date('2026-04-03T12:00:00Z');
+const CACHE_KEY = 'musk_tweet_heatmap_data';
+const CACHE_TTL = 60 * 60 * 1000;
+
+interface CacheData {
+  data: HeatmapData[];
+  lastUpdated: string;
+  cachedAt: number;
+}
 
 function getTimeRemaining(): string {
   const now = new Date();
@@ -52,9 +60,39 @@ function getTimeRemaining(): string {
   return `${minutes}分`;
 }
 
+function getCache(): CacheData | null {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    return JSON.parse(cached);
+  } catch {
+    return null;
+  }
+}
+
+function setCache(data: HeatmapData[], lastUpdated: string): void {
+  try {
+    const cacheData: CacheData = {
+      data,
+      lastUpdated,
+      cachedAt: Date.now(),
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch {
+    console.warn('Failed to save cache');
+  }
+}
+
+function isCacheValid(): boolean {
+  const cache = getCache();
+  if (!cache) return false;
+  return Date.now() - cache.cachedAt < CACHE_TTL;
+}
+
 export function TweetHeatmap() {
   const [data, setData] = useState<HeatmapData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
@@ -63,12 +101,31 @@ export function TweetHeatmap() {
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining());
+  const [isFromCache, setIsFromCache] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeRemaining(getTimeRemaining());
     }, 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const cached = getCache();
+    
+    if (cached) {
+      setData(cached.data);
+      setLastUpdated(new Date(cached.lastUpdated));
+      setIsFromCache(true);
+      
+      if (isCacheValid()) {
+        setIsLoading(false);
+      } else {
+        fetchRealData(true);
+      }
+    } else {
+      fetchRealData(false);
+    }
   }, []);
 
   const now = useMemo(() => new Date(), []);
@@ -80,10 +137,12 @@ export function TweetHeatmap() {
     return dates.slice(-15);
   }, [data]);
 
-  const fetchRealData = async () => {
-    setIsLoading(true);
+  const fetchRealData = async (silent: boolean = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
+    setIsRefreshing(true);
     setError(null);
-    setData([]);
     
     try {
       const response = await fetch('/api/elon-tweets');
@@ -95,21 +154,29 @@ export function TweetHeatmap() {
         } else {
           setError(result.message || '获取数据失败');
         }
-        setIsLoading(false);
+        if (!silent) setIsLoading(false);
+        setIsRefreshing(false);
         return;
       }
       
       if (result.tweets && result.tweets.length > 0) {
         setData(result.tweets);
         setLastUpdated(new Date(result.lastUpdated));
+        setCache(result.tweets, result.lastUpdated);
+        setIsFromCache(false);
       } else {
-        setError('未获取到数据，请稍后重试');
+        if (!silent) {
+          setError('未获取到数据，请稍后重试');
+        }
       }
     } catch (err) {
-      setError('网络请求失败');
+      if (!silent) {
+        setError('网络请求失败');
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -186,16 +253,17 @@ export function TweetHeatmap() {
         <div className="flex items-center gap-2">
           {lastUpdated && (
             <span className="text-xs text-gray-500">
+              {isFromCache && <span className="text-yellow-500/60 mr-1">[缓存]</span>}
               更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
           <button
-            onClick={fetchRealData}
+            onClick={() => fetchRealData(false)}
             disabled={isLoading}
             className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm rounded-lg transition-colors disabled:opacity-50 border border-cyan-500/30"
           >
-            <RefreshCw className={`w-4 h-4 inline mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? '加载中...' : '刷新数据'}
+            <RefreshCw className={`w-4 h-4 inline mr-1 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+            {isLoading ? '加载中...' : isRefreshing ? '刷新中...' : '刷新数据'}
           </button>
           <button
             onClick={exportData}
@@ -229,6 +297,13 @@ export function TweetHeatmap() {
           <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mb-4" />
           <p className="text-lg">正在从 SocialData 获取数据...</p>
           <p className="text-sm text-gray-500 mt-2">约需 10-20 秒</p>
+        </div>
+      )}
+
+      {!isLoading && data.length === 0 && !error && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <p className="text-lg">暂无数据</p>
+          <p className="text-sm text-gray-500 mt-2">点击上方按钮获取数据</p>
         </div>
       )}
 
