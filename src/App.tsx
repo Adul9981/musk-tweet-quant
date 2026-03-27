@@ -728,7 +728,7 @@ function App() {
         )}
 
         {activeTab === 'heatmap' && (
-          <div className="max-w-full px-2">
+          <div className="max-w-6xl mx-auto">
             <TweetHeatmap />
           </div>
         )}
