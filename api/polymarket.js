@@ -31,13 +31,20 @@ export default async function handler(req, res) {
     
     const market = markets[0];
     
+    const conditions = (market.conditions || []).map(c => ({
+      id: c.id,
+      question: c.question,
+      probability: parseFloat(c.probability || '0'),
+    }));
+    
     const result = {
       question: market.question,
       slug: market.slug,
       endDate: market.endDate,
       volume: market.volume,
       liquidity: market.liquidity,
-      conditions: market.conditions || [],
+      answer: market.answer,
+      conditions,
       outcomes: market.outcomes || [],
       outcomePrices: market.outcomePrices || [],
       description: market.description,

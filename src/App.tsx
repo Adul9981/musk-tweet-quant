@@ -84,6 +84,7 @@ function App() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [polymarketData, setPolymarketData] = useState<PolymarketData | null>(null);
   const [isLoadingPolymarket, setIsLoadingPolymarket] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-27-april-3?r=adul#npOUGOn';
 
   const analysis: AnalysisResult = useMemo(() => {
@@ -109,6 +110,72 @@ function App() {
       console.error('Failed to fetch Polymarket data:', error);
     } finally {
       setIsLoadingPolymarket(false);
+    }
+  };
+
+  const syncFromPolymarket = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-27-april-3');
+      if (!response.ok) {
+        alert('同步失败，请重试');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.answer) {
+        const currentCount = parseInt(data.answer);
+        if (!isNaN(currentCount) && currentCount > 0) {
+          setBaseParams(prev => ({ ...prev, currentTweetCount: currentCount }));
+        }
+      }
+      
+      if (data.endDate) {
+        const endDate = new Date(data.endDate);
+        const now = new Date();
+        const diffMs = endDate.getTime() - now.getTime();
+        
+        if (diffMs > 0) {
+          const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const days = Math.floor(totalHours / 24);
+          const hours = totalHours % 24;
+          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          
+          setTimeParams(prev => ({
+            ...prev,
+            remainingDays: days,
+            remainingHours: hours,
+            remainingMinutes: minutes,
+          }));
+        }
+      }
+      
+      if (data.conditions && data.conditions.length > 0) {
+        const newOrderBook = data.conditions.map((c: { question: string; probability: number }) => {
+          const match = c.question.match(/(\d+)-(\d+)/);
+          if (match) {
+            return {
+              id: generateId(),
+              lowerBound: parseInt(match[1]),
+              upperBound: parseInt(match[2]),
+              yesPrice: Math.round(c.probability * 100),
+            };
+          }
+          return null;
+        }).filter(Boolean) as OrderBookEntry[];
+        
+        if (newOrderBook.length > 0) {
+          setOrderBook(newOrderBook);
+        }
+      }
+      
+      alert('同步成功！');
+    } catch (error) {
+      console.error('Sync failed:', error);
+      alert('同步失败，请重试');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -234,10 +301,20 @@ function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-6">
               <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-teal-500" />
-                  时间参数
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-teal-500" />
+                    时间参数
+                  </h2>
+                  <button
+                    onClick={syncFromPolymarket}
+                    disabled={isSyncing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    {isSyncing ? '同步中...' : '同步 Polymarket'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-xs text-gray-500 mb-1">市场标题</label>
