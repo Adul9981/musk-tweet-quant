@@ -34,12 +34,12 @@ interface PostData {
 }
 
 const getColorForCount = (count: number): string => {
-  if (count === 0) return '#161b22';
-  if (count <= 3) return '#0e4429';
-  if (count <= 7) return '#006d32';
-  if (count <= 12) return '#26a641';
-  if (count <= 18) return '#39d353';
-  return '#00ff00';
+  if (count === 0) return '#0d4f4f';
+  if (count <= 3) return '#f5e6a3';
+  if (count <= 7) return '#f5d066';
+  if (count <= 12) return '#f5b833';
+  if (count <= 18) return '#e69500';
+  return '#cc7000';
 };
 
 const formatDate = (dateStr: string): string => {
@@ -528,17 +528,17 @@ export function TweetHeatmap() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500">图例</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#161b22' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
               <span className="text-xs text-gray-500 mr-2">无</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0e4429' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
               <span className="text-xs text-gray-500 mr-2">1-3</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#006d32' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
               <span className="text-xs text-gray-500 mr-2">4-7</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#26a641' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
               <span className="text-xs text-gray-500 mr-2">8-12</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#39d353' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
               <span className="text-xs text-gray-500 mr-2">13-18</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#00ff00' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
               <span className="text-xs text-gray-500">19+</span>
             </div>
           </div>
