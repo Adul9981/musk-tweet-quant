@@ -1,10 +1,34 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Download, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import { Download, RefreshCw, ExternalLink, Loader2, TrendingUp } from 'lucide-react';
 
 interface HeatmapData {
   date: string;
   hour: number;
   count: number;
+}
+
+interface TrackingData {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  marketLink: string;
+  slug: string;
+  stats: {
+    total: number;
+    pace: number;
+    percentComplete: number;
+    daysElapsed: number;
+    daysRemaining: number;
+    daysTotal: number;
+    daily: Array<{ date: string; count: number; cumulative: number }>;
+  } | null;
+}
+
+interface PostData {
+  id: string;
+  content: string;
+  createdAt: string;
 }
 
 const getColorForCount = (count: number): string => {
@@ -27,6 +51,19 @@ const getETFromBeijing = (bjHour: number): string => {
   if (etHour < 0) return `${etHour + 24}:00 ET`;
   if (etHour >= 24) return `${etHour - 24}:00 ET`;
   return `${etHour}:00 ET`;
+};
+
+const getTimeAgo = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffMins < 60) return `${diffMins}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+  return date.toLocaleDateString('zh-CN');
 };
 
 const CACHE_KEY = 'musk_tweet_heatmap_data';
@@ -85,6 +122,8 @@ export function TweetHeatmap() {
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(initialLastUpdated);
   const [isFromCache, setIsFromCache] = useState(initialIsFromCache);
+  const [trackings, setTrackings] = useState<TrackingData[]>([]);
+  const [latestPosts, setLatestPosts] = useState<PostData[]>([]);
 
   useEffect(() => {
     if (!needsRefresh) return;
@@ -107,6 +146,35 @@ export function TweetHeatmap() {
     
     return () => clearTimeout(timer);
   }, [needsRefresh]);
+
+  useEffect(() => {
+    const fetchXTrackerData = async () => {
+      try {
+        const [trackingsRes, postsRes] = await Promise.all([
+          fetch('/api/xtracker'),
+          fetch('/api/elon-posts'),
+        ]);
+        
+        if (trackingsRes.ok) {
+          const trackingsData = await trackingsRes.json();
+          if (trackingsData.success && trackingsData.trackings) {
+            setTrackings(trackingsData.trackings);
+          }
+        }
+        
+        if (postsRes.ok) {
+          const postsData = await postsRes.json();
+          if (postsData.success && postsData.posts) {
+            setLatestPosts(postsData.posts.slice(0, 5));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch XTracker data:', err);
+      }
+    };
+    
+    fetchXTrackerData();
+  }, []);
 
   const now = useMemo(() => new Date(), []);
   const currentBJHour = now.getHours();
@@ -340,6 +408,74 @@ export function TweetHeatmap() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {trackings.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-700/50">
+          <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-cyan-400" />
+            Polymarket 追踪数据
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {trackings.slice(0, 3).map((tracking) => (
+              <a
+                key={tracking.id}
+                href={tracking.marketLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-gray-800/50 hover:bg-gray-800 rounded-lg p-3 border border-gray-700/50 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-400 truncate flex-1">{tracking.title}</span>
+                  <ExternalLink className="w-3 h-3 text-gray-500 ml-2 flex-shrink-0" />
+                </div>
+                {tracking.stats && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">当前总数</span>
+                      <span className="text-lg font-bold text-yellow-400">{tracking.stats.total}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">日均</span>
+                      <span className="text-cyan-400">{tracking.stats.pace}/天</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">进度</span>
+                      <span className="text-gray-400">{tracking.stats.percentComplete}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                      <div 
+                        className="bg-cyan-400 h-1.5 rounded-full" 
+                        style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {latestPosts.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-700/50">
+          <h4 className="text-sm font-semibold text-gray-300 mb-3">最新推文</h4>
+          <div className="space-y-2">
+            {latestPosts.map((post) => {
+              const postDate = new Date(post.createdAt);
+              const timeAgo = getTimeAgo(postDate);
+              const displayContent = post.content.length > 100 
+                ? post.content.substring(0, 100) + '...' 
+                : post.content;
+              return (
+                <div key={post.id} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                  <p className="text-sm text-gray-300 leading-relaxed">{displayContent}</p>
+                  <span className="text-xs text-gray-500 mt-1 block">{timeAgo}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
