@@ -22,6 +22,7 @@ interface TrackingData {
     daysRemaining: number;
     daysTotal: number;
     daily: Array<{ date: string; count: number; cumulative: number }>;
+    todayTotal: number;
   } | null;
 }
 
@@ -406,6 +407,9 @@ export function TweetHeatmap() {
                 <span className="text-xs text-gray-500 pl-2 w-6">
                   {formatDate(date).split(' ')[1]}
                 </span>
+                <span className="text-xs font-bold text-yellow-400 w-10 text-right pl-2 border-l border-gray-700">
+                  {data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0)}
+                </span>
               </div>
             ))}
           </div>
@@ -416,7 +420,7 @@ export function TweetHeatmap() {
         <div className="mt-6 pt-4 border-t border-gray-700/50">
           <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Polymarket 追踪数据
+            7天推文预测市场
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {trackings.slice(0, 3).map((tracking) => (
@@ -438,12 +442,16 @@ export function TweetHeatmap() {
                       <span className="text-lg font-bold text-yellow-400">{tracking.stats.total}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">日均</span>
-                      <span className="text-cyan-400">{tracking.stats.pace}/天</span>
+                      <span className="text-gray-500">今日</span>
+                      <span className="text-cyan-400">{tracking.stats.todayTotal}条</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">进度</span>
-                      <span className="text-gray-400">{tracking.stats.percentComplete}%</span>
+                      <span className="text-gray-500">日均</span>
+                      <span className="text-gray-300">{tracking.stats.pace}/天</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">剩余</span>
+                      <span className="text-gray-400">{tracking.stats.daysRemaining}天</span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2">
                       <div 
@@ -505,9 +513,9 @@ export function TweetHeatmap() {
               <span className="text-gray-400">当前时段</span>
             </div>
             <span className="text-gray-400">
-              高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
+              历史高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
             </span>
-            <span className="text-gray-500 text-[10px]">默认按北京时间排序，灰色为美东时间</span>
+            <span className="text-gray-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
           </div>
         </div>
       )}

@@ -3,6 +3,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const REFERRAL_CODE = '?via=serene77mc-g6kj';
+
   try {
     const response = await fetch(
       'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true',
@@ -23,12 +25,19 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'No trackings found' });
     }
 
-    const trackings = data.data.map(tracking => ({
+    const sevenDayTrackings = data.data.filter(tracking => {
+      const start = new Date(tracking.startDate);
+      const end = new Date(tracking.endDate);
+      const daysDiff = (end - start) / (1000 * 60 * 60 * 24);
+      return daysDiff >= 6 && daysDiff <= 8;
+    });
+
+    const trackings = sevenDayTrackings.map(tracking => ({
       id: tracking.id,
       title: tracking.title,
       startDate: tracking.startDate,
       endDate: tracking.endDate,
-      marketLink: tracking.marketLink,
+      marketLink: tracking.marketLink + (tracking.marketLink.includes('?') ? '&' : REFERRAL_CODE),
       slug: tracking.marketLink?.split('/').pop() || '',
     }));
 
@@ -41,6 +50,11 @@ export default async function handler(req, res) {
           if (statsResponse.ok) {
             const statsData = await statsResponse.json();
             if (statsData.success && statsData.data.stats) {
+              const daily = statsData.data.stats.daily || [];
+              const today = new Date().toISOString().split('T')[0];
+              const todayData = daily.filter(d => d.date.startsWith(today));
+              const todayTotal = todayData.reduce((sum, d) => sum + d.count, 0);
+              
               return {
                 ...tracking,
                 stats: {
@@ -50,7 +64,8 @@ export default async function handler(req, res) {
                   daysElapsed: statsData.data.stats.daysElapsed,
                   daysRemaining: statsData.data.stats.daysRemaining,
                   daysTotal: statsData.data.stats.daysTotal,
-                  daily: statsData.data.stats.daily || [],
+                  daily: daily,
+                  todayTotal: todayTotal,
                 },
               };
             }
