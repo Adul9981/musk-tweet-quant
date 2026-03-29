@@ -1,268 +1,403 @@
-import { useState, useMemo, useEffect } from 'react';
-import {
-  Clock,
-  TrendingUp,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
-  Target,
-  Zap,
-  Camera,
-  Plus,
-  Trash2,
-  Copy,
-  BarChart3,
-  ExternalLink,
-  Info,
-  Grid3X3,
+import { useState, useEffect, useMemo } from 'react';
+import { 
+  TrendingUp, 
+  BarChart3, 
+  Grid3X3, 
+  ExternalLink, 
   RefreshCw,
+  Clock,
+  Zap,
+  Target,
+  Camera,
+  ArrowRight,
+  AlertCircle,
+  Copy,
+  CheckCircle,
+  FileText,
+  Send
 } from 'lucide-react';
-import type {
-  TimeParams,
-  BaseParams,
-  VelocitySnapshot,
-  OrderBookEntry,
-  PortfolioEntry,
-  AnalysisResult,
-} from './types';
-import { analyzePredictionMarket, generateTweetContent, formatVelocity, formatPercent, formatMarketPrice, formatMultiplier } from './engine';
 import { TweetHeatmap } from './components/TweetHeatmap';
 
-interface PolymarketData {
-  question: string;
-  slug: string;
-  endDate: string;
-  volume: number;
+const REFERRAL = '?via=serene77mc-g6kj';
+
+interface RangeData {
+  range: string;
+  price: number;
   liquidity: number;
-  conditions: Array<{
-    id: string;
-    question: string;
-    outcome: string;
-    probability: number;
-  }>;
-  lastUpdated: string;
+  slug: string;
 }
 
-const generateId = () => Math.random().toString(36).substr(2, 9);
+interface MarketData {
+  slug: string;
+  title: string;
+  volume: number;
+  liquidity: number;
+  end_date: string;
+  ranges: RangeData[];
+  top_ranges: RangeData[];
+  scraped_at: string;
+}
 
-const defaultTimeParams: TimeParams = {
-  totalDuration: 168,
-  marketTitle: 'Elon 7天推文总数预测',
-  currentTimestamp: Date.now(),
-  remainingDays: 7,
-  remainingHours: 0,
-  remainingMinutes: 0,
-};
+interface TrackingStats {
+  total: number;
+  pace: number;
+  percentComplete: number;
+  daysRemaining: number;
+  hoursRemaining: number;
+  todayTotal: number;
+  daysTotal: number;
+  daily: Array<{ date: string; count: number }>;
+}
 
-const defaultBaseParams: BaseParams = {
-  currentTweetCount: 250,
-};
+interface Tracking {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  marketLink: string;
+  slug: string;
+  stats: TrackingStats | null;
+}
 
-const defaultVelocitySnapshot: VelocitySnapshot = {
-  snapshotCount: 250,
-  hoursSinceSnapshot: 1,
-};
+function parseRange(range: string): { min: number; max: number } | null {
+  const match = range.match(/(\d+)-(\d+)/);
+  if (match) return { min: parseInt(match[1]), max: parseInt(match[2]) };
+  if (range.includes('+')) {
+    const num = parseInt(range.replace('+', ''));
+    return { min: num, max: 9999 };
+  }
+  return null;
+}
 
-const defaultOrderBook: OrderBookEntry[] = [
-  { id: generateId(), lowerBound: 220, upperBound: 239, yesPrice: 5 },
-  { id: generateId(), lowerBound: 260, upperBound: 279, yesPrice: 15 },
-  { id: generateId(), lowerBound: 300, upperBound: 319, yesPrice: 25 },
-];
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`;
+}
 
-const defaultPortfolio: PortfolioEntry[] = [];
+function getPhase(remainingDays: number): { name: string; class: string } {
+  if (remainingDays >= 5) return { name: '前期布局', class: 'bg-blue-500/20 text-blue-400 border-blue-500/40' };
+  if (remainingDays >= 3) return { name: '中期调整', class: 'bg-violet-500/20 text-violet-400 border-violet-500/40' };
+  if (remainingDays >= 1) return { name: '后期收缩', class: 'bg-orange-500/20 text-orange-400 border-orange-500/40' };
+  return { name: '最后24H', class: 'bg-rose-500/20 text-rose-400 border-rose-500/40' };
+}
 
-function App() {
-  const [timeParams, setTimeParams] = useState<TimeParams>(defaultTimeParams);
-  const [baseParams, setBaseParams] = useState<BaseParams>(defaultBaseParams);
-  const [velocitySnapshot, setVelocitySnapshot] = useState<VelocitySnapshot>(defaultVelocitySnapshot);
-  const [orderBook, setOrderBook] = useState<OrderBookEntry[]>(defaultOrderBook);
-  const [portfolioPositions] = useState<PortfolioEntry[]>(defaultPortfolio);
-  const [cashBalance, setCashBalance] = useState(1000);
-  const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'input' | 'strategy' | 'tweet' | 'heatmap'>('input');
-  const [elonMultiplier, setElonMultiplier] = useState(2.2);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [polymarketData, setPolymarketData] = useState<PolymarketData | null>(null);
-  const [isLoadingPolymarket, setIsLoadingPolymarket] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const POLYMARKET_URL = 'https://polymarket.com/event/elon-musk-of-tweets-march-27-april-3?r=adul#npOUGOn';
+function parseMarketTitle(title: string): string {
+  return title
+    .replace(/\s*\?\s*$/, '')
+    .replace(/March\s*(\d+)/g, '3月$1日')
+    .replace(/April\s*(\d+)/g, '4月$1日')
+    .replace(/May\s*(\d+)/g, '5月$1日')
+    .replace(/January\s*(\d+)/g, '1月$1日')
+    .replace(/February\s*(\d+)/g, '2月$1日');
+}
 
-  const analysis: AnalysisResult = useMemo(() => {
-    return analyzePredictionMarket(
-      timeParams,
-      baseParams,
-      velocitySnapshot,
-      orderBook,
-      { cashBalance, positions: portfolioPositions },
-      elonMultiplier
-    );
-  }, [timeParams, baseParams, velocitySnapshot, orderBook, portfolioPositions, cashBalance, elonMultiplier]);
+export default function App() {
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet'>('market');
+  const [gistData, setGistData] = useState<MarketData[]>([]);
+  const [trackings, setTrackings] = useState<Tracking[]>([]);
+  const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
+  const [, setIsLoadingGist] = useState(true);
+  const [, setIsLoadingTracker] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  const fetchPolymarketData = async () => {
-    setIsLoadingPolymarket(true);
-    try {
-      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-27-april-3');
-      if (response.ok) {
-        const data = await response.json();
-        setPolymarketData(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch Polymarket data:', error);
-    } finally {
-      setIsLoadingPolymarket(false);
-    }
-  };
-
-  const syncFromPolymarket = async () => {
-    setIsSyncing(true);
-    try {
-      const response = await fetch('/api/polymarket?slug=elon-musk-of-tweets-march-27-april-3');
-      if (!response.ok) {
-        alert('同步失败，请重试');
-        return;
-      }
-      
-      const data = await response.json();
-      
-      if (data.answer) {
-        const currentCount = parseInt(data.answer);
-        if (!isNaN(currentCount) && currentCount > 0) {
-          setBaseParams(prev => ({ ...prev, currentTweetCount: currentCount }));
-        }
-      }
-      
-      if (data.endDate) {
-        const endDate = new Date(data.endDate);
-        const now = new Date();
-        const diffMs = endDate.getTime() - now.getTime();
-        
-        if (diffMs > 0) {
-          const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-          const days = Math.floor(totalHours / 24);
-          const hours = totalHours % 24;
-          const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-          
-          setTimeParams(prev => ({
-            ...prev,
-            remainingDays: days,
-            remainingHours: hours,
-            remainingMinutes: minutes,
-          }));
-        }
-      }
-      
-      if (data.conditions && data.conditions.length > 0) {
-        const newOrderBook = data.conditions.map((c: { question: string; probability: number }) => {
-          const match = c.question.match(/(\d+)-(\d+)/);
-          if (match) {
-            return {
-              id: generateId(),
-              lowerBound: parseInt(match[1]),
-              upperBound: parseInt(match[2]),
-              yesPrice: Math.round(c.probability * 100),
-            };
-          }
-          return null;
-        }).filter(Boolean) as OrderBookEntry[];
-        
-        if (newOrderBook.length > 0) {
-          setOrderBook(newOrderBook);
-        }
-      }
-      
-      alert('同步成功！');
-    } catch (error) {
-      console.error('Sync failed:', error);
-      alert('同步失败，请重试');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  const [currentTweetCount, setCurrentTweetCount] = useState(0);
+  const [snapshotCount, setSnapshotCount] = useState<number | ''>('');
+  const [hoursSinceSnapshot, setHoursSinceSnapshot] = useState<number | ''>('');
 
   useEffect(() => {
-    fetchPolymarketData();
-    const interval = setInterval(fetchPolymarketData, 30 * 60 * 1000);
+    const GIST_ID = 'd174b4498c408076ff218e164f24807e';
+    
+    const fetchGistData = async () => {
+      try {
+        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (res.ok) {
+          const gist = await res.json();
+          const content = gist.files?.['polymarket-data.json']?.content;
+          if (content) {
+            const data = JSON.parse(content);
+            setGistData(data);
+            if (data[0]?.scraped_at) {
+              setLastUpdated(data[0].scraped_at);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch Gist data:', err);
+      } finally {
+        setIsLoadingGist(false);
+      }
+    };
+
+    const fetchTrackerData = async () => {
+      try {
+        const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data) {
+            const sevenDay = data.data.filter((t: any) => {
+              const days = (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24);
+              return days >= 6 && days <= 8;
+            });
+            
+            const trackingsWithStats = await Promise.all(
+              sevenDay.slice(0, 5).map(async (t: any) => {
+                try {
+                  const slug = t.marketLink?.split('/').pop() || t.title?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
+                  const statsRes = await fetch(`https://xtracker.polymarket.com/api/trackings/${t.id}?includeStats=true`);
+                  if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    const now = new Date();
+                    const todayBJ = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    const todayTotal = (statsData.data?.stats?.daily || [])
+                      .filter((d: any) => {
+                        const dBJ = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                        return dBJ === todayBJ;
+                      })
+                      .reduce((sum: number, d: any) => sum + d.count, 0);
+                    
+                    const stats = statsData.data?.stats;
+                    const daysTotal = stats?.daysTotal || 7;
+                    const endDate = new Date(t.endDate);
+                    const diffMs = endDate.getTime() - now.getTime();
+                    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    
+                      const dailyData = stats?.daily || [];
+                      const dailyMap = new Map();
+                      for (const d of dailyData) {
+                        const dateStr = d.date.split('T')[0];
+                        dailyMap.set(dateStr, (dailyMap.get(dateStr) || 0) + d.count);
+                      }
+                      const dailyTotals = Array.from(dailyMap.entries())
+                        .map(([date, count]) => ({ date, count }))
+                        .sort((a, b) => a.date.localeCompare(b.date));
+                      
+                      return {
+                        id: t.id,
+                        title: t.title,
+                        startDate: t.startDate,
+                        endDate: t.endDate,
+                        marketLink: t.marketLink,
+                        slug,
+                        stats: {
+                          total: stats?.total || 0,
+                          pace: stats?.daysElapsed > 0 ? Math.round(stats.total / stats.daysElapsed) : 0,
+                          percentComplete: stats?.percentComplete || 0,
+                          daysRemaining,
+                          hoursRemaining,
+                          todayTotal,
+                          daysTotal,
+                          daily: dailyTotals,
+                        },
+                      };
+                  }
+                } catch (e) {
+                  console.error('Failed to fetch stats:', e);
+                }
+                return { id: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate, marketLink: t.marketLink, slug: '', stats: null };
+              })
+            );
+            setTrackings(trackingsWithStats);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch tracker data:', err);
+      } finally {
+        setIsLoadingTracker(false);
+      }
+    };
+
+    fetchGistData();
+    fetchTrackerData();
+    
+    const interval = setInterval(fetchGistData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const addOrderBookEntry = () => {
-    const lastEntry = orderBook[orderBook.length - 1];
-    const newLower = lastEntry ? lastEntry.upperBound + 1 : 300;
-    const newUpper = newLower + 19;
-    setOrderBook([
-      ...orderBook,
-      { id: generateId(), lowerBound: newLower, upperBound: newUpper, yesPrice: 25 },
-    ]);
+  const sortedMarkets = useMemo(() => 
+    [...gistData].sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime()),
+    [gistData]
+  );
+
+  const sortedTrackings = useMemo(() => 
+    [...trackings].sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime()),
+    [trackings]
+  );
+
+  const currentTracking = sortedTrackings[selectedMarketIndex] || sortedTrackings[0];
+  const currentMarket = sortedMarkets[selectedMarketIndex] || sortedMarkets[0];
+
+  useEffect(() => {
+    if (currentTracking?.stats) {
+      setCurrentTweetCount(currentTracking.stats.total);
+    }
+  }, [currentTracking]);
+
+  const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
+
+  const historicalDaily = currentTracking?.stats?.daily?.map(d => d.count) || [];
+  
+  const baseStats = useMemo(() => {
+    if (historicalDaily.length < 2) return { mean: 0, stdDev: 0, cv: 0 };
+    const mean = historicalDaily.reduce((a, b) => a + b, 0) / historicalDaily.length;
+    const variance = historicalDaily.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / historicalDaily.length;
+    const stdDev = Math.sqrt(variance);
+    const cv = mean > 0 ? stdDev / mean : 0;
+    return { mean, stdDev, cv };
+  }, [historicalDaily]);
+
+  const currentVolatility = useMemo(() => {
+    if (historicalDaily.length < 3) return { hourlyStd: 0, hourlyCV: 0, ratio: 1 };
+    const recentDays = historicalDaily.slice(-3);
+    const recentMean = recentDays.reduce((a, b) => a + b, 0) / recentDays.length;
+    const recentVariance = recentDays.reduce((sum, x) => sum + Math.pow(x - recentMean, 2), 0) / recentDays.length;
+    const recentStd = Math.sqrt(recentVariance);
+    const recentCV = recentMean > 0 ? recentStd / recentMean : 0;
+    const ratio = baseStats.mean > 0 ? recentCV / baseStats.cv : 1;
+    const hourlyStd = recentStd / Math.sqrt(24);
+    const hourlyCV = recentMean / 24 > 0 ? hourlyStd / (recentMean / 24) : 0;
+    return { hourlyStd, hourlyCV, ratio };
+  }, [historicalDaily, baseStats]);
+
+  const elonMultiplier = useMemo(() => {
+    const base = baseStats.stdDev || Math.sqrt(currentTweetCount) * 2.2;
+    const adjustment = Math.min(Math.max(currentVolatility.ratio, 0.5), 2.0);
+    return base * adjustment;
+  }, [baseStats, currentVolatility, currentTweetCount]);
+
+  const snapshotVal = typeof snapshotCount === 'number' ? snapshotCount : 0;
+  const hoursVal = typeof hoursSinceSnapshot === 'number' && hoursSinceSnapshot > 0 ? hoursSinceSnapshot : 0;
+  
+  const dynamicVelocity = hoursVal > 0 && snapshotVal > 0 && snapshotVal < currentTweetCount
+    ? (currentTweetCount - snapshotVal) / hoursVal 
+    : 0;
+  const avgPace = currentTracking?.stats?.pace || 0;
+  const avgVelocity = avgPace / 24;
+  const compositeVelocity = dynamicVelocity > 0 
+    ? avgVelocity * 0.6 + dynamicVelocity * 0.4 
+    : avgVelocity;
+  const remainingHours = ((currentTracking?.stats?.daysRemaining || 7) * 24) + (currentTracking?.stats?.hoursRemaining || 0);
+  const expectedCenter = currentTweetCount + compositeVelocity * remainingHours;
+  const currentHourlyRate = compositeVelocity;
+
+  const analysisData = useMemo(() => {
+    if (!currentMarket?.ranges) return [];
+    const ranges = currentMarket.ranges.map(r => ({
+      ...r,
+      parsed: parseRange(r.range)
+    })).filter(d => d.parsed && d.price >= 3);
+
+    const center = expectedCenter;
+    return ranges.map(r => {
+      const parsed = r.parsed!;
+      const isCenter = center >= parsed.min && center <= parsed.max;
+      const diff = Math.abs(parsed.min - center);
+      return { ...r, isCenter, diff };
+    }).sort((a, b) => a.parsed!.min - b.parsed!.min);
+  }, [currentMarket, expectedCenter]);
+
+  const predictedCenter = Math.round(expectedCenter);
+
+  const handleSelectMarket = (index: number) => {
+    setSelectedMarketIndex(index);
   };
 
-  const removeOrderBookEntry = (id: string) => {
-    setOrderBook(orderBook.filter((e) => e.id !== id));
+  const normalCDF = (x: number): number => {
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const p = 0.3275911;
+    
+    const sign = x < 0 ? -1 : 1;
+    x = Math.abs(x) / Math.sqrt(2);
+    
+    const t = 1.0 / (1.0 + p * x);
+    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+    
+    return 0.5 * (1.0 + sign * y);
   };
 
-  const updateOrderBookEntry = (id: string, field: keyof OrderBookEntry, value: number) => {
-    setOrderBook(orderBook.map((e) => (e.id === id ? { ...e, [field]: value } : e)));
-  };
-
-  const tweetContent = useMemo(() => {
-    return generateTweetContent(analysis, timeParams.marketTitle, baseParams.currentTweetCount);
-  }, [analysis, timeParams.marketTitle, baseParams.currentTweetCount]);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(tweetContent);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const getSignalColor = (alpha: number) => {
-    if (alpha > 1.05) return 'text-teal-600';
-    if (alpha < 0.8) return 'text-rose-600';
-    return 'text-amber-600';
-  };
-
-  const getSignalBg = (alpha: number) => {
-    if (alpha > 1.05) return 'bg-teal-50 border-teal-400 text-teal-700';
-    if (alpha < 0.8) return 'bg-rose-50 border-rose-400 text-rose-700';
-    return 'bg-amber-50 border-amber-400 text-amber-700';
-  };
-
-  const getPhaseBadge = (phase: string) => {
-    const styles = {
-      early: 'bg-blue-100 text-blue-700 border-blue-300',
-      mid: 'bg-violet-100 text-violet-700 border-violet-300',
-      late: 'bg-orange-100 text-orange-700 border-orange-300',
-      endgame: 'bg-rose-100 text-rose-700 border-rose-300',
+  const calculateIntervalAnalysis = (item: typeof analysisData[0]) => {
+    if (!item.parsed) return null;
+    const marketPrice = item.price;
+    const mu = predictedCenter;
+    const sigma = Math.max(Math.sqrt(currentTweetCount) * elonMultiplier, 1);
+    
+    const zMin = (item.parsed.min - mu) / sigma;
+    const zMax = (item.parsed.max - mu) / sigma;
+    const trueProb = (normalCDF(zMax) - normalCDF(zMin)) * 100;
+    
+    const alpha = marketPrice > 0 ? trueProb / marketPrice : 1;
+    const minVelocity = remainingHours > 0 ? (item.parsed.min - currentTweetCount) / remainingHours : Infinity;
+    const maxVelocity = remainingHours > 0 ? (item.parsed.max - currentTweetCount) / remainingHours : Infinity;
+    
+    return {
+      range: item.range,
+      marketPrice,
+      trueProb: Math.max(0, Math.min(trueProb, 100)),
+      alpha,
+      signal: alpha > 1.05 ? 'buy' : alpha < 0.8 ? 'sell' : 'hold',
+      minVelocity: minVelocity === Infinity ? Infinity : Math.max(0, minVelocity),
+      maxVelocity: maxVelocity === Infinity ? Infinity : Math.max(0, maxVelocity),
+      parsed: item.parsed,
+      isCenter: item.isCenter,
     };
-    return styles[phase as keyof typeof styles] || styles.early;
   };
+
+  const intervalAnalysis = analysisData.map(calculateIntervalAnalysis).filter(Boolean);
+
+  const reverseEngineering = intervalAnalysis.map(item => {
+    if (!item) return null;
+    const minNeeded = Math.max(0, item.parsed.min - currentTweetCount);
+    const maxNeeded = Math.max(0, item.parsed.max - currentTweetCount);
+    return {
+      id: item.range,
+      lowerBound: item.parsed.min,
+      upperBound: item.parsed.max,
+      tweetsNeededMin: minNeeded,
+      tweetsNeededMax: maxNeeded,
+      minVelocity: item.minVelocity,
+      maxVelocity: item.maxVelocity,
+      status: currentTweetCount > item.parsed.max ? 'busted' : 
+              currentTweetCount >= item.parsed.min ? 'passed' : 'active',
+    };
+  }).filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-stone-100 text-gray-800">
-      <header className="bg-white/90 backdrop-blur-sm border-b border-gray-200 shadow-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      <header className="bg-gray-900/90 backdrop-blur-sm border-b border-gray-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center shadow-md">
-                <Zap className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                <Zap className="w-5 h-5 text-gray-900" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">马斯克推文预测量化分析</h1>
-                <p className="text-xs text-gray-500">Prediction Market Quant Tool</p>
+                <h1 className="text-xl font-bold text-white">马斯克推文预测市场</h1>
+                <p className="text-xs text-gray-400">Musk Tweet Prediction Markets</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPhaseBadge(analysis.strategy.phase)}`}>
-                {analysis.strategy.phase === 'early' && '前期布局'}
-                {analysis.strategy.phase === 'mid' && '中期调整'}
-                {analysis.strategy.phase === 'late' && '后期收缩'}
-                {analysis.strategy.phase === 'endgame' && '最后24H'}
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${phase.class}`}>
+                {phase.name}
               </span>
+              {lastUpdated && (
+                <span className="text-xs text-gray-500 hidden sm:block">
+                  {new Date(lastUpdated).toLocaleTimeString('zh-CN')}
+                </span>
+              )}
               <a
-                href={POLYMARKET_URL}
+                href={`https://polymarket.com/event/${currentMarket?.slug || 'elon-musk-of-tweets-march-24-march-31'}${REFERRAL}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-semibold rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md"
               >
-                <span>进入 Polymarket 下注</span>
+                <span>进入 Polymarket</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -270,22 +405,22 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+      <nav className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-700/50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex gap-1">
             {[
-              { id: 'input', label: '数据输入', icon: Target },
-              { id: 'strategy', label: '策略输出', icon: BarChart3 },
+              { id: 'market', label: '市场概览', icon: TrendingUp },
+              { id: 'analysis', label: '概率分析', icon: BarChart3 },
               { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
-              { id: 'tweet', label: '推文生成', icon: Copy },
+              { id: 'tweet', label: '推文生成', icon: FileText },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-teal-500 text-teal-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'border-yellow-400 text-yellow-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-200'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -297,394 +432,360 @@ function App() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {activeTab === 'input' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-teal-500" />
-                    时间参数
-                  </h2>
-                  <button
-                    onClick={syncFromPolymarket}
-                    disabled={isSyncing}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    {isSyncing ? '同步中...' : '同步 Polymarket'}
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-xs text-gray-500 mb-1">市场标题</label>
-                    <input
-                      type="text"
-                      value={timeParams.marketTitle}
-                      onChange={(e) => setTimeParams({ ...timeParams, marketTitle: e.target.value })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">总时长 (小时)</label>
-                    <input
-                      type="number"
-                      value={timeParams.totalDuration}
-                      onChange={(e) => setTimeParams({ ...timeParams, totalDuration: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">剩余天数</label>
-                    <input
-                      type="number"
-                      value={timeParams.remainingDays}
-                      onChange={(e) => setTimeParams({ ...timeParams, remainingDays: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">剩余小时</label>
-                    <input
-                      type="number"
-                      value={timeParams.remainingHours}
-                      onChange={(e) => setTimeParams({ ...timeParams, remainingHours: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">剩余分钟</label>
-                    <input
-                      type="number"
-                      value={timeParams.remainingMinutes}
-                      onChange={(e) => setTimeParams({ ...timeParams, remainingMinutes: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-teal-500" />
-                  动态快照法
-                </h2>
-                <p className="text-xs text-gray-400 mb-4">填入你上次查看时的数据，系统自动计算动态时速</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">当前推文总数</label>
-                    <input
-                      type="number"
-                      value={baseParams.currentTweetCount}
-                      onChange={(e) => setBaseParams({ ...baseParams, currentTweetCount: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">上次快照总数</label>
-                    <input
-                      type="number"
-                      value={velocitySnapshot.snapshotCount}
-                      onChange={(e) => setVelocitySnapshot({ ...velocitySnapshot, snapshotCount: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs text-gray-500 mb-1">距上次经过小时数</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={velocitySnapshot.hoursSinceSnapshot}
-                      onChange={(e) => setVelocitySnapshot({ ...velocitySnapshot, hoursSinceSnapshot: Number(e.target.value) })}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 font-medium">综合时速：</span>
-                    <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)} 条/小时</span>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-teal-200/50 text-xs text-gray-500">
-                    {analysis.velocityStatus.message}
-                  </div>
-                </div>
-
-                <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-700 font-medium">Elon 发疯系数</span>
-                      <button
-                        className="relative"
-                        onMouseEnter={() => setShowTooltip(true)}
-                        onMouseLeave={() => setShowTooltip(false)}
-                        onClick={() => setShowTooltip(!showTooltip)}
-                      >
-                        <Info className="w-4 h-4 text-purple-500 cursor-help" />
-                        {showTooltip && (
-                          <div className="absolute top-8 left-0 z-50 w-80 p-4 bg-white rounded-xl shadow-xl border border-gray-200 text-xs text-gray-600 leading-relaxed">
-                            <div className="font-semibold text-gray-800 mb-2">🧠 什么是 Elon 发疯系数？</div>
-                            <p className="mb-3">在统计学中，标准的离散事件（如机器发推）方差等于均值（乘数为 1.0）。但马斯克的发推习惯具有极强的"阵发性（过度离散）"。此系数用于放大模型的标准差 (σ)，以容纳他突然断网或狂暴刷屏的尾部风险。</p>
-                            <div className="font-semibold text-gray-800 mb-2">🎛️ 交易员调参指南：</div>
-                            <ul className="space-y-1">
-                              <li><span className="font-medium text-green-600">1.0 - 1.5 (冷静模式)：</span>极其自律或正在忙于极其严肃的线下事件（如法庭听证、深度闭门会议）。模型会收紧预测，中心红心概率大幅提升。</li>
-                              <li><span className="font-medium text-blue-600">2.0 - 2.5 (默认网瘾)：</span>日常状态。会睡觉，但醒来后会密集回复和转推。推荐默认值 2.2。</li>
-                              <li><span className="font-medium text-red-600">3.0 - 5.0 (狂暴模式)：</span>大事件触发（如大选日、星舰发射、财报发布、重大舆论战）。他会疯狂刷屏，模型会极大地拉宽防守网格，帮助寻找极左或极右的错杀机会。</li>
-                            </ul>
-                          </div>
-                        )}
-                      </button>
-                    </div>
-                    <span className="text-lg font-bold text-purple-600">{formatMultiplier(elonMultiplier)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="1.0"
-                      max="5.0"
-                      step="0.1"
-                      value={elonMultiplier}
-                      onChange={(e) => setElonMultiplier(Number(e.target.value))}
-                      className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                    />
-                    <input
-                      type="number"
-                      min="1.0"
-                      max="5.0"
-                      step="0.1"
-                      value={elonMultiplier}
-                      onChange={(e) => setElonMultiplier(Number(e.target.value))}
-                      className="w-16 bg-white border border-purple-200 rounded-lg px-2 py-1 text-sm text-center focus:border-purple-400 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-teal-500" />
-                  账户状态
-                </h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">可用现金 (USD)</label>
-                    <input
-                      type="number"
-                      value={cashBalance}
-                      onChange={(e) => setCashBalance(Number(e.target.value))}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            <div className="space-y-6">
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-teal-500" />
-                    盘口数据
-                  </h2>
-                  <button
-                    onClick={addOrderBookEntry}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-500 text-white text-xs font-semibold rounded-lg hover:bg-teal-600 transition-colors shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    添加区间
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mb-3">YES价格请填整数（如28代表28%）</p>
-                <div className="space-y-3">
-                  {orderBook.map((entry) => (
-                    <div key={entry.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-                      <div className="flex-1 grid grid-cols-3 gap-2">
-                        <div>
-                          <input
-                            type="number"
-                            value={entry.lowerBound}
-                            onChange={(e) => updateOrderBookEntry(entry.id, 'lowerBound', Number(e.target.value))}
-                            className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                          />
-                          <span className="text-xs text-gray-400 mt-1 block text-center">下限</span>
-                        </div>
-                        <div className="flex items-center justify-center text-gray-400 font-medium">-</div>
-                        <div>
-                          <input
-                            type="number"
-                            value={entry.upperBound}
-                            onChange={(e) => updateOrderBookEntry(entry.id, 'upperBound', Number(e.target.value))}
-                            className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                          />
-                          <span className="text-xs text-gray-400 mt-1 block text-center">上限</span>
-                        </div>
-                      </div>
-                      <div className="w-24">
-                        <input
-                          type="number"
-                          value={entry.yesPrice}
-                          onChange={(e) => updateOrderBookEntry(entry.id, 'yesPrice', Number(e.target.value))}
-                          className="w-full bg-white border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:border-teal-400 focus:ring-2 focus:ring-teal-100 focus:outline-none transition-all"
-                        />
-                        <span className="text-xs text-gray-400 mt-1 block text-center">YES价格(%)</span>
-                      </div>
-                      <button
-                        onClick={() => removeOrderBookEntry(entry.id)}
-                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <h2 className="text-base font-semibold text-gray-800 mb-4">核心指标看板</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-cyan-50 to-teal-50 rounded-xl p-4 text-center border border-teal-100">
-                    <p className="text-xs text-gray-500 mb-1">全局均速</p>
-                    <p className="text-2xl font-bold text-teal-600">{formatVelocity(analysis.globalVelocity)}</p>
-                    <p className="text-xs text-gray-400">条/小时</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl p-4 text-center border border-emerald-100">
-                    <p className="text-xs text-gray-500 mb-1">动态时速</p>
-                    <p className="text-2xl font-bold text-emerald-600">{formatVelocity(analysis.microVelocity)}</p>
-                    <p className="text-xs text-gray-400">条/小时</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 text-center border border-violet-100">
-                    <p className="text-xs text-gray-500 mb-1">预期中心落点</p>
-                    <p className="text-2xl font-bold text-violet-600">{Math.round(analysis.expectedCenter)}</p>
-                    <p className="text-xs text-gray-400">条推文</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 text-center border border-amber-100">
-                    <p className="text-xs text-gray-500 mb-1">动态标准差</p>
-                    <p className="text-2xl font-bold text-amber-600">{analysis.currentSigma.toFixed(1)}</p>
-                    <p className="text-xs text-gray-400">σ</p>
-                  </div>
-                </div>
-              </section>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'strategy' && (
+        {activeTab === 'market' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-teal-500" />
-                    盘口价值比雷达
-                  </h2>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-xs text-gray-500 border-b border-gray-200">
-                          <th className="text-left py-3 px-2 font-semibold">区间</th>
-                          <th className="text-right py-3 px-2 font-semibold">市场价</th>
-                          <th className="text-right py-3 px-2 font-semibold">真实概率</th>
-                          <th className="text-right py-3 px-2 font-semibold">Alpha</th>
-                          <th className="text-center py-3 px-2 font-semibold">信号</th>
-                          <th className="text-right py-3 px-2 font-semibold">最低时速</th>
-                          <th className="text-right py-3 px-2 font-semibold">最高时速</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysis.intervals
-                          .sort((a, b) => b.alpha - a.alpha)
-                          .map((interval) => (
-                            <tr
-                              key={interval.id}
-                              className={`border-b border-gray-100 ${interval.alpha > 1.05 ? 'bg-teal-50/50' : interval.alpha < 0.8 ? 'bg-rose-50/50' : ''}`}
-                            >
-                              <td className="py-3 px-2 font-semibold text-gray-800">
-                                [{interval.lowerBound}-{interval.upperBound}]
-                              </td>
-                              <td className="py-3 px-2 text-right text-gray-600">
-                                {formatMarketPrice(interval.marketPrice)}
-                              </td>
-                              <td className="py-3 px-2 text-right text-teal-600 font-medium">
-                                {formatPercent(interval.trueProbability)}
-                              </td>
-                              <td className={`py-3 px-2 text-right font-bold ${getSignalColor(interval.alpha)}`}>
-                                {interval.alpha.toFixed(2)}
-                              </td>
-                              <td className="py-3 px-2 text-center">
-                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold border ${getSignalBg(interval.alpha)}`}>
-                                  {interval.signal === 'buy' && '买入'}
-                                  {interval.signal === 'sell' && '卖出'}
-                                  {interval.signal === 'hold' && '观望'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-2 text-right text-gray-400 text-xs">
-                                {interval.minVelocity === Infinity ? '∞' : formatVelocity(interval.minVelocity)}
-                              </td>
-                              <td className="py-3 px-2 text-right text-gray-400 text-xs">
-                                {interval.maxVelocity === Infinity ? '∞' : formatVelocity(interval.maxVelocity)}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-yellow-400" />
+                        {currentMarket?.title ? parseMarketTitle(currentMarket.title) : '市场数据'}
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-lg transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      刷新
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div className="bg-gray-900/50 rounded-xl p-4 text-center border border-gray-700/30">
+                      <p className="text-xs text-gray-400 mb-1">当前总数</p>
+                      <p className="text-3xl font-bold text-white">{currentTracking?.stats?.total || '-'}</p>
+                      <p className="text-xs text-gray-500 mt-1">条推文</p>
+                    </div>
+                    <div className="bg-gray-900/50 rounded-xl p-4 text-center border border-gray-700/30">
+                      <p className="text-xs text-gray-400 mb-1">今日新增</p>
+                      <p className="text-3xl font-bold text-cyan-400">{currentTracking?.stats?.todayTotal || '-'}</p>
+                      <p className="text-xs text-gray-500 mt-1">条</p>
+                    </div>
+                    <div className="bg-gray-900/50 rounded-xl p-4 text-center border border-gray-700/30">
+                      <p className="text-xs text-gray-400 mb-1">日均时速</p>
+                      <p className="text-3xl font-bold text-yellow-400">{currentTracking?.stats?.pace || '-'}</p>
+                      <p className="text-xs text-gray-500 mt-1">条/天</p>
+                    </div>
+                    <div className="bg-gray-900/50 rounded-xl p-4 text-center border border-gray-700/30">
+                      <p className="text-xs text-gray-400 mb-1">剩余时间</p>
+                      <p className="text-3xl font-bold text-purple-400">
+                        {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}天` : '-'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {currentTracking?.stats && currentTracking.stats.hoursRemaining > 0 
+                          ? `${currentTracking.stats.hoursRemaining}小时` 
+                          : '结束'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/30">
+                    <div className="flex justify-between text-xs text-gray-400 mb-2">
+                      <span>完成进度</span>
+                      <span>{currentTracking?.stats?.percentComplete || 0}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700/50 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-cyan-500 via-yellow-400 to-orange-500 h-3 rounded-full transition-all"
+                        style={{ width: `${Math.min(currentTracking?.stats?.percentComplete || 0, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </section>
 
-                {analysis.strategy.alerts.length > 0 && (
-                  <section className="bg-white rounded-2xl p-5 border border-rose-200 shadow-sm">
-                    <h2 className="text-base font-semibold text-rose-600 mb-4 flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5" />
-                      实时警报
-                    </h2>
+                {currentMarket && (
+                  <section className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-bold text-white">Polymarket 赔率</h2>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-400">交易量</p>
+                        <p className="text-lg font-bold text-purple-400">
+                          ${(currentMarket.volume / 1000000).toFixed(1)}M
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-300">预测中心落点</span>
+                        <span className="text-xl font-bold text-cyan-400">
+                          ~{predictedCenter} 条
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        基于当前时速 {currentHourlyRate.toFixed(2)} 条/小时
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2">
-                      {analysis.strategy.alerts.map((alert, i) => (
-                        <div key={i} className="bg-rose-50 rounded-xl p-3 text-sm text-gray-700 border-l-4 border-rose-400">
-                          {alert}
+                      {analysisData.slice(0, 8).map((r) => (
+                        <div 
+                          key={r.range} 
+                          className={`flex items-center justify-between rounded-lg px-4 py-3 ${
+                            r.isCenter 
+                              ? 'bg-yellow-500/20 border border-yellow-500/40' 
+                              : 'bg-gray-800/30 border border-gray-700/20'
+                          }`}
+                        >
+                          <span className={`font-medium ${r.isCenter ? 'text-yellow-400' : 'text-gray-300'}`}>
+                            {r.range}
+                            {r.isCenter && <span className="ml-2 text-xs text-yellow-500">(中心)</span>}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <div className="w-24 bg-gray-700/50 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full ${r.isCenter ? 'bg-yellow-500' : 'bg-purple-500'}`}
+                                style={{ width: `${(r.price || 0) * 4}%` }}
+                              />
+                            </div>
+                            <span className={`text-sm font-semibold w-14 text-right ${r.isCenter ? 'text-yellow-400' : 'text-purple-400'}`}>
+                              {r.price}%
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </section>
                 )}
 
-                <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-purple-500" />
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-cyan-400" />
+                    动态快照法
+                  </h2>
+                  <p className="text-xs text-gray-500 mb-4">输入两次观测的发推数据，系统自动计算动态时速</p>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">当前推文总数</label>
+                      <input
+                        type="number"
+                        value={currentTweetCount}
+                        onChange={(e) => setCurrentTweetCount(Number(e.target.value))}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">上次快照总数</label>
+                      <input
+                        type="number"
+                        value={snapshotCount}
+                        onChange={(e) => setSnapshotCount(Number(e.target.value))}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">距上次(小时)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={hoursSinceSnapshot}
+                        onChange={(e) => setHoursSinceSnapshot(Number(e.target.value))}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-xl border border-cyan-500/30">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-300">动态时速：</span>
+                      <span className="text-lg font-bold text-cyan-400">{Math.max(0, dynamicVelocity).toFixed(2)} 条/小时</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-500/20">
+                      <span className="text-sm text-gray-300">综合时速：</span>
+                      <span className="text-lg font-bold text-yellow-400">{compositeVelocity.toFixed(2)} 条/小时</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="space-y-6">
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <h3 className="text-sm font-semibold text-gray-300 mb-4">市场列表</h3>
+                  <div className="space-y-2">
+                    {sortedMarkets.map((market, i) => {
+                      const end = new Date(market.end_date);
+                      const now = new Date();
+                      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                      const isActive = i === selectedMarketIndex;
+                      
+                      return (
+                        <button
+                          key={market.slug}
+                          onClick={() => handleSelectMarket(i)}
+                          className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between ${
+                            isActive 
+                              ? 'bg-yellow-500/10 border-yellow-500/40' 
+                              : 'bg-gray-800/50 border-gray-700/30 hover:bg-gray-700/50'
+                          }`}
+                        >
+                          <div>
+                            <span className={`text-sm font-semibold ${isActive ? 'text-yellow-400' : 'text-gray-300'}`}>
+                              {parseMarketTitle(market.title)}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">剩余 {daysLeft} 天</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-purple-400 text-sm">${(market.volume / 1000000).toFixed(1)}M</span>
+                            {isActive && <ArrowRight className="w-4 h-4 text-yellow-400" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
+                  <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-4">每日发推统计</h3>
+                    <div className="space-y-2">
+                      {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
+                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-gray-700/30 last:border-0">
+                          <span className="text-sm text-gray-400">{formatDate(day.date)}</span>
+                          <span className="text-sm font-semibold text-cyan-400">{day.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analysis' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-yellow-400" />
+                      盘口价值比雷达
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      {lastUpdated && (
+                        <span className="text-xs text-gray-500">
+                          数据更新: {new Date(lastUpdated).toLocaleTimeString('zh-CN')}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 rounded transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        刷新
+                      </button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-xs text-gray-400 border-b border-gray-700">
+                          <th className="text-left py-3 px-3 font-semibold">区间</th>
+                          <th className="text-right py-3 px-3 font-semibold">市场%</th>
+                          <th className="text-right py-3 px-3 font-semibold">真实%</th>
+                          <th className="text-right py-3 px-3 font-semibold">Alpha</th>
+                          <th className="text-center py-3 px-3 font-semibold">信号</th>
+                          <th className="text-right py-3 px-3 font-semibold">最低时速</th>
+                          <th className="text-right py-3 px-3 font-semibold">最高时速</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {intervalAnalysis
+                          .filter(Boolean)
+                          .sort((a, b) => (a?.parsed?.min || 0) - (b?.parsed?.min || 0))
+                          .map((item) => !item ? null : (
+                            <tr
+                              key={item.range}
+                              className={`border-b border-gray-700/30 ${
+                                item.alpha > 1.0 ? 'bg-emerald-500/10' : 
+                                item.alpha < 1.0 ? 'bg-rose-500/10' : ''
+                              }`}
+                            >
+                              <td className={`py-3 px-3 font-semibold ${item.isCenter ? 'text-yellow-400' : 'text-white'}`}>
+                                [{item.range}]
+                              </td>
+                              <td className="py-3 px-3 text-right text-gray-400">
+                                {item.marketPrice.toFixed(2)}%
+                              </td>
+                              <td className="py-3 px-3 text-right text-cyan-400 font-medium">
+                                {item.trueProb.toFixed(2)}%
+                              </td>
+                              <td className={`py-3 px-3 text-right font-bold ${
+                                item.alpha > 1.0 ? 'text-emerald-400' : 
+                                item.alpha < 1.0 ? 'text-rose-400' : 'text-gray-400'
+                              }`}>
+                                {item.alpha.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
+                                  item.alpha > 1.0 
+                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' 
+                                    : item.alpha < 1.0 
+                                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
+                                    : 'bg-gray-500/20 border-gray-500/40 text-gray-400'
+                                }`}>
+                                  {item.alpha > 1.0 ? '低估' : item.alpha < 1.0 ? '高估' : '合理'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right text-gray-400 text-xs">
+                                {item.minVelocity === Infinity ? '∞' : `${item.minVelocity.toFixed(2)}/h`}
+                              </td>
+                              <td className="py-3 px-3 text-right text-gray-400 text-xs">
+                                {item.maxVelocity === Infinity ? '∞' : `${item.maxVelocity.toFixed(2)}/h`}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-3">
+                    Alpha &gt; 1.0 = 低估(买入机会) | Alpha &lt; 1.0 = 高估(卖出机会)
+                  </p>
+                </section>
+
+                <section className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
+                  <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-purple-400" />
                     目标区间时速倒推雷达
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {analysis.reverseEngineering.map((item) => (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {reverseEngineering.filter(Boolean).map((item) => !item ? null : (
                       <div
-                        key={item.id}
+                        key={`${item.lowerBound}-${item.upperBound}`}
                         className={`p-3 rounded-xl border ${
                           item.status === 'busted'
-                            ? 'bg-gray-100 border-gray-300'
+                            ? 'bg-gray-800/50 border-gray-600'
                             : item.status === 'passed'
-                            ? 'bg-amber-50 border-amber-200'
-                            : 'bg-purple-50 border-purple-200'
+                            ? 'bg-amber-500/10 border-amber-500/30'
+                            : 'bg-purple-500/10 border-purple-500/30'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">
-                              {item.status === 'busted' ? '❌' : item.status === 'passed' ? '⚠️' : '🎯'}
-                            </span>
-                            <span className="font-semibold text-gray-800">
-                              [{item.lowerBound}-{item.upperBound}]
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-semibold ${
+                            item.status === 'busted' ? 'text-gray-500 line-through' : 
+                            item.status === 'passed' ? 'text-amber-400' : 'text-white'
+                          }`}>
+                            [{item.lowerBound}-{item.upperBound}]
+                          </span>
+                          <span className="text-base">
+                            {item.status === 'busted' ? '❌' : item.status === 'passed' ? '⚠️' : '🎯'}
+                          </span>
                         </div>
-                        <div className="mt-2 text-xs">
+                        <div className="text-xs">
                           {item.status === 'busted' ? (
-                            <span className="text-gray-500 font-medium">已击穿</span>
+                            <span className="text-gray-500">已击穿</span>
                           ) : item.status === 'passed' ? (
-                            <span className="text-amber-600 font-medium">已突破下限</span>
+                            <span className="text-amber-400">已突破下限</span>
                           ) : (
                             <>
-                              <div className="text-purple-600 font-medium">
+                              <div className="text-purple-400">
                                 还需 {item.tweetsNeededMin} ~ {item.tweetsNeededMax} 条
                               </div>
-                              <div className="text-gray-500 mt-1">
-                                均速：{formatVelocity(item.minVelocity)} ~ {formatVelocity(item.maxVelocity)}/h
+                              <div className="text-gray-400 mt-1">
+                                时速: {item.minVelocity === Infinity ? '∞' : `${item.minVelocity.toFixed(2)}`} ~ {item.maxVelocity === Infinity ? '∞' : `${item.maxVelocity.toFixed(2)}`}/h
                               </div>
                             </>
                           )}
@@ -696,109 +797,84 @@ function App() {
               </div>
 
               <div className="space-y-6">
-                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-teal-500" />
-                    冷血执行官指令
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-cyan-400" />
+                    时速分析
                   </h2>
-                  {analysis.strategy.orders.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">全局均速</span>
+                      <span className="text-sm font-semibold text-emerald-400">{(avgPace / 24).toFixed(2)}/h</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">动态时速</span>
+                      <span className="text-sm font-semibold text-cyan-400">{Math.max(0, dynamicVelocity).toFixed(2)}/h</span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
+                      <span className="text-sm font-semibold text-white">综合时速</span>
+                      <span className="text-lg font-bold text-yellow-400">{compositeVelocity.toFixed(2)}/h</span>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400">
+                      剩余 {remainingHours.toFixed(0)} 小时 | 预期落点 ~{predictedCenter} 条
+                    </div>
+                  </div>
+                </section>
+
+                <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                  <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-yellow-400" />
+                    老马发疯系数
+                  </h2>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">历史日均</span>
+                      <span className="text-sm font-semibold text-gray-300">{baseStats.mean.toFixed(1)} 条/天</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">历史标准差</span>
+                      <span className="text-sm font-semibold text-gray-300">{baseStats.stdDev.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">波动率调整</span>
+                      <span className={`text-sm font-semibold ${
+                        currentVolatility.ratio > 1.2 ? 'text-rose-400' : 
+                        currentVolatility.ratio < 0.8 ? 'text-emerald-400' : 'text-gray-300'
+                      }`}>
+                        {currentVolatility.ratio.toFixed(2)}x
+                        {currentVolatility.ratio > 1.2 ? ' ↑发疯中' : currentVolatility.ratio < 0.8 ? ' ↓平静' : ''}
+                      </span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
+                      <span className="text-sm font-semibold text-white">动态σ</span>
+                      <span className="text-xl font-bold text-yellow-400">{elonMultiplier.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </section>
+
+                {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
+                  <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-4">每日发推统计</h3>
                     <div className="space-y-2">
-                      {analysis.strategy.orders.map((order, i) => (
-                        <div key={i} className="bg-gray-50 rounded-xl p-3 text-sm font-mono text-gray-700 border border-gray-200">
-                          {order}
+                      {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
+                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-gray-700/30 last:border-0">
+                          <span className="text-sm text-gray-400">{formatDate(day.date)}</span>
+                          <span className="text-sm font-semibold text-cyan-400">{day.count}</span>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-gray-400 text-sm">暂无操作指令</p>
-                  )}
-                </section>
-
-                <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-teal-500" />
-                    策略建议
-                  </h2>
-                  <div className="space-y-2">
-                    {analysis.strategy.recommendations.map((rec, i) => (
-                      <div key={i} className="flex items-start gap-2 text-sm">
-                        <span className="text-teal-500 mt-0.5">•</span>
-                        <span className="text-gray-600">{rec}</span>
-                      </div>
-                    ))}
-                </div>
-              </section>
-
-              <section className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                    <span className="text-purple-500 font-bold">P</span>
-                    Polymarket 实时数据
-                  </h2>
-                  <button
-                    onClick={fetchPolymarketData}
-                    disabled={isLoadingPolymarket}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition-colors"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPolymarket ? 'animate-spin' : ''}`} />
-                    {isLoadingPolymarket ? '刷新中...' : '刷新'}
-                  </button>
-                </div>
-                {polymarketData ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600 font-medium">{polymarketData.question}</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-purple-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-gray-500">当前交易量</p>
-                        <p className="text-lg font-bold text-purple-600">${(polymarketData.volume / 1000).toFixed(1)}K</p>
-                      </div>
-                      <div className="bg-purple-50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-gray-500">流动性</p>
-                        <p className="text-lg font-bold text-purple-600">${(polymarketData.liquidity / 1000).toFixed(1)}K</p>
-                      </div>
-                    </div>
-                    <div className="border-t border-purple-100 pt-3">
-                      <p className="text-xs text-gray-500 mb-2">区间概率</p>
-                      <div className="space-y-1">
-                        {polymarketData.conditions.slice(0, 5).map((cond) => (
-                          <div key={cond.id} className="flex justify-between items-center text-xs">
-                            <span className="text-gray-600">{cond.question}</span>
-                            <span className="font-semibold text-purple-600">{Math.round(cond.probability * 100)}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-400 text-right">
-                      更新于 {new Date(polymarketData.lastUpdated).toLocaleTimeString('zh-CN')}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-400">点击刷新加载 Polymarket 数据</p>
-                  </div>
+                  </section>
                 )}
-              </section>
 
-              <section className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                  <h2 className="text-base font-semibold text-gray-800">速度分析</h2>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-500">全局均速</span>
-                      <span className="text-sm font-semibold text-teal-600">{formatVelocity(analysis.globalVelocity)}/h</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                      <span className="text-sm text-gray-500">微观时速</span>
-                      <span className="text-sm font-semibold text-emerald-600">{formatVelocity(analysis.microVelocity)}/h</span>
-                    </div>
-                    <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-                      <span className="text-sm font-semibold text-gray-700">综合时速</span>
-                      <span className="text-lg font-bold text-teal-600">{formatVelocity(analysis.compositeVelocity)}/h</span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
-                      {analysis.velocityStatus.message}
-                    </div>
-                  </div>
-                </section>
+                <a
+                  href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-xl text-center font-semibold text-white hover:from-purple-600 hover:to-indigo-600 transition-all shadow-lg"
+                >
+                  <ExternalLink className="w-4 h-4 inline mr-2" />
+                  进入 Polymarket 下注
+                </a>
               </div>
             </div>
           </div>
@@ -811,74 +887,129 @@ function App() {
         )}
 
         {activeTab === 'tweet' && (
-          <div className="max-w-3xl mx-auto">
-            <section className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                  <Copy className="w-5 h-5 text-teal-500" />
-                  推文一键生成
-                </h2>
-                <button
-                  onClick={copyToClipboard}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    copied
-                      ? 'bg-teal-500 text-white'
-                      : 'bg-teal-500 text-white hover:bg-teal-600'
-                  }`}
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      已复制!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      复制推文
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="bg-gradient-to-r from-gray-50 to-stone-100 rounded-xl p-4 min-h-[300px]">
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans leading-relaxed">
-                  {tweetContent}
-                </pre>
-              </div>
-              <p className="text-xs text-gray-400 mt-3">
-                以上内容已根据当前实时数据自动生成，可直接复制到 Twitter/X 发布
-              </p>
-            </section>
-
-            <section className="mt-6 bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">数据摘要</h3>
-              <div className="grid grid-cols-4 gap-4 text-center">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">当前推文</p>
-                  <p className="text-lg font-bold text-gray-800">{baseParams.currentTweetCount}</p>
-                </div>
-                <div className="bg-teal-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">预期落点</p>
-                  <p className="text-lg font-bold text-teal-600">{Math.round(analysis.expectedCenter)}</p>
-                </div>
-                <div className="bg-cyan-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">剩余时间</p>
-                  <p className="text-lg font-bold text-cyan-600">
-                    {analysis.remainingHoursDecimal >= 24
-                      ? `${(analysis.remainingHoursDecimal / 24).toFixed(1)}天`
-                      : `${analysis.remainingHoursDecimal.toFixed(1)}h`}
-                  </p>
-                </div>
-                <div className="bg-emerald-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">综合时速</p>
-                  <p className="text-lg font-bold text-emerald-600">{formatVelocity(analysis.compositeVelocity)}/h</p>
-                </div>
-              </div>
-            </section>
-          </div>
+          <TweetGenerator
+            currentTracking={currentTracking}
+            currentMarket={currentMarket}
+            predictedCenter={predictedCenter}
+            compositeVelocity={compositeVelocity}
+            remainingHours={remainingHours}
+            centerRange={analysisData.find(d => d.isCenter)?.range || ''}
+          />
         )}
       </main>
     </div>
   );
 }
 
-export default App;
+interface TweetGeneratorProps {
+  currentTracking: Tracking | undefined;
+  currentMarket: MarketData | null;
+  predictedCenter: number;
+  compositeVelocity: number;
+  remainingHours: number;
+  centerRange: string;
+}
+
+function TweetGenerator({ currentTracking, currentMarket, predictedCenter, compositeVelocity, remainingHours, centerRange }: TweetGeneratorProps) {
+  const [copied, setCopied] = useState(false);
+
+  const marketTitle = currentMarket?.title ? parseMarketTitle(currentMarket.title) : '预测市场';
+
+  const tweetContent = useMemo(() => {
+    const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
+    const currentTotal = currentTracking?.stats?.total || 0;
+    const todayTotal = currentTracking?.stats?.todayTotal || 0;
+
+    return `📊 ${marketTitle} 实时分析
+
+📈 当前进度: ${currentTotal} 条 (今日+${todayTotal})
+⚡ 发推时速: ${compositeVelocity.toFixed(2)}条/小时
+🎯 预测落点: ~${predictedCenter}条
+
+📍 阶段: ${phase.name}
+⏰ 剩余时间: ${Math.floor(remainingHours / 24)}天${remainingHours % 24}小时
+📍 中心区间: ${centerRange || '待确定'}
+
+💡 基于当前数据模型预测最终落点约${predictedCenter}条
+
+🔗 Polymarket: https://polymarket.com${currentMarket?.slug ? '/event/' + currentMarket.slug : ''}${REFERRAL}
+
+#ElonMusk #PredictionMarket #X`;
+  }, [currentTracking, currentMarket, predictedCenter, compositeVelocity, remainingHours, centerRange, marketTitle]);
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(tweetContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const openTwitter = () => {
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetContent)}`;
+    window.open(twitterUrl, '_blank');
+  };
+
+  const openTelegram = () => {
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent('https://polymarket.com' + (currentMarket?.slug ? '/event/' + currentMarket.slug : ''))}&text=${encodeURIComponent(tweetContent)}`;
+    window.open(telegramUrl, '_blank');
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <FileText className="w-5 h-5 text-yellow-400" />
+            推文生成
+          </h2>
+          <div className="flex gap-2">
+            <button
+              onClick={openTelegram}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-sm rounded-lg border border-blue-500/30 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Telegram
+            </button>
+            <button
+              onClick={openTwitter}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 text-sm rounded-lg border border-sky-500/30 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Twitter/X
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-gray-900/50 rounded-xl p-4 mb-4">
+          <pre className="whitespace-pre-wrap text-sm text-gray-200 leading-relaxed font-sans">
+            {tweetContent}
+          </pre>
+        </div>
+
+        <button
+          onClick={copyToClipboard}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
+            copied
+              ? 'bg-emerald-500 text-white'
+              : 'bg-yellow-500 hover:bg-yellow-600 text-gray-900'
+          }`}
+        >
+          {copied ? (
+            <>
+              <CheckCircle className="w-5 h-5" />
+              已复制到剪贴板!
+            </>
+          ) : (
+            <>
+              <Copy className="w-5 h-5" />
+              一键复制推文内容
+            </>
+          )}
+        </button>
+      </section>
+    </div>
+  );
+}

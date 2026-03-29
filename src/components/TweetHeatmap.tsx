@@ -1,36 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Download, RefreshCw, ExternalLink, Loader2, TrendingUp } from 'lucide-react';
+import { Download, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+
+const XTRACKER_URL = 'https://xtracker.polymarket.com/user/elonmusk';
 
 interface HeatmapData {
   date: string;
   hour: number;
   count: number;
-}
-
-interface TrackingData {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  marketLink: string;
-  slug: string;
-  stats: {
-    total: number;
-    pace: number;
-    percentComplete: number;
-    daysElapsed: number;
-    daysRemaining: number;
-    hoursRemaining: number;
-    daysTotal: number;
-    daily: Array<{ date: string; count: number; cumulative: number }>;
-    todayTotal: number;
-  } | null;
-}
-
-interface PostData {
-  id: string;
-  content: string;
-  createdAt: string;
 }
 
 const getColorForCount = (count: number): string => {
@@ -53,39 +29,6 @@ const getETFromBeijing = (bjHour: number): string => {
   if (etHour < 0) return `${etHour + 24}:00 ET`;
   if (etHour >= 24) return `${etHour - 24}:00 ET`;
   return `${etHour}:00 ET`;
-};
-
-const getTimeAgo = (date: Date): string => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffMins < 60) return `${diffMins}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
-  return date.toLocaleDateString('zh-CN');
-};
-
-const parseTitleToCN = (title: string): string => {
-  const match = title.match(/(March|April|May)\s*(\d+)\s*-\s*(March|April|May)\s*(\d+)/i);
-  if (match) {
-    const startMonth = match[1];
-    const startDay = match[2];
-    const endMonth = match[3];
-    const endDay = match[4];
-    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月', 'May': '5月' };
-    return `${monthMap[startMonth]}${startDay}日-${monthMap[endMonth]}${endDay}日`;
-  }
-  const monthMatch = title.match(/(March|April|May)\s+(\d+),?\s*(\d{4})/i);
-  if (monthMatch) {
-    const month = monthMatch[1];
-    const day = monthMatch[2];
-    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月', 'May': '5月' };
-    return `${monthMap[month]}${day}日`;
-  }
-  return '';
 };
 
 const CACHE_KEY = 'musk_tweet_heatmap_data';
@@ -144,8 +87,6 @@ export function TweetHeatmap() {
   const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(initialLastUpdated);
   const [isFromCache, setIsFromCache] = useState(initialIsFromCache);
-  const [trackings, setTrackings] = useState<TrackingData[]>([]);
-  const [latestPosts, setLatestPosts] = useState<PostData[]>([]);
 
   useEffect(() => {
     if (!needsRefresh) return;
@@ -168,35 +109,6 @@ export function TweetHeatmap() {
     
     return () => clearTimeout(timer);
   }, [needsRefresh]);
-
-  useEffect(() => {
-    const fetchXTrackerData = async () => {
-      try {
-        const [trackingsRes, postsRes] = await Promise.all([
-          fetch('/api/xtracker'),
-          fetch('/api/elon-posts'),
-        ]);
-        
-        if (trackingsRes.ok) {
-          const trackingsData = await trackingsRes.json();
-          if (trackingsData.success && trackingsData.trackings) {
-            setTrackings(trackingsData.trackings);
-          }
-        }
-        
-        if (postsRes.ok) {
-          const postsData = await postsRes.json();
-          if (postsData.success && postsData.posts) {
-            setLatestPosts(postsData.posts.slice(0, 5));
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch XTracker data:', err);
-      }
-    };
-    
-    fetchXTrackerData();
-  }, []);
 
   const now = useMemo(() => new Date(), []);
   const currentBJHour = now.getHours();
@@ -280,12 +192,31 @@ export function TweetHeatmap() {
     for (const d of recentData) {
       hourCounts[d.hour] = (hourCounts[d.hour] || 0) + d.count;
     }
-    const peakHour = Object.entries(hourCounts).reduce((max, [hour, count]) => 
-      count > max.count ? { hour: parseInt(hour), count } : max, 
-      { hour: 0, count: 0 }
-    );
     
-    return { totalTweets, avgPerDay, peakHour };
+    const blockSize = 4;
+    const blockCounts: Record<number, { start: number; count: number; avgCount: number }> = {};
+    for (let i = 0; i < 24; i += blockSize) {
+      let blockTotal = 0;
+      let daysInBlock = 0;
+      for (let h = i; h < i + blockSize && h < 24; h++) {
+        if (hourCounts[h]) {
+          blockTotal += hourCounts[h];
+          daysInBlock++;
+        }
+      }
+      const days = uniqueDates.length;
+      blockCounts[i] = {
+        start: i,
+        count: blockTotal,
+        avgCount: days > 0 ? blockTotal / days : 0,
+      };
+    }
+    
+    const sortedBlocks = Object.values(blockCounts)
+      .sort((a, b) => b.avgCount - a.avgCount);
+    const topBlocks = sortedBlocks.slice(0, 3);
+    
+    return { totalTweets, avgPerDay, topBlocks };
   };
 
   const stats = getStats();
@@ -437,103 +368,6 @@ export function TweetHeatmap() {
         </div>
       )}
 
-      {trackings.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-700/50">
-          <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-yellow-400" />
-            7天推文预测市场
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[...trackings]
-              .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-              .slice(0, 3)
-              .map((tracking) => {
-                const titleCN = parseTitleToCN(tracking.title);
-                const remainingText = tracking.stats 
-                  ? (tracking.stats.hoursRemaining > 0 
-                      ? `${tracking.stats.daysRemaining}天${tracking.stats.hoursRemaining}小时` 
-                      : `${tracking.stats.daysRemaining}天`)
-                  : '';
-                return (
-                  <a
-                    key={tracking.id}
-                    href={tracking.marketLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block bg-gradient-to-br from-gray-800 to-gray-900 hover:from-gray-750 hover:to-gray-850 rounded-xl p-4 border border-yellow-500/20 hover:border-yellow-500/40 transition-all hover:shadow-lg hover:shadow-yellow-500/10 group"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium text-yellow-400">{titleCN}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400/80 rounded">7天</span>
-                        </div>
-                        <span className="text-[10px] text-gray-500 truncate block">{tracking.title}</span>
-                      </div>
-                      <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-yellow-400 transition-colors" />
-                    </div>
-                    {tracking.stats && (
-                      <div className="space-y-2">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-gray-400">当前总数</span>
-                          <span className="text-2xl font-bold text-white">{tracking.stats.total}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-gray-700/30 rounded-lg px-2 py-1.5">
-                            <div className="text-[10px] text-gray-500">今日</div>
-                            <div className="text-sm font-medium text-cyan-400">{tracking.stats.todayTotal}条</div>
-                          </div>
-                          <div className="bg-gray-700/30 rounded-lg px-2 py-1.5">
-                            <div className="text-[10px] text-gray-500">日均</div>
-                            <div className="text-sm font-medium text-gray-300">{tracking.stats.pace}条</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">剩余时间</span>
-                          <span className="text-gray-300 font-medium">{remainingText}</span>
-                        </div>
-                        <div className="relative">
-                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                            <span>进度</span>
-                            <span>{tracking.stats.percentComplete}%</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-gradient-to-r from-cyan-500 to-yellow-400 h-2 rounded-full"
-                              style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </a>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {latestPosts.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-gray-700/50">
-          <h4 className="text-sm font-semibold text-gray-300 mb-3">最新推文</h4>
-          <div className="space-y-2">
-            {latestPosts.map((post) => {
-              const postDate = new Date(post.createdAt);
-              const timeAgo = getTimeAgo(postDate);
-              const displayContent = post.content.length > 100 
-                ? post.content.substring(0, 100) + '...' 
-                : post.content;
-              return (
-                <div key={post.id} className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30 hover:bg-gray-800/50 hover:border-gray-700/50 transition-colors">
-                  <p className="text-sm text-gray-300 leading-relaxed">{displayContent}</p>
-                  <span className="text-[10px] text-gray-500 mt-1 block">{timeAgo}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {data.length > 0 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
           <div className="flex items-center gap-3">
@@ -558,10 +392,15 @@ export function TweetHeatmap() {
               <div className="w-2 h-2 bg-cyan-400 rounded-full" />
               <span className="text-gray-400">当前时段</span>
             </div>
-            <span className="text-gray-400">
-              高峰时段: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
-              <span className="text-gray-500 text-[10px] ml-1">(基于15天历史数据)</span>
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">高频时段:</span>
+              {stats.topBlocks.slice(0, 2).map((block, i) => (
+                <span key={i} className={`text-xs px-2 py-0.5 rounded ${i === 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700/50 text-gray-400'}`}>
+                  {block.start}:00-{block.start + 3}:59
+                </span>
+              ))}
+              <span className="text-gray-500 text-[10px]">(4小时区间)</span>
+            </div>
             <span className="text-gray-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
           </div>
         </div>
@@ -606,6 +445,94 @@ export function TweetHeatmap() {
             应用
           </button>
         </div>
+      )}
+
+      <LatestTweets />
+    </div>
+  );
+}
+
+function LatestTweets() {
+  const [posts, setPosts] = useState<Array<{ id: string; content: string; createdAt: string; platformId: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/posts?limit=20');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.data && Array.isArray(data.data)) {
+            setPosts(data.data.slice(0, 10));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPosts();
+  }, []);
+
+  const formatTimeAgo = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffMins < 60) return `${diffMins}分钟前`;
+    if (diffHours < 24) return `${diffHours}小时前`;
+    return date.toLocaleDateString('zh-CN');
+  };
+
+  const truncateContent = (content: string, maxLength: number = 200): string => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength) + '...';
+  };
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-700/50">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+          <span className="text-lg">📝</span>
+          最新推文
+        </h4>
+        <a
+          href={XTRACKER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg border border-cyan-500/30 transition-colors"
+        >
+          <span>查看全部</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
+      {isLoading ? (
+        <p className="text-sm text-gray-500">加载中...</p>
+      ) : posts.length > 0 ? (
+        <div className="space-y-3">
+          {posts.map((post) => (
+            <a
+              key={post.id}
+              href={`https://x.com/elonmusk/status/${post.platformId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-gray-800/30 rounded-lg p-4 border border-gray-700/30 hover:border-cyan-500/50 hover:bg-gray-800/50 transition-colors"
+            >
+              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {truncateContent(post.content)}
+              </p>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-gray-500">{formatTimeAgo(post.createdAt)}</span>
+                <ExternalLink className="w-3 h-3 text-gray-500" />
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">暂无推文数据</p>
       )}
     </div>
   );

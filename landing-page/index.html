@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Musk Quant Radar - 马斯克推文预测市场</title>
+  <meta name="description" content="实时追踪马斯克推文，精准分析 Polymarket 预测市场，让每一次发推都成为你的赚钱机会">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gray: {
+              950: '#0a0a0f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .gradient-text {
+      background: linear-gradient(to right, #fff, #d1d5db, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white">
+  
+  <!-- Header -->
+  <header id="header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+          <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="text-lg font-bold">Musk Quant Radar</span>
+      </div>
+      <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank"
+         class="px-5 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-semibold rounded-full hover:from-yellow-300 hover:to-orange-400 transition-all">
+        免费试用
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="pt-32 pb-20 px-4">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-full text-yellow-400 text-sm mb-8">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        <span>极速 FOMO 定价 · 仅限前 30 名早鸟</span>
+      </div>
+      
+      <h1 class="text-5xl md:text-6xl font-bold mb-6 gradient-text">
+        Musk Quant Radar
+      </h1>
+      
+      <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+        实时追踪 · 精准分析 · 智能预警
+        <br>
+        让每一次发推都成为你的赚钱机会
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank"
+           class="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-lg rounded-xl hover:from-yellow-300 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/25">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          $1 体验 3 天
+        </a>
+        <a href="https://polymarket.com/event/elon-musk-of-tweets?via=serene77mc-g6kj" target="_blank"
+           class="flex items-center justify-center gap-2 px-8 py-4 bg-gray-800 border border-gray-700 text-white font-semibold text-lg rounded-xl hover:bg-gray-700 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          查看 Polymarket 市场
+        </a>
+      </div>
+
+      <div class="mt-12 flex items-center justify-center gap-8 text-sm text-gray-500">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <span>内测 12 名交易员已加入</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>7x24 小时自动运行</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="py-20 px-4 bg-gradient-to-b from-transparent via-gray-900/50 to-transparent">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">🛠️ 核心功能</h2>
+      <p class="text-gray-400 text-center mb-12">你花钱买到的 Alpha</p>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">发推生物钟热力图</h3>
+          <p class="text-sm text-gray-400">实时展示马斯克发推时间分布，精准抓取"深度睡眠区"与"爆肝输出带"</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">盘口价值比扫描仪</h3>
+          <p class="text-sm text-gray-400">Polymarket 赔率实时追踪，自动计算各区间真实胜率，一眼看穿散户溢价与错杀金矿</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">动态 Sigma 引擎</h3>
+          <p class="text-sm text-gray-400">告别死板估算，基于历史数据动态计算"发疯系数"，随时间流逝智能调整预测</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">实时预警通知</h3>
+          <p class="text-sm text-gray-400">每当马斯克发推，立即推送至你的 Telegram，第一时间掌握市场异动</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">智能研报生成</h3>
+          <p class="text-sm text-gray-400">一键生成带有数据支撑的分析推文，支持 Twitter/Telegram 快速分享</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">目标时速倒推</h3>
+          <p class="text-sm text-gray-400">精确计算到达目标区间所需的"生死时速"，制定最优交易策略</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshot Section -->
+  <section class="py-20 px-4">
+    <div class="max-w-5xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">📊 工具预览</h2>
+      <p class="text-gray-400 text-center mb-12">界面截图展示</p>
+      
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Screenshot 1 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="bg-gray-800 px-4 py-3 flex items-center gap-2 border-b border-gray-700">
+            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <span class="ml-4 text-sm text-gray-400">市场概览</span>
+          </div>
+          <div class="p-4 space-y-4">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-gray-800 rounded-lg p-3 text-center">
+                <p class="text-xs text-gray-500">当前总数</p>
+                <p class="text-xl font-bold text-white">247</p>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-3 text-center">
+                <p class="text-xs text-gray-500">今日新增</p>
+                <p class="text-xl font-bold text-cyan-400">18</p>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-3 text-center">
+                <p class="text-xs text-gray-500">日均时速</p>
+                <p class="text-xl font-bold text-yellow-400">42</p>
+              </div>
+              <div class="bg-gray-800 rounded-lg p-3 text-center">
+                <p class="text-xs text-gray-500">剩余时间</p>
+                <p class="text-xl font-bold text-purple-400">5天</p>
+              </div>
+            </div>
+            <div class="bg-purple-900/30 border border-purple-500/20 rounded-xl p-3">
+              <p class="text-sm text-gray-300">预测中心落点</p>
+              <p class="text-lg font-bold text-cyan-400">~285 条</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot 2 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <div class="bg-gray-800 px-4 py-3 flex items-center gap-2 border-b border-gray-700">
+            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <span class="ml-4 text-sm text-gray-400">概率分析</span>
+          </div>
+          <div class="p-4">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-gray-500 border-b border-gray-700">
+                  <th class="text-left py-2">区间</th>
+                  <th class="text-right">市场%</th>
+                  <th class="text-right">真实%</th>
+                  <th class="text-right">Alpha</th>
+                  <th class="text-center">信号</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-gray-800 bg-emerald-500/10">
+                  <td class="py-2 text-yellow-400">[270-290]</td>
+                  <td class="text-right text-gray-400">18.5%</td>
+                  <td class="text-right text-cyan-400">22.3%</td>
+                  <td class="text-right text-emerald-400 font-bold">1.21</td>
+                  <td class="text-center"><span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-xs">买入</span></td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">[250-269]</td>
+                  <td class="text-right text-gray-400">15.2%</td>
+                  <td class="text-right text-cyan-400">14.8%</td>
+                  <td class="text-right text-amber-400 font-bold">0.97</td>
+                  <td class="text-center"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs">观望</span></td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">[290-310]</td>
+                  <td class="text-right text-gray-400">12.8%</td>
+                  <td class="text-right text-cyan-400">11.2%</td>
+                  <td class="text-right text-rose-400 font-bold">0.88</td>
+                  <td class="text-center"><span class="px-2 py-0.5 bg-rose-500/20 text-rose-400 rounded text-xs">卖出</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section class="py-20 px-4">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl font-bold mb-4">💎 订阅与定价</h2>
+        <p class="text-gray-400">极速 FOMO 机制 · 每满 30 人涨价 20%</p>
+      </div>
+
+      <div class="bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 rounded-3xl p-8 mb-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <span class="text-sm text-yellow-400 font-semibold">🔥 当前阶段</span>
+            <h3 class="text-2xl font-bold mt-1">Tier 1 早鸟</h3>
+          </div>
+          <div class="text-right">
+            <div class="text-3xl font-bold text-yellow-400">$29.99</div>
+            <div class="text-sm text-gray-500">/ 月</div>
+          </div>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+          <p class="text-amber-400 font-semibold flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            仅剩 <span class="text-2xl">18</span> 个早鸟席位
+          </p>
+          <p class="text-sm text-gray-400 mt-1">内部测试已锁定 12 席，Tier 1 最低价即将售罄</p>
+        </div>
+
+        <div class="space-y-3 mb-8">
+          <div class="flex items-center gap-3 text-gray-300">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>解锁全部高级功能</span>
+          </div>
+          <div class="flex items-center gap-3 text-gray-300">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>实时 Telegram 预警通知</span>
+          </div>
+          <div class="flex items-center gap-3 text-gray-300">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>专属内部 Alpha 交流群</span>
+          </div>
+          <div class="flex items-center gap-3 text-gray-300">
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span>终身价格锁定</span>
+          </div>
+        </div>
+
+        <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank"
+           class="block w-full py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-lg rounded-xl text-center hover:from-yellow-300 hover:to-orange-400 transition-all">
+          立即订阅 · $29.99/月
+        </a>
+      </div>
+
+      <!-- Tier Table -->
+      <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 mb-8">
+        <h3 class="text-lg font-semibold mb-4 text-center">📈 订阅费用升级规则</h3>
+        <div class="space-y-4">
+          <div class="grid md:grid-cols-4 gap-4">
+            <div class="p-4 rounded-xl border text-center bg-yellow-500/10 border-yellow-500/40">
+              <p class="text-sm font-bold text-yellow-400">Tier 1</p>
+              <p class="text-xs text-gray-500 mt-1">1-30 名</p>
+              <p class="text-lg font-bold mt-2 text-yellow-400">$29.99</p>
+              <p class="text-xs text-gray-500 mt-1">基础价格</p>
+            </div>
+            <div class="p-4 rounded-xl border text-center bg-gray-800/50 border-gray-700">
+              <p class="text-sm font-bold text-gray-400">Tier 2</p>
+              <p class="text-xs text-gray-500 mt-1">31-60 名</p>
+              <p class="text-lg font-bold mt-2 text-gray-300">$35.99</p>
+              <p class="text-xs text-gray-500 mt-1">+20%</p>
+            </div>
+            <div class="p-4 rounded-xl border text-center bg-gray-800/50 border-gray-700">
+              <p class="text-sm font-bold text-gray-400">Tier 3</p>
+              <p class="text-xs text-gray-500 mt-1">61-90 名</p>
+              <p class="text-lg font-bold mt-2 text-gray-300">$43.19</p>
+              <p class="text-xs text-gray-500 mt-1">+44%</p>
+            </div>
+            <div class="p-4 rounded-xl border text-center bg-gray-800/50 border-gray-700">
+              <p class="text-sm font-bold text-gray-400">Tier 4</p>
+              <p class="text-xs text-gray-500 mt-1">91-120 名</p>
+              <p class="text-lg font-bold mt-2 text-gray-300">$51.83</p>
+              <p class="text-xs text-gray-500 mt-1">+73%</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-400 text-center">
+            <span class="text-emerald-400">规则：</span>每满 30 名订阅用户，下一阶段订阅费自动上涨 20%。
+            一旦订阅成功，你的月费终身锁定。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Referral Section -->
+  <section class="py-20 px-4 bg-gradient-to-b from-transparent via-purple-950/20 to-transparent">
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/20 rounded-3xl p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
+          </svg>
+          <h2 class="text-2xl font-bold">🤝 裂变邀请机制</h2>
+        </div>
+
+        <div class="bg-gray-900/50 rounded-xl p-6">
+          <h3 class="text-lg font-semibold text-emerald-400 mb-3">邀请人奖励</h3>
+          <p class="text-gray-300">
+            每成功邀请 1 位新用户正式订阅，
+            系统将返还你当月订阅费的 <span class="text-emerald-400 font-bold text-xl">20%</span>
+          </p>
+          <div class="mt-4 p-3 bg-gray-800/50 rounded-lg">
+            <p class="text-sm text-gray-400">
+              <span class="text-yellow-400">示例：</span>你订阅 $29.99/月，邀请的朋友也订阅 $29.99/月，
+              你当月可获得 <span class="text-emerald-400 font-bold">$6</span> 返还
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="py-20 px-4">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">❓ 常见问题</h2>
+      
+      <div class="space-y-4" id="faq">
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(0)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">这个工具适合什么人？</span>
+            <svg id="faq-icon-0" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-0" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            Polymarket 预测市场交易员、加密货币投资者、关注马斯克动态的专业玩家。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(1)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">$1 体验 3 天包含什么？</span>
+            <svg id="faq-icon-1" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-1" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            解锁全部高级功能，包括热力图、概率分析、实时预警等。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(2)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">订阅后能退款吗？</span>
+            <svg id="faq-icon-2" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-2" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            Polymarket 预测市场瞬息万变，付费后不支持退款，请谨慎决策。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(3)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">涨价后我的价格会变吗？</span>
+            <svg id="faq-icon-3" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-3" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            不会！一旦订阅成功，你的月费终身锁定，即使后续涨价也不影响你。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(4)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">如何成为 Tier 2/Tier 3？</span>
+            <svg id="faq-icon-4" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-4" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            当 Tier 1 的 30 个名额售完后，系统自动切换到 Tier 2（$35.99/月），依此类推。越早订阅越便宜。
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="py-20 px-4">
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-4">🚀 准备好抢 Alpha 了吗？</h2>
+      <p class="text-gray-400 mb-8">
+        Tier 1 仅剩 18 席，越早加入越划算
+      </p>
+      <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank"
+         class="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-xl rounded-xl hover:from-yellow-300 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/25">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        $1 体验 3 天 · 终身锁价 $29.99
+      </a>
+      <p class="text-xs text-gray-500 mt-4">
+        不满意？3 天内随时退款
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-8 px-4 border-t border-gray-800">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2 text-gray-500 text-sm">
+        <div class="w-6 h-6 rounded bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+          <svg class="w-3 h-3 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span>Musk Quant Radar</span>
+      </div>
+      <div class="flex items-center gap-6 text-sm text-gray-500">
+        <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank" class="hover:text-white transition-colors">
+          工具演示
+        </a>
+        <a href="https://polymarket.com/event/elon-musk-of-tweets?via=serene77mc-g6kj" target="_blank" class="hover:text-white transition-colors">
+          Polymarket
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Header scroll effect
+    window.addEventListener('scroll', () => {
+      const header = document.getElementById('header');
+      if (window.scrollY > 50) {
+        header.classList.add('bg-gray-950/95', 'backdrop-blur-md', 'border-b', 'border-gray-800');
+      } else {
+        header.classList.remove('bg-gray-950/95', 'backdrop-blur-md', 'border-b', 'border-gray-800');
+      }
+    });
+
+    // FAQ toggle
+    function toggleFaq(index) {
+      const content = document.getElementById(`faq-content-${index}`);
+      const icon = document.getElementById(`faq-icon-${index}`);
+      
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+      } else {
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+      }
+    }
+  </script>
+</body>
+</html>

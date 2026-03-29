@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Polymarket Elon Musk Tweet Prediction Market Scraper
-Scrapes range market prices from Polymarket and saves to Gist
+Uses Gamma API to get market data and prices
 """
 
 import json
@@ -10,90 +10,104 @@ import requests
 from datetime import datetime
 from typing import Dict, List, Optional
 
-GIST_URL = "https://gist.github.com/coveym/REPLACE_WITH_YOUR_GIST_ID"
-GIST_TOKEN = "ghp_REPLACE_WITH_YOUR_GITHUB_TOKEN"
+GIST_URL = "https://gist.github.com/coveym/d174b4498c408076ff218e164f24807e"
+GIST_TOKEN = "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"
 GIST_FILE = "polymarket-data.json"
 
-# Polymarket market slugs for 7-day tweet prediction markets
+GAMMA_API = "https://gamma-api.polymarket.com"
+
 MARKET_SLUGS = [
+    "elon-musk-of-tweets-march-24-march-31",
     "elon-musk-of-tweets-march-27-april-3",
     "elon-musk-of-tweets-march-31-april-7",
-    "elon-musk-of-tweets-april-7-april-14",
 ]
 
 
-def scrape_polymarket_page(slug: str) -> Optional[Dict]:
-    """Scrape Polymarket page for range market data"""
-    url = f"https://polymarket.com/event/{slug}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
+def get_event_data(slug: str) -> Optional[Dict]:
+    """Fetch event data from Gamma API"""
+    url = f"{GAMMA_API}/events"
+    params = {"slug": slug}
 
     try:
-        response = requests.get(url, headers=headers, timeout=30)
+        response = requests.get(url, params=params, timeout=30)
         response.raise_for_status()
-        html = response.text
+        data = response.json()
 
-        # Extract JSON data from the page
-        # Look for embedded market data
-        data = {
+        if not data or len(data) == 0:
+            return None
+
+        event = data[0]
+        return {
             "slug": slug,
-            "url": url,
+            "title": event.get("title"),
+            "volume": event.get("volume"),
+            "liquidity": event.get("liquidity"),
+            "end_date": event.get("endDate"),
+            "markets": event.get("markets", []),
             "scraped_at": datetime.utcnow().isoformat(),
             "ranges": [],
         }
-
-        # Extract price and range data using regex
-        # Pattern: "price":"X","groupItemTitle":"100-119"
-        price_range_pattern = r'"price":"([0-9.]+)","groupItemTitle":"([^"]+)"'
-        matches = re.findall(price_range_pattern, html)
-
-        if matches:
-            for price, range_label in matches:
-                # Filter for numeric ranges only
-                if re.match(r"^\d+-\d+$", range_label):
-                    prob = float(price) * 100  # Convert to percentage
-                    data["ranges"].append(
-                        {
-                            "range": range_label,
-                            "price": round(prob, 2),
-                            "price_raw": price,
-                        }
-                    )
-
-        # Sort by range
-        def sort_key(item):
-            range_str = item["range"]
-            if range_str.startswith("<"):
-                return 0
-            elif range_str.endswith("+"):
-                return 9999
-            else:
-                return int(range_str.split("-")[0])
-
-        data["ranges"] = sorted(data["ranges"], key=sort_key)
-
-        # Extract current answer if available
-        answer_pattern = r'"answer":"([^"]+)"'
-        answer_match = re.search(answer_pattern, html)
-        if answer_match:
-            data["current_answer"] = answer_match.group(1)
-
-        # Extract market title
-        title_pattern = r'"headline":"([^"]+)"'
-        title_match = re.search(title_pattern, html)
-        if not title_match:
-            title_pattern = r"<title>([^<]+)</title>"
-            title_match = re.search(title_pattern, html)
-        if title_match:
-            data["title"] = title_match.group(1)
-
-        return data if data["ranges"] else None
-
     except Exception as e:
-        print(f"Error scraping {slug}: {e}")
+        print(f"Error fetching event {slug}: {e}")
         return None
+
+
+def extract_range(question: str) -> Optional[str]:
+    """Extract range from question text like 'Will Elon Musk post 240-259 tweets...'"""
+    match = re.search(r"(\d+-\d+)", question)
+    return match.group(1) if match else None
+
+
+def scrape_polymarket_event(slug: str) -> Optional[Dict]:
+    """Scrape complete market data for an event"""
+    event_data = get_event_data(slug)
+    if not event_data:
+        return None
+
+    ranges_data = []
+    for market in event_data.get("markets", []):
+        question = market.get("question", "")
+        range_str = extract_range(question)
+
+        if range_str:
+            outcome_prices = market.get("outcomePrices", "[]")
+            try:
+                prices = (
+                    json.loads(outcome_prices)
+                    if isinstance(outcome_prices, str)
+                    else outcome_prices
+                )
+                price = float(prices[0]) * 100 if prices else None
+            except:
+                price = None
+
+            ranges_data.append(
+                {
+                    "range": range_str,
+                    "price": round(price, 2) if price else None,
+                    "liquidity": float(market.get("liquidity", 0))
+                    if market.get("liquidity")
+                    else 0,
+                    "slug": market.get("slug", ""),
+                }
+            )
+
+    # Sort by range
+    def sort_key(item):
+        range_str = item["range"]
+        if "-" in range_str:
+            return int(range_str.split("-")[0])
+        return 9999
+
+    ranges_data = sorted(ranges_data, key=sort_key)
+    event_data["ranges"] = ranges_data
+
+    # Calculate top ranges
+    valid_ranges = [r for r in ranges_data if r.get("price")]
+    valid_ranges.sort(key=lambda x: x["price"], reverse=True)
+    event_data["top_ranges"] = valid_ranges[:3]
+
+    return event_data
 
 
 def update_gist(data: List[Dict]) -> bool:
@@ -135,16 +149,20 @@ def main():
     all_data = []
 
     for slug in MARKET_SLUGS:
-        print(f"Scraping {slug}...")
-        data = scrape_polymarket_page(slug)
+        print(f"Fetching {slug}...")
+        data = scrape_polymarket_event(slug)
         if data:
             all_data.append(data)
             print(f"  Found {len(data['ranges'])} ranges")
+            if data.get("top_ranges"):
+                top = ", ".join(
+                    [f"{r['range']}: {r['price']}%" for r in data["top_ranges"]]
+                )
+                print(f"  Top: {top}")
         else:
             print(f"  No data found")
 
     if all_data:
-        # Try to update Gist
         if "coveym" not in GIST_URL or "REPLACE" in GIST_TOKEN:
             print("\n⚠️  Gist not configured. Data:")
             print(json.dumps(all_data, indent=2, ensure_ascii=False))
