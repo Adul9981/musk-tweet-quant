@@ -274,6 +274,7 @@ export default function App() {
     const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
     const dispersionK = 2.2;
     const sigma = Math.max(25, sigmaBase * dispersionK);
+    const sigmaCalc = Math.max(10, sigmaBase);
 
     const normalCDF = (x: number): number => {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
@@ -288,12 +289,12 @@ export default function App() {
     const calculateRawProb = (min: number, max: number): number => {
       const adjustedMin = min - 0.5;
       const adjustedMax = max + 0.5;
-      const zMin = (adjustedMin - mu) / sigma;
-      const zMax = (adjustedMax - mu) / sigma;
+      const zMin = (adjustedMin - mu) / sigmaCalc;
+      const zMax = (adjustedMax - mu) / sigmaCalc;
       return Math.max(0, normalCDF(zMax) - normalCDF(zMin));
     };
 
-    return { mu, sigma, E_rem, calculateRawProb, normalCDF };
+    return { mu, sigma, sigmaCalc, dispersionK, E_rem, calculateRawProb, normalCDF };
   }, [currentTweetCount, remainingHours, compositeVelocity]);
 
   const predictedCenter = Math.round(probabilityModel.mu);
@@ -828,15 +829,19 @@ export default function App() {
                       <span className="text-sm font-semibold text-cyan-400">{probabilityModel.mu.toFixed(0)} 条</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">标准差 σ</span>
-                      <span className="text-sm font-semibold text-yellow-400">{probabilityModel.sigma.toFixed(2)}</span>
+                      <span className="text-sm text-gray-400">计算标准差 σ</span>
+                      <span className="text-sm font-semibold text-yellow-400">{probabilityModel.sigmaCalc.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
+                      <span className="text-sm text-gray-400">发疯系数</span>
+                      <span className="text-sm font-semibold text-orange-400">{probabilityModel.dispersionK.toFixed(1)} (仅供参考)</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">剩余推文</span>
                       <span className="text-sm font-semibold text-gray-300">{probabilityModel.E_rem.toFixed(0)} 条</span>
                     </div>
                     <div className="border-t border-gray-700 pt-3 text-xs text-gray-500">
-                      基于过度离散正态逼近模型 + 连续性修正 + 概率归一化
+                      基于正态逼近模型 + 连续性修正 + 概率归一化
                     </div>
                   </div>
                 </section>
