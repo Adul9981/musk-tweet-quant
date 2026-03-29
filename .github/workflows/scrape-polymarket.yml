@@ -1,0 +1,34 @@
+name: Scrape Polymarket Data
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run scraper
+        env:
+          GIST_URL: ${{ secrets.GIST_URL }}
+          GIST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Update the scraper with Gist URL
+          sed -i 's|https://gist.github.com/coveym/REPLACE_WITH_YOUR_GIST_ID|${{ secrets.GIST_URL }}|g' scripts/scrape_polymarket.py
+          
+          # Run the scraper
+          python scripts/scrape_polymarket.py
