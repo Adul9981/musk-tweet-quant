@@ -47,29 +47,43 @@ export default async function handler(req, res) {
           const statsResponse = await fetch(
             `https://xtracker.polymarket.com/api/trackings/${tracking.id}?includeStats=true`
           );
-          if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            if (statsData.success && statsData.data.stats) {
-              const daily = statsData.data.stats.daily || [];
-              const today = new Date().toISOString().split('T')[0];
-              const todayData = daily.filter(d => d.date.startsWith(today));
-              const todayTotal = todayData.reduce((sum, d) => sum + d.count, 0);
-              
-              return {
-                ...tracking,
-                stats: {
-                  total: statsData.data.stats.total,
-                  pace: statsData.data.stats.pace,
-                  percentComplete: statsData.data.stats.percentComplete,
-                  daysElapsed: statsData.data.stats.daysElapsed,
-                  daysRemaining: statsData.data.stats.daysRemaining,
-                  daysTotal: statsData.data.stats.daysTotal,
-                  daily: daily,
-                  todayTotal: todayTotal,
-                },
-              };
-            }
-          }
+                if (statsResponse.ok) {
+                  const statsData = await statsResponse.json();
+                  if (statsData.success && statsData.data.stats) {
+                    const daily = statsData.data.stats.daily || [];
+                    const now = new Date();
+                    const endDate = new Date(tracking.endDate);
+                    const diffMs = endDate.getTime() - now.getTime();
+                    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    
+                    const todayBeijing = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    const todayData = daily.filter(d => {
+                      const dDate = new Date(d.date);
+                      const dBeijing = new Date(dDate.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                      return dBeijing === todayBeijing;
+                    });
+                    const todayTotal = todayData.reduce((sum, d) => sum + d.count, 0);
+                    
+                    const elapsed = statsData.data.stats.daysElapsed;
+                    const actualPace = elapsed > 0 ? Math.round(statsData.data.stats.total / elapsed) : 0;
+                    
+                    return {
+                      ...tracking,
+                      stats: {
+                        total: statsData.data.stats.total,
+                        pace: actualPace,
+                        percentComplete: statsData.data.stats.percentComplete,
+                        daysElapsed: statsData.data.stats.daysElapsed,
+                        daysRemaining: daysRemaining,
+                        hoursRemaining: hoursRemaining,
+                        daysTotal: statsData.data.stats.daysTotal,
+                        daily: daily,
+                        todayTotal: todayTotal,
+                      },
+                    };
+                  }
+                }
         } catch (e) {
           console.error(`Failed to fetch stats for ${tracking.id}:`, e);
         }

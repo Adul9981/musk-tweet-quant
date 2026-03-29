@@ -20,6 +20,7 @@ interface TrackingData {
     percentComplete: number;
     daysElapsed: number;
     daysRemaining: number;
+    hoursRemaining: number;
     daysTotal: number;
     daily: Array<{ date: string; count: number; cumulative: number }>;
     todayTotal: number;
@@ -65,6 +66,25 @@ const getTimeAgo = (date: Date): string => {
   if (diffHours < 24) return `${diffHours}小时前`;
   if (diffDays < 7) return `${diffDays}天前`;
   return date.toLocaleDateString('zh-CN');
+};
+
+const parseTitleToCN = (title: string): string => {
+  const match = title.match(/March\s*(\d+)\s*-\s*(March|April)\s*(\d+)/i);
+  if (match) {
+    const startMonth = match[1];
+    const endMonth = match[2];
+    const endDay = match[3];
+    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月' };
+    return `${startMonth}日-${monthMap[endMonth]}${endDay}日`;
+  }
+  const monthMatch = title.match(/(March|April|May)\s+(\d+)/i);
+  if (monthMatch) {
+    const month = monthMatch[1];
+    const day = monthMatch[2];
+    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月', 'May': '5月' };
+    return `${monthMap[month]}${day}日`;
+  }
+  return '';
 };
 
 const CACHE_KEY = 'musk_tweet_heatmap_data';
@@ -423,46 +443,60 @@ export function TweetHeatmap() {
             7天推文预测市场
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {trackings.slice(0, 3).map((tracking) => (
-              <a
-                key={tracking.id}
-                href={tracking.marketLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block bg-gray-800/50 hover:bg-gray-800 rounded-lg p-3 border border-gray-700/50 transition-colors"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-400 truncate flex-1">{tracking.title}</span>
-                  <ExternalLink className="w-3 h-3 text-gray-500 ml-2 flex-shrink-0" />
-                </div>
-                {tracking.stats && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">当前总数</span>
-                      <span className="text-lg font-bold text-yellow-400">{tracking.stats.total}</span>
+            {[...trackings]
+              .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
+              .slice(0, 3)
+              .map((tracking) => {
+                const titleCN = parseTitleToCN(tracking.title);
+                const remainingText = tracking.stats 
+                  ? (tracking.stats.hoursRemaining > 0 
+                      ? `${tracking.stats.daysRemaining}天${tracking.stats.hoursRemaining}小时` 
+                      : `${tracking.stats.daysRemaining}天`)
+                  : '';
+                return (
+                  <a
+                    key={tracking.id}
+                    href={tracking.marketLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-gray-800/50 hover:bg-gray-800 rounded-lg p-3 border border-gray-700/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs text-gray-400 truncate block">{tracking.title}</span>
+                        <span className="text-xs text-cyan-400 truncate block">{titleCN}</span>
+                      </div>
+                      <ExternalLink className="w-3 h-3 text-gray-500 ml-2 flex-shrink-0" />
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">今日</span>
-                      <span className="text-cyan-400">{tracking.stats.todayTotal}条</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">日均</span>
-                      <span className="text-gray-300">{tracking.stats.pace}/天</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">剩余</span>
-                      <span className="text-gray-400">{tracking.stats.daysRemaining}天</span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                      <div 
-                        className="bg-cyan-400 h-1.5 rounded-full" 
-                        style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </a>
-            ))}
+                    {tracking.stats && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">当前总数</span>
+                          <span className="text-lg font-bold text-yellow-400">{tracking.stats.total}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">今日(北京时间)</span>
+                          <span className="text-cyan-400">{tracking.stats.todayTotal}条</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">已往日均</span>
+                          <span className="text-gray-300">{tracking.stats.pace}条/天</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">剩余</span>
+                          <span className="text-gray-400">{remainingText}</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2">
+                          <div 
+                            className="bg-cyan-400 h-1.5 rounded-full" 
+                            style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </a>
+                );
+              })}
           </div>
         </div>
       )}
@@ -513,7 +547,8 @@ export function TweetHeatmap() {
               <span className="text-gray-400">当前时段</span>
             </div>
             <span className="text-gray-400">
-              历史高峰: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
+              高峰时段: <span className="text-yellow-400 font-semibold">{stats.peakHour.hour}:00</span>
+              <span className="text-gray-500 text-[10px] ml-1">(基于15天历史数据)</span>
             </span>
             <span className="text-gray-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
           </div>
