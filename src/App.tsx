@@ -92,6 +92,13 @@ function parseMarketTitle(title: string): string {
     .replace(/February\s*(\d+)/g, '2月$1日');
 }
 
+function parseTimestamp(ts: string): Date {
+  if (!ts.endsWith('Z') && !ts.includes('+')) {
+    ts = ts + 'Z';
+  }
+  return new Date(ts);
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
@@ -238,50 +245,58 @@ export default function App() {
 
   const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
 
-  const historicalDaily = currentTracking?.stats?.daily?.map(d => d.count) || [];
-  
-  const baseStats = useMemo(() => {
-    if (historicalDaily.length < 2) return { mean: 0, stdDev: 0, cv: 0 };
-    const mean = historicalDaily.reduce((a, b) => a + b, 0) / historicalDaily.length;
-    const variance = historicalDaily.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / historicalDaily.length;
-    const stdDev = Math.sqrt(variance);
-    const cv = mean > 0 ? stdDev / mean : 0;
-    return { mean, stdDev, cv };
-  }, [historicalDaily]);
-
-  const currentVolatility = useMemo(() => {
-    if (historicalDaily.length < 3) return { hourlyStd: 0, hourlyCV: 0, ratio: 1 };
-    const recentDays = historicalDaily.slice(-3);
-    const recentMean = recentDays.reduce((a, b) => a + b, 0) / recentDays.length;
-    const recentVariance = recentDays.reduce((sum, x) => sum + Math.pow(x - recentMean, 2), 0) / recentDays.length;
-    const recentStd = Math.sqrt(recentVariance);
-    const recentCV = recentMean > 0 ? recentStd / recentMean : 0;
-    const ratio = baseStats.mean > 0 ? recentCV / baseStats.cv : 1;
-    const hourlyStd = recentStd / Math.sqrt(24);
-    const hourlyCV = recentMean / 24 > 0 ? hourlyStd / (recentMean / 24) : 0;
-    return { hourlyStd, hourlyCV, ratio };
-  }, [historicalDaily, baseStats]);
-
-  const elonMultiplier = useMemo(() => {
-    const base = baseStats.stdDev || Math.sqrt(currentTweetCount) * 2.2;
-    const adjustment = Math.min(Math.max(currentVolatility.ratio, 0.5), 2.0);
-    return base * adjustment;
-  }, [baseStats, currentVolatility, currentTweetCount]);
-
   const snapshotVal = typeof snapshotCount === 'number' ? snapshotCount : 0;
   const hoursVal = typeof hoursSinceSnapshot === 'number' && hoursSinceSnapshot > 0 ? hoursSinceSnapshot : 0;
+  
+  const daysElapsed = currentTracking?.stats?.percentComplete ? (currentTracking.stats.percentComplete / 100) * (currentTracking.stats.daysTotal || 7) : 0;
+  const hoursElapsed = daysElapsed * 24;
+  const currentVelocity = hoursElapsed > 0 ? currentTweetCount / hoursElapsed : 0;
   
   const dynamicVelocity = hoursVal > 0 && snapshotVal > 0 && snapshotVal < currentTweetCount
     ? (currentTweetCount - snapshotVal) / hoursVal 
     : 0;
-  const avgPace = currentTracking?.stats?.pace || 0;
-  const avgVelocity = avgPace / 24;
+  
   const compositeVelocity = dynamicVelocity > 0 
-    ? avgVelocity * 0.6 + dynamicVelocity * 0.4 
-    : avgVelocity;
-  const remainingHours = ((currentTracking?.stats?.daysRemaining || 7) * 24) + (currentTracking?.stats?.hoursRemaining || 0);
-  const expectedCenter = currentTweetCount + compositeVelocity * remainingHours;
-  const currentHourlyRate = compositeVelocity;
+    ? currentVelocity * 0.6 + dynamicVelocity * 0.4 
+    : currentVelocity;
+  
+  const daysTotal = currentTracking?.stats?.daysTotal || 7;
+  const totalHours = daysTotal * 24;
+  const remainingHours = Math.max(0, totalHours - hoursElapsed);
+
+  const probabilityModel = useMemo(() => {
+    const C = currentTweetCount;
+    const T = remainingHours;
+    const R = compositeVelocity;
+
+    const E_rem = T * R;
+    const mu = C + E_rem;
+    const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
+    const dispersionK = 2.2;
+    const sigma = Math.max(25, sigmaBase * dispersionK);
+
+    const normalCDF = (x: number): number => {
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      const sign = x < 0 ? -1 : 1;
+      x = Math.abs(x) / Math.sqrt(2);
+      const t = 1.0 / (1.0 + p * x);
+      const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+      return 0.5 * (1.0 + sign * y);
+    };
+
+    const calculateRawProb = (min: number, max: number): number => {
+      const adjustedMin = min - 0.5;
+      const adjustedMax = max + 0.5;
+      const zMin = (adjustedMin - mu) / sigma;
+      const zMax = (adjustedMax - mu) / sigma;
+      return Math.max(0, normalCDF(zMax) - normalCDF(zMin));
+    };
+
+    return { mu, sigma, E_rem, calculateRawProb, normalCDF };
+  }, [currentTweetCount, remainingHours, compositeVelocity]);
+
+  const predictedCenter = Math.round(probabilityModel.mu);
 
   const analysisData = useMemo(() => {
     if (!currentMarket?.ranges) return [];
@@ -290,49 +305,33 @@ export default function App() {
       parsed: parseRange(r.range)
     })).filter(d => d.parsed && d.price >= 3);
 
-    const center = expectedCenter;
-    return ranges.map(r => {
-      const parsed = r.parsed!;
-      const isCenter = center >= parsed.min && center <= parsed.max;
-      const diff = Math.abs(parsed.min - center);
-      return { ...r, isCenter, diff };
-    }).sort((a, b) => a.parsed!.min - b.parsed!.min);
-  }, [currentMarket, expectedCenter]);
+    const rawProbs = ranges.map(r => ({
+      ...r,
+      rawProb: r.parsed ? probabilityModel.calculateRawProb(r.parsed.min, r.parsed.max) : 0
+    }));
 
-  const predictedCenter = Math.round(expectedCenter);
+    const totalRawProb = rawProbs.reduce((sum, r) => sum + r.rawProb, 0);
+
+    return rawProbs.map(r => {
+      const parsed = r.parsed!;
+      const normalizedProb = totalRawProb > 0 ? (r.rawProb / totalRawProb) * 100 : 0;
+      const isCenter = probabilityModel.mu >= parsed.min && probabilityModel.mu <= parsed.max;
+      return { ...r, normalizedProb, isCenter };
+    }).sort((a, b) => (a.parsed?.min || 0) - (b.parsed?.min || 0));
+  }, [currentMarket, probabilityModel]);
 
   const handleSelectMarket = (index: number) => {
     setSelectedMarketIndex(index);
   };
 
-  const normalCDF = (x: number): number => {
-    const a1 = 0.254829592;
-    const a2 = -0.284496736;
-    const a3 = 1.421413741;
-    const a4 = -1.453152027;
-    const a5 = 1.061405429;
-    const p = 0.3275911;
-    
-    const sign = x < 0 ? -1 : 1;
-    x = Math.abs(x) / Math.sqrt(2);
-    
-    const t = 1.0 / (1.0 + p * x);
-    const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-    
-    return 0.5 * (1.0 + sign * y);
-  };
-
   const calculateIntervalAnalysis = (item: typeof analysisData[0]) => {
-    if (!item.parsed) return null;
+    if (!item?.parsed) return null;
     const marketPrice = item.price;
-    const mu = predictedCenter;
-    const sigma = Math.max(Math.sqrt(currentTweetCount) * elonMultiplier, 1);
-    
-    const zMin = (item.parsed.min - mu) / sigma;
-    const zMax = (item.parsed.max - mu) / sigma;
-    const trueProb = (normalCDF(zMax) - normalCDF(zMin)) * 100;
+    const trueProb = item.normalizedProb;
     
     const alpha = marketPrice > 0 ? trueProb / marketPrice : 1;
+    const edge = trueProb - marketPrice;
+    
     const minVelocity = remainingHours > 0 ? (item.parsed.min - currentTweetCount) / remainingHours : Infinity;
     const maxVelocity = remainingHours > 0 ? (item.parsed.max - currentTweetCount) / remainingHours : Infinity;
     
@@ -341,7 +340,7 @@ export default function App() {
       marketPrice,
       trueProb: Math.max(0, Math.min(trueProb, 100)),
       alpha,
-      signal: alpha > 1.05 ? 'buy' : alpha < 0.8 ? 'sell' : 'hold',
+      edge,
       minVelocity: minVelocity === Infinity ? Infinity : Math.max(0, minVelocity),
       maxVelocity: maxVelocity === Infinity ? Infinity : Math.max(0, maxVelocity),
       parsed: item.parsed,
@@ -387,9 +386,14 @@ export default function App() {
                 {phase.name}
               </span>
               {lastUpdated && (
-                <span className="text-xs text-gray-500 hidden sm:block">
-                  {new Date(lastUpdated).toLocaleTimeString('zh-CN')}
-                </span>
+                <div className="flex items-center gap-2 text-xs hidden sm:flex">
+                  <span className="text-yellow-400 font-semibold">
+                    北京 {parseTimestamp(lastUpdated).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-gray-600">
+                    美东 {parseTimestamp(lastUpdated).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               )}
               <a
                 href={`https://polymarket.com/event/${currentMarket?.slug || 'elon-musk-of-tweets-march-24-march-31'}${REFERRAL}`}
@@ -516,7 +520,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        基于当前时速 {currentHourlyRate.toFixed(2)} 条/小时
+                        基于当前时速 {compositeVelocity.toFixed(2)} 条/小时
                       </div>
                     </div>
                     
@@ -666,9 +670,14 @@ export default function App() {
                     </h2>
                     <div className="flex items-center gap-2">
                       {lastUpdated && (
-                        <span className="text-xs text-gray-500">
-                          数据更新: {new Date(lastUpdated).toLocaleTimeString('zh-CN')}
-                        </span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-yellow-400 font-semibold">
+                            北京 {parseTimestamp(lastUpdated).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-gray-600">
+                            美东 {parseTimestamp(lastUpdated).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       )}
                       <button
                         onClick={() => window.location.reload()}
@@ -683,13 +692,11 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="text-xs text-gray-400 border-b border-gray-700">
-                          <th className="text-left py-3 px-3 font-semibold">区间</th>
-                          <th className="text-right py-3 px-3 font-semibold">市场%</th>
-                          <th className="text-right py-3 px-3 font-semibold">真实%</th>
-                          <th className="text-right py-3 px-3 font-semibold">Alpha</th>
-                          <th className="text-center py-3 px-3 font-semibold">信号</th>
-                          <th className="text-right py-3 px-3 font-semibold">最低时速</th>
-                          <th className="text-right py-3 px-3 font-semibold">最高时速</th>
+                          <th className="text-left py-3 px-2 font-semibold">区间</th>
+                          <th className="text-right py-3 px-2 font-semibold">市场%</th>
+                          <th className="text-right py-3 px-2 font-semibold">AI概率%</th>
+                          <th className="text-right py-3 px-2 font-semibold">Edge</th>
+                          <th className="text-right py-3 px-2 font-semibold">Alpha</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -704,37 +711,26 @@ export default function App() {
                                 item.alpha < 1.0 ? 'bg-rose-500/10' : ''
                               }`}
                             >
-                              <td className={`py-3 px-3 font-semibold ${item.isCenter ? 'text-yellow-400' : 'text-white'}`}>
+                              <td className={`py-3 px-2 font-semibold ${item.isCenter ? 'text-yellow-400' : 'text-white'}`}>
                                 [{item.range}]
                               </td>
-                              <td className="py-3 px-3 text-right text-gray-400">
+                              <td className="py-3 px-2 text-right text-gray-400">
                                 {item.marketPrice.toFixed(2)}%
                               </td>
-                              <td className="py-3 px-3 text-right text-cyan-400 font-medium">
+                              <td className="py-3 px-2 text-right text-cyan-400 font-medium">
                                 {item.trueProb.toFixed(2)}%
                               </td>
-                              <td className={`py-3 px-3 text-right font-bold ${
+                              <td className={`py-3 px-2 text-right font-bold ${
+                                item.edge > 0 ? 'text-emerald-400' : 
+                                item.edge < 0 ? 'text-rose-400' : 'text-gray-400'
+                              }`}>
+                                {item.edge > 0 ? '+' : ''}{item.edge.toFixed(2)}%
+                              </td>
+                              <td className={`py-3 px-2 text-right font-bold ${
                                 item.alpha > 1.0 ? 'text-emerald-400' : 
                                 item.alpha < 1.0 ? 'text-rose-400' : 'text-gray-400'
                               }`}>
                                 {item.alpha.toFixed(2)}
-                              </td>
-                              <td className="py-3 px-3 text-center">
-                                <span className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
-                                  item.alpha > 1.0 
-                                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' 
-                                    : item.alpha < 1.0 
-                                    ? 'bg-rose-500/20 border-rose-500/40 text-rose-400'
-                                    : 'bg-gray-500/20 border-gray-500/40 text-gray-400'
-                                }`}>
-                                  {item.alpha > 1.0 ? '低估' : item.alpha < 1.0 ? '高估' : '合理'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-3 text-right text-gray-400 text-xs">
-                                {item.minVelocity === Infinity ? '∞' : `${item.minVelocity.toFixed(2)}/h`}
-                              </td>
-                              <td className="py-3 px-3 text-right text-gray-400 text-xs">
-                                {item.maxVelocity === Infinity ? '∞' : `${item.maxVelocity.toFixed(2)}/h`}
                               </td>
                             </tr>
                           ))}
@@ -742,7 +738,7 @@ export default function App() {
                     </table>
                   </div>
                   <p className="text-xs text-gray-500 mt-3">
-                    Alpha &gt; 1.0 = 低估(买入机会) | Alpha &lt; 1.0 = 高估(卖出机会)
+                    Alpha &gt; 1.0 = 低估(买入) | Alpha &lt; 1.0 = 高估(卖出)
                   </p>
                 </section>
 
@@ -805,7 +801,7 @@ export default function App() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">全局均速</span>
-                      <span className="text-sm font-semibold text-emerald-400">{(avgPace / 24).toFixed(2)}/h</span>
+                      <span className="text-sm font-semibold text-emerald-400">{(currentVelocity).toFixed(2)}/h</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">动态时速</span>
@@ -824,30 +820,23 @@ export default function App() {
                 <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
                   <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-yellow-400" />
-                    老马发疯系数
+                    概率模型参数
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">历史日均</span>
-                      <span className="text-sm font-semibold text-gray-300">{baseStats.mean.toFixed(1)} 条/天</span>
+                      <span className="text-sm text-gray-400">预期落点 μ</span>
+                      <span className="text-sm font-semibold text-cyan-400">{probabilityModel.mu.toFixed(0)} 条</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">历史标准差</span>
-                      <span className="text-sm font-semibold text-gray-300">{baseStats.stdDev.toFixed(2)}</span>
+                      <span className="text-sm text-gray-400">标准差 σ</span>
+                      <span className="text-sm font-semibold text-yellow-400">{probabilityModel.sigma.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">波动率调整</span>
-                      <span className={`text-sm font-semibold ${
-                        currentVolatility.ratio > 1.2 ? 'text-rose-400' : 
-                        currentVolatility.ratio < 0.8 ? 'text-emerald-400' : 'text-gray-300'
-                      }`}>
-                        {currentVolatility.ratio.toFixed(2)}x
-                        {currentVolatility.ratio > 1.2 ? ' ↑发疯中' : currentVolatility.ratio < 0.8 ? ' ↓平静' : ''}
-                      </span>
+                      <span className="text-sm text-gray-400">剩余推文</span>
+                      <span className="text-sm font-semibold text-gray-300">{probabilityModel.E_rem.toFixed(0)} 条</span>
                     </div>
-                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
-                      <span className="text-sm font-semibold text-white">动态σ</span>
-                      <span className="text-xl font-bold text-yellow-400">{elonMultiplier.toFixed(2)}</span>
+                    <div className="border-t border-gray-700 pt-3 text-xs text-gray-500">
+                      基于过度离散正态逼近模型 + 连续性修正 + 概率归一化
                     </div>
                   </div>
                 </section>

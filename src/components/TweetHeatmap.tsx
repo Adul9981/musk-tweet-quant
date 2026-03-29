@@ -235,7 +235,7 @@ export function TweetHeatmap() {
             {lastUpdated && (
               <span className="text-xs text-gray-500">
                 {isFromCache && <span className="text-yellow-500/60 mr-1">[缓存]</span>}
-                更新: {lastUpdated.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                更新: {new Date(lastUpdated).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
           </div>
