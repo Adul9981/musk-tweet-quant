@@ -34,12 +34,12 @@ interface PostData {
 }
 
 const getColorForCount = (count: number): string => {
-  if (count === 0) return '#0d4f4f';
-  if (count <= 3) return '#f5e6a3';
-  if (count <= 7) return '#f5d066';
-  if (count <= 12) return '#f5b833';
-  if (count <= 18) return '#e69500';
-  return '#cc7000';
+  if (count === 0) return '#161b22';
+  if (count <= 3) return '#0e4429';
+  if (count <= 7) return '#006d32';
+  if (count <= 12) return '#26a641';
+  if (count <= 18) return '#39d353';
+  return '#00ff00';
 };
 
 const formatDate = (dateStr: string): string => {
@@ -69,15 +69,16 @@ const getTimeAgo = (date: Date): string => {
 };
 
 const parseTitleToCN = (title: string): string => {
-  const match = title.match(/March\s*(\d+)\s*-\s*(March|April)\s*(\d+)/i);
+  const match = title.match(/(March|April|May)\s*(\d+)\s*-\s*(March|April|May)\s*(\d+)/i);
   if (match) {
     const startMonth = match[1];
-    const endMonth = match[2];
-    const endDay = match[3];
-    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月' };
-    return `${startMonth}日-${monthMap[endMonth]}${endDay}日`;
+    const startDay = match[2];
+    const endMonth = match[3];
+    const endDay = match[4];
+    const monthMap: { [key: string]: string } = { 'March': '3月', 'April': '4月', 'May': '5月' };
+    return `${monthMap[startMonth]}${startDay}日-${monthMap[endMonth]}${endDay}日`;
   }
-  const monthMatch = title.match(/(March|April|May)\s+(\d+)/i);
+  const monthMatch = title.match(/(March|April|May)\s+(\d+),?\s*(\d{4})/i);
   if (monthMatch) {
     const month = monthMatch[1];
     const day = monthMatch[2];
@@ -527,17 +528,17 @@ export function TweetHeatmap() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-500">图例</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#161b22' }} />
               <span className="text-xs text-gray-500 mr-2">无</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0e4429' }} />
               <span className="text-xs text-gray-500 mr-2">1-3</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#006d32' }} />
               <span className="text-xs text-gray-500 mr-2">4-7</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#26a641' }} />
               <span className="text-xs text-gray-500 mr-2">8-12</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#39d353' }} />
               <span className="text-xs text-gray-500 mr-2">13-18</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#00ff00' }} />
               <span className="text-xs text-gray-500">19+</span>
             </div>
           </div>
