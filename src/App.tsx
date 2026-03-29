@@ -801,97 +801,143 @@ export default function App() {
                     {(() => {
                       const validItems = analysisData.filter(item => item.parsed && item.price >= 3);
                       const totalBudget = 1000;
+                      const mu = probabilityModel.mu;
                       
-                      const itemsWithEV = validItems.map(item => {
+                      const coreRange = validItems.find(item => 
+                        item.parsed && mu >= item.parsed.min && mu <= item.parsed.max
+                      );
+                      
+                      const coreIdx = validItems.findIndex(item => item === coreRange);
+                      
+                      const strategyItems = validItems.map((item, idx) => {
                         const marketProb = item.price / 100;
                         const trueProb = item.normalizedProb / 100;
                         const ev = marketProb > 0 ? (trueProb / marketProb - 1) : 0;
-                        const expectedReturn = marketProb > 0 ? (trueProb * (1 / marketProb) - 1) * 100 : 0;
-                        const kelly = marketProb > 0 ? (trueProb - (1 - trueProb) / (1 / marketProb - 1)) : 0;
-                        return { ...item, ev, expectedReturn: expectedReturn / 100, kellyPercent: Math.max(0, Math.min(kelly, 0.3)) };
-                      }).filter(item => item.normalizedProb > 3);
+                        const relativePos = idx - coreIdx;
+                        return { ...item, ev, relativePos, kelly: Math.max(0, Math.min((trueProb - (1 - trueProb) / (1/marketProb - 1)), 0.25)) };
+                      });
 
-                      const totalEV = itemsWithEV.reduce((sum, item) => sum + item.expectedReturn, 0);
-                      const positiveEV = itemsWithEV.filter(item => item.ev > 0).sort((a, b) => b.ev - a.ev);
-                      const totalKelly = positiveEV.reduce((sum, item) => sum + item.kellyPercent, 0);
+                      const positiveEV = strategyItems.filter(item => item.ev > 0);
+                      const coreItem = positiveEV.find(item => item.relativePos === 0);
+                      const upperItems = positiveEV.filter(item => item.relativePos < 0).sort((a, b) => a.relativePos - b.relativePos);
+                      const lowerItems = positiveEV.filter(item => item.relativePos > 0).sort((a, b) => a.relativePos - b.relativePos);
+                      
+                      const coreBudget = coreItem ? totalBudget * 0.6 : totalBudget * 0.8;
+                      const wingBudget = totalBudget - coreBudget;
+                      const halfKelly = 0.5;
+                      
+                      const calculateAllocation = (item: typeof strategyItems[0], budget: number, weight: number) => {
+                        const kellyF = item.kelly * halfKelly;
+                        const baseAllocation = budget * kellyF * weight;
+                        return Math.round(Math.min(baseAllocation, budget * 0.25));
+                      };
 
                       return (
                         <>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div className="bg-gray-900/50 rounded-xl p-3 text-center border border-gray-700/30">
-                              <p className="text-xs text-gray-400 mb-1">总期望收益</p>
-                              <p className={`text-xl font-bold ${totalEV > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                {totalEV > 0 ? '+' : ''}{(totalEV * 100).toFixed(1)}%
-                              </p>
+                          <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/30">
+                            <div className="text-center mb-3">
+                              <p className="text-xs text-gray-400 mb-1">预期落点</p>
+                              <p className="text-2xl font-bold text-cyan-400">~{Math.round(mu)} 条</p>
                             </div>
-                            <div className="bg-gray-900/50 rounded-xl p-3 text-center border border-gray-700/30">
-                              <p className="text-xs text-gray-400 mb-1">正向期望区间</p>
-                              <p className="text-xl font-bold text-cyan-400">{positiveEV.length}</p>
+                            <div className="flex items-center justify-center gap-1">
+                              {strategyItems.map((item, idx) => {
+                                const isCore = item.relativePos === 0;
+                                const width = isCore ? 'w-16' : 'w-10';
+                                const height = item.normalizedProb > 20 ? 'h-12' : item.normalizedProb > 10 ? 'h-10' : 'h-8';
+                                const color = item.ev > 0 ? 'bg-emerald-500/60 border-emerald-400' : 'bg-gray-600/60 border-gray-500';
+                                return (
+                                  <div key={item.range} className={`${width} ${height} ${color} rounded-t-md border flex items-end justify-center pb-1`}>
+                                    <span className="text-xs text-white/80">{idx + 1}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <div className="bg-gray-900/50 rounded-xl p-3 text-center border border-gray-700/30">
-                              <p className="text-xs text-gray-400 mb-1">建议仓位上限</p>
-                              <p className="text-xl font-bold text-yellow-400">{Math.min(100, Math.round(totalKelly * 100))}%</p>
-                            </div>
-                            <div className="bg-gray-900/50 rounded-xl p-3 text-center border border-gray-700/30">
-                              <p className="text-xs text-gray-400 mb-1">最佳赔率</p>
-                              <p className="text-xl font-bold text-purple-400">
-                                {positiveEV[0] ? `${positiveEV[0].range}` : '-'}
-                              </p>
+                            <div className="flex justify-center gap-1 mt-1">
+                              {strategyItems.map((item) => (
+                                <span key={item.range} className="text-xs text-gray-500 w-10 text-center">{item.range.split('-')[0]}</span>
+                              ))}
                             </div>
                           </div>
 
-                          {positiveEV.length > 0 ? (
-                            <div className="space-y-2">
-                              <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
-                                <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
-                                正期望仓位推荐 (按期望收益排序)
-                              </h3>
-                              <div className="space-y-2">
-                                {positiveEV.slice(0, 5).map((item, idx) => {
-                                  const kellyShare = totalKelly > 0 ? item.kellyPercent / totalKelly : 0;
-                                  const allocation = Math.round(totalBudget * kellyShare * 0.5);
-                                  return (
-                                    <div key={item.range} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-xl border border-emerald-500/20">
-                                      <div className="flex items-center gap-3">
-                                        <span className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center text-xs font-bold text-emerald-400">
-                                          {idx + 1}
-                                        </span>
-                                        <div>
-                                          <span className="text-white font-semibold">{item.range}</span>
-                                          <div className="text-xs text-gray-400">
-                                            AI概率 {item.normalizedProb.toFixed(1)}% | 市场 {item.price.toFixed(1)}%
-                                          </div>
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className={`text-sm font-bold ${item.ev > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                          {item.ev > 0 ? '+' : ''}{(item.ev * 100).toFixed(1)}% EV
-                                        </div>
-                                        <div className="text-xs text-gray-400">
-                                          建议 ${allocation}
-                                        </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-amber-500/10 rounded-xl p-3 text-center border border-amber-500/30">
+                              <p className="text-xs text-amber-400 mb-1">上限区间</p>
+                              <p className="text-sm font-bold text-white">{lowerItems.length}个</p>
+                              <p className="text-xs text-gray-400">+{lowerItems.reduce((s,i) => s + Math.round(i.ev * 100), 0)}%</p>
+                            </div>
+                            <div className="bg-emerald-500/10 rounded-xl p-3 text-center border border-emerald-500/30">
+                              <p className="text-xs text-emerald-400 mb-1">核心区间</p>
+                              <p className="text-sm font-bold text-white">{coreItem?.range || '-'}</p>
+                              <p className="text-xs text-gray-400">{coreItem ? `+${Math.round(coreItem.ev * 100)}%` : '无正期望'}</p>
+                            </div>
+                            <div className="bg-purple-500/10 rounded-xl p-3 text-center border border-purple-500/30">
+                              <p className="text-xs text-purple-400 mb-1">下限区间</p>
+                              <p className="text-sm font-bold text-white">{upperItems.length}个</p>
+                              <p className="text-xs text-gray-400">+{upperItems.reduce((s,i) => s + Math.round(i.ev * 100), 0)}%</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                              <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
+                              推荐仓位分配 (总预算 ${totalBudget})
+                            </h3>
+                            
+                            {coreItem && (
+                              <div className="p-4 bg-emerald-500/20 rounded-xl border border-emerald-500/40">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <span className="w-8 h-8 bg-emerald-500/30 rounded-full flex items-center justify-center text-sm font-bold text-emerald-400">核</span>
+                                    <div>
+                                      <span className="text-lg font-bold text-white">核心区间 [{coreItem.range}]</span>
+                                      <div className="text-xs text-gray-400">
+                                        AI {coreItem.normalizedProb.toFixed(1)}% | 市场 {coreItem.price.toFixed(1)}% | Alpha {coreItem.ev > 0 ? '+' : ''}{(coreItem.ev * 100).toFixed(1)}%
                                       </div>
                                     </div>
-                                  );
-                                })}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-lg font-bold text-emerald-400">${Math.round(coreBudget * 0.5)}</div>
+                                    <div className="text-xs text-gray-400">({Math.round(coreBudget * 0.5 / totalBudget * 100)}%)</div>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-gray-700/50 rounded-full h-2">
+                                  <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                                </div>
                               </div>
-                              <p className="text-xs text-gray-500 mt-2">
-                                * Kelly仓位 = f* = p - q/b, 其中 p=AI概率, q=1-p, b=赔率系数。建议使用半凯利(50%)降低风险。
-                              </p>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                              {upperItems.slice(0, 2).map((item) => (
+                                <div key={item.range} className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-semibold text-purple-300">↓ [{item.range}]</span>
+                                    <span className="text-sm font-bold text-purple-400">${calculateAllocation(item, wingBudget * 0.5, 0.5)}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {item.normalizedProb.toFixed(1)}% | Alpha {(item.ev * 100).toFixed(1)}%
+                                  </div>
+                                </div>
+                              ))}
+                              {lowerItems.slice(0, 2).map((item) => (
+                                <div key={item.range} className="p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-sm font-semibold text-amber-300">↑ [{item.range}]</span>
+                                    <span className="text-sm font-bold text-amber-400">${calculateAllocation(item, wingBudget * 0.5, 0.5)}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-400">
+                                    {item.normalizedProb.toFixed(1)}% | Alpha {(item.ev * 100).toFixed(1)}%
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ) : (
-                            <div className="text-center py-6 text-gray-400">
-                              <p className="text-sm">当前所有区间均无正向期望收益</p>
-                              <p className="text-xs mt-1">建议观望或等待市场变化</p>
-                            </div>
-                          )}
+                          </div>
 
                           <div className="border-t border-gray-700/50 pt-4">
-                            <h3 className="text-sm font-semibold text-gray-300 mb-2">风险提示</h3>
+                            <h3 className="text-sm font-semibold text-gray-300 mb-2">策略说明</h3>
                             <ul className="text-xs text-gray-500 space-y-1">
-                              <li>• 模型预测仅供参考，不构成投资建议</li>
-                              <li>• 单一区间仓位不建议超过总资金的20%</li>
-                              <li>• 高Alpha区间 ≠ 高胜率，请结合市场流动性综合判断</li>
+                              <li>• <span className="text-emerald-400">核心区间60%+</span>：重仓预期落点所在区间</li>
+                              <li>• <span className="text-purple-400">上下区间各15-20%</span>：对冲尾部风险</li>
+                              <li>• <span className="text-yellow-400">半Kelly仓位</span>：降低波动，控制最大回撤</li>
                             </ul>
                           </div>
                         </>
