@@ -440,10 +440,10 @@ export function TweetHeatmap() {
       {trackings.length > 0 && (
         <div className="mt-6 pt-4 border-t border-gray-700/50">
           <h4 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" />
+            <TrendingUp className="w-4 h-4 text-yellow-400" />
             7天推文预测市场
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[...trackings]
               .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
               .slice(0, 3)
@@ -460,38 +460,49 @@ export function TweetHeatmap() {
                     href={tracking.marketLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block bg-gray-800/50 hover:bg-gray-800 rounded-lg p-3 border border-gray-700/50 transition-colors"
+                    className="block bg-gradient-to-br from-gray-800 to-gray-900 hover:from-gray-750 hover:to-gray-850 rounded-xl p-4 border border-yellow-500/20 hover:border-yellow-500/40 transition-all hover:shadow-lg hover:shadow-yellow-500/10 group"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs text-gray-400 truncate block">{tracking.title}</span>
-                        <span className="text-xs text-cyan-400 truncate block">{titleCN}</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-yellow-400">{titleCN}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400/80 rounded">7天</span>
+                        </div>
+                        <span className="text-[10px] text-gray-500 truncate block">{tracking.title}</span>
                       </div>
-                      <ExternalLink className="w-3 h-3 text-gray-500 ml-2 flex-shrink-0" />
+                      <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-yellow-400 transition-colors" />
                     </div>
                     {tracking.stats && (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">当前总数</span>
-                          <span className="text-lg font-bold text-yellow-400">{tracking.stats.total}</span>
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-xs text-gray-400">当前总数</span>
+                          <span className="text-2xl font-bold text-white">{tracking.stats.total}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-gray-700/30 rounded-lg px-2 py-1.5">
+                            <div className="text-[10px] text-gray-500">今日</div>
+                            <div className="text-sm font-medium text-cyan-400">{tracking.stats.todayTotal}条</div>
+                          </div>
+                          <div className="bg-gray-700/30 rounded-lg px-2 py-1.5">
+                            <div className="text-[10px] text-gray-500">日均</div>
+                            <div className="text-sm font-medium text-gray-300">{tracking.stats.pace}条</div>
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">今日(北京时间)</span>
-                          <span className="text-cyan-400">{tracking.stats.todayTotal}条</span>
+                          <span className="text-gray-500">剩余时间</span>
+                          <span className="text-gray-300 font-medium">{remainingText}</span>
                         </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">已往日均</span>
-                          <span className="text-gray-300">{tracking.stats.pace}条/天</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">剩余</span>
-                          <span className="text-gray-400">{remainingText}</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1.5 mt-2">
-                          <div 
-                            className="bg-cyan-400 h-1.5 rounded-full" 
-                            style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
-                          />
+                        <div className="relative">
+                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                            <span>进度</span>
+                            <span>{tracking.stats.percentComplete}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-cyan-500 to-yellow-400 h-2 rounded-full"
+                              style={{ width: `${Math.min(tracking.stats.percentComplete, 100)}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -513,9 +524,9 @@ export function TweetHeatmap() {
                 ? post.content.substring(0, 100) + '...' 
                 : post.content;
               return (
-                <div key={post.id} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                <div key={post.id} className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30 hover:bg-gray-800/50 hover:border-gray-700/50 transition-colors">
                   <p className="text-sm text-gray-300 leading-relaxed">{displayContent}</p>
-                  <span className="text-xs text-gray-500 mt-1 block">{timeAgo}</span>
+                  <span className="text-[10px] text-gray-500 mt-1 block">{timeAgo}</span>
                 </div>
               );
             })}
