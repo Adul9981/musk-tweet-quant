@@ -800,134 +800,131 @@ export default function App() {
                   <div className="space-y-4">
                     {(() => {
                       const validItems = analysisData.filter(item => item.parsed && item.price >= 3);
-                      const totalBudget = 1000;
                       const mu = probabilityModel.mu;
                       
-                      const strategyItems = validItems.map((item) => {
-                        const marketProb = item.price / 100;
-                        const trueProb = item.normalizedProb / 100;
-                        const ev = marketProb > 0 ? (trueProb / marketProb - 1) : 0;
-                        const expectedReturn = marketProb > 0 ? (trueProb * (1/marketProb) - 1) : 0;
-                        return { ...item, ev, expectedReturn, kelly: Math.max(0, Math.min((trueProb - (1-trueProb)/(1/marketProb-1)), 0.25)) };
-                      });
-
-                      const bestItem = [...strategyItems].sort((a, b) => b.ev - a.ev)[0];
-                      const bestIdx = strategyItems.findIndex(i => i === bestItem);
+                      const sortedByProb = [...validItems].sort((a, b) => b.normalizedProb - a.normalizedProb);
+                      const bestItem = sortedByProb[0];
                       
-                      const adjacentItems = [
-                        bestIdx > 0 ? strategyItems[bestIdx - 1] : null,
-                        bestIdx < strategyItems.length - 1 ? strategyItems[bestIdx + 1] : null,
-                      ].filter(Boolean) as typeof strategyItems;
-
-                      const totalPositiveEV = strategyItems.filter(i => i.ev > 0).length;
-
-                      const bestAllocation = Math.round(totalBudget * 0.5);
-                      const adjAllocation = Math.round(totalBudget * 0.2);
-                      const hedgeAllocation = Math.round(totalBudget * 0.1);
+                      const bestIdx = validItems.findIndex(i => i.range === bestItem?.range);
+                      
+                      const aboveItems = bestIdx > 0 ? validItems.slice(0, bestIdx).reverse() : [];
+                      const belowItems = bestIdx < validItems.length - 1 ? validItems.slice(bestIdx + 1) : [];
 
                       return (
                         <>
                           <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/30">
-                            <div className="text-center mb-3">
-                              <p className="text-xs text-gray-400 mb-1">🎯 预期落点: ~{Math.round(mu)} 条</p>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-400">最佳区间</span>
-                                <span className="text-amber-400 font-bold">[{bestItem?.range}] Alpha +{(bestItem?.ev * 100).toFixed(1)}%</span>
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="text-xs text-gray-400">模型预测落点</p>
+                                <p className="text-2xl font-bold text-cyan-400">~{Math.round(mu)} 条</p>
                               </div>
-                              <div className="w-full bg-gray-700 rounded-full h-3">
-                                <div 
-                                  className="bg-amber-500 h-3 rounded-full transition-all"
-                                  style={{ width: `${Math.min(bestItem?.normalizedProb || 0, 100)}%` }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between text-xs text-gray-500">
-                                <span>AI概率 {bestItem?.normalizedProb.toFixed(1)}%</span>
-                                <span>市场价格 {bestItem?.price.toFixed(1)}%</span>
+                              <div className="text-right">
+                                <p className="text-xs text-gray-400">概率最高区间</p>
+                                <p className="text-lg font-bold text-white">{bestItem?.range}</p>
                               </div>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-gray-700/50 text-xs text-gray-400">
-                              共 {totalPositiveEV} 个区间有正向期望收益
+                            <div className="flex items-center justify-center gap-2 py-2">
+                              {aboveItems.slice(0, 3).map(item => (
+                                <span key={item.range} className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded">
+                                  {item.range}
+                                </span>
+                              ))}
+                              <span className="px-3 py-1 bg-emerald-500/30 text-emerald-300 text-sm font-bold rounded border border-emerald-500/50">
+                                {bestItem?.range}
+                              </span>
+                              {belowItems.slice(0, 3).map(item => (
+                                <span key={item.range} className="px-2 py-1 bg-purple-500/20 text-purple-300 text-xs rounded">
+                                  {item.range}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="text-center text-xs text-gray-500">
+                              ← 低区间 | 当前预测分布 | 高区间 →
                             </div>
                           </div>
 
-                          <div className="p-4 bg-emerald-500/20 rounded-xl border-2 border-emerald-500/50">
-                            <div className="flex items-center justify-between mb-3">
+                          <div className="p-5 bg-gradient-to-r from-emerald-500/20 to-emerald-600/10 rounded-xl border-2 border-emerald-500/50">
+                            <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-3">
-                                <span className="w-10 h-10 bg-emerald-500/30 rounded-full flex items-center justify-center text-lg">🎯</span>
+                                <span className="w-12 h-12 bg-emerald-500/40 rounded-full flex items-center justify-center text-xl">🏆</span>
                                 <div>
-                                  <p className="text-xs text-emerald-400">首选推荐</p>
-                                  <p className="text-xl font-bold text-white">[{bestItem?.range}]</p>
+                                  <p className="text-sm text-emerald-400 font-medium">🥇 最佳落点区间</p>
+                                  <p className="text-2xl font-bold text-white">{bestItem?.range}</p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-2xl font-bold text-emerald-400">${bestAllocation}</p>
-                                <p className="text-xs text-gray-400">50% 仓位</p>
+                                <p className="text-3xl font-bold text-emerald-400">$500</p>
+                                <p className="text-sm text-gray-400">建议买入 50%</p>
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div className="text-center p-2 bg-gray-900/50 rounded">
-                                <p className="text-gray-400">AI概率</p>
-                                <p className="text-white font-bold">{bestItem?.normalizedProb.toFixed(1)}%</p>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-gray-900/50 rounded-lg p-3">
+                                <p className="text-xs text-gray-400 mb-1">模型预测概率</p>
+                                <p className="text-xl font-bold text-white">{bestItem?.normalizedProb.toFixed(1)}%</p>
                               </div>
-                              <div className="text-center p-2 bg-gray-900/50 rounded">
-                                <p className="text-gray-400">市场概率</p>
-                                <p className="text-white font-bold">{bestItem?.price.toFixed(1)}%</p>
-                              </div>
-                              <div className="text-center p-2 bg-gray-900/50 rounded">
-                                <p className="text-gray-400">Alpha</p>
-                                <p className="text-emerald-400 font-bold">+{(bestItem?.ev * 100).toFixed(1)}%</p>
+                              <div className="bg-gray-900/50 rounded-lg p-3">
+                                <p className="text-xs text-gray-400 mb-1">市场当前价格</p>
+                                <p className="text-xl font-bold text-yellow-400">{bestItem?.price.toFixed(1)}%</p>
                               </div>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
-                            {adjacentItems.map((item, idx) => (
-                              <div key={item.range} className={`p-4 rounded-xl border ${idx === 0 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-purple-500/10 border-purple-500/30'}`}>
+                            {aboveItems.slice(0, 2).map(item => (
+                              <div key={item.range} className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/30">
                                 <div className="flex items-center justify-between mb-2">
                                   <div>
-                                    <p className="text-xs text-gray-400">{idx === 0 ? '上方相邻' : '下方相邻'}</p>
-                                    <p className={`text-lg font-bold ${idx === 0 ? 'text-amber-300' : 'text-purple-300'}`}>[{item.range}]</p>
+                                    <p className="text-xs text-amber-400">↑ 高于最佳</p>
+                                    <p className="text-lg font-bold text-amber-200">{item.range}</p>
                                   </div>
                                   <div className="text-right">
-                                    <p className={`text-lg font-bold ${idx === 0 ? 'text-amber-400' : 'text-purple-400'}`}>${adjAllocation}</p>
+                                    <p className="text-lg font-bold text-amber-400">$200</p>
                                     <p className="text-xs text-gray-400">20%</p>
                                   </div>
                                 </div>
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-gray-400">AI {item.normalizedProb.toFixed(1)}%</span>
-                                  <span className={item.ev > 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                                    Alpha {item.ev > 0 ? '+' : ''}{(item.ev * 100).toFixed(1)}%
-                                  </span>
+                                <div className="flex justify-between text-xs text-gray-400">
+                                  <span>AI {item.normalizedProb.toFixed(1)}%</span>
+                                  <span>价格 {item.price.toFixed(1)}%</span>
                                 </div>
                               </div>
                             ))}
-                            {adjacentItems.length < 2 && (
-                              <div className="p-4 rounded-xl border border-gray-500/30 bg-gray-800/30">
-                                <p className="text-xs text-gray-500 text-center">边界区间，无需对冲</p>
+                            {belowItems.slice(0, 2).map(item => (
+                              <div key={item.range} className="p-4 bg-purple-500/10 rounded-xl border border-purple-500/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div>
+                                    <p className="text-xs text-purple-400">↓ 低于最佳</p>
+                                    <p className="text-lg font-bold text-purple-200">{item.range}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-lg font-bold text-purple-400">$200</p>
+                                    <p className="text-xs text-gray-400">20%</p>
+                                  </div>
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400">
+                                  <span>AI {item.normalizedProb.toFixed(1)}%</span>
+                                  <span>价格 {item.price.toFixed(1)}%</span>
+                                </div>
                               </div>
-                            )}
+                            ))}
                           </div>
 
-                          <div className="p-3 bg-gray-900/50 rounded-xl border border-gray-700/30">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-gray-300">备用对冲 (边界风险)</span>
-                              <span className="text-sm font-bold text-yellow-400">${hedgeAllocation} (10%)</span>
+                          <div className="border-t border-gray-700/50 pt-4">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-400">总预算分配</span>
+                              <span className="text-white font-bold">$1000</span>
                             </div>
-                            <p className="text-xs text-gray-500">
-                              若最佳区间两端均有正Alpha，可各分配${hedgeAllocation/2}
-                            </p>
-                          </div>
-
-                          <div className="border-t border-gray-700/50 pt-3">
-                            <h3 className="text-sm font-semibold text-gray-300 mb-2">策略说明</h3>
-                            <ul className="text-xs text-gray-500 space-y-1">
-                              <li>• <span className="text-emerald-400">首选 50%</span>：重仓Alpha最高的区间</li>
-                              <li>• <span className="text-amber-400">上方 20%</span>：相邻区间，对冲上方风险</li>
-                              <li>• <span className="text-purple-400">下方 20%</span>：相邻区间，对冲下方风险</li>
-                              <li>• <span className="text-yellow-400">备用 10%</span>：极端情况对冲</li>
-                            </ul>
+                            <div className="flex gap-1 mt-2 h-4">
+                              <div className="bg-emerald-500 rounded-l h-full" style={{ width: '50%' }}></div>
+                              <div className="bg-amber-500 h-full" style={{ width: '20%' }}></div>
+                              <div className="bg-purple-500 h-full" style={{ width: '20%' }}></div>
+                              <div className="bg-yellow-500 rounded-r h-full" style={{ width: '10%' }}></div>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>🏆最佳50%</span>
+                              <span>↑上方20%</span>
+                              <span>↓下方20%</span>
+                              <span>备用10%</span>
+                            </div>
                           </div>
                         </>
                       );
