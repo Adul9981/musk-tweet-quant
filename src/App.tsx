@@ -274,7 +274,7 @@ export default function App() {
     const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
     const dispersionK = 2.2;
     const sigma = Math.max(25, sigmaBase * dispersionK);
-    const sigmaCalc = Math.max(10, sigmaBase);
+    const sigmaCalc = Math.max(25, sigmaBase * 1.5);
 
     const normalCDF = (x: number): number => {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
