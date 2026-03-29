@@ -44,7 +44,7 @@ def get_event_data(slug: str) -> Optional[Dict]:
             "liquidity": event.get("liquidity"),
             "end_date": event.get("endDate"),
             "markets": event.get("markets", []),
-            "scraped_at": datetime.utcnow().isoformat(),
+            "scraped_at": datetime.utcnow().isoformat() + "Z",
             "ranges": [],
         }
     except Exception as e:
@@ -118,7 +118,7 @@ def update_gist(data: List[Dict]) -> bool:
     gist_api_url = f"https://api.github.com/gists/{GIST_URL.split('/')[-1]}"
 
     payload = {
-        "description": f"Polymarket Elon Musk Tweet Data - Updated {datetime.utcnow().isoformat()}",
+        "description": f"Polymarket Elon Musk Tweet Data - Updated {datetime.utcnow().isoformat()}Z",
         "files": {
             GIST_FILE: {"content": json.dumps(data, indent=2, ensure_ascii=False)}
         },
