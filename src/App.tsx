@@ -248,22 +248,23 @@ export default function App() {
   const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
 
   const apiPace = currentTracking?.stats?.pace || 0;
-  const daysTotal = currentTracking?.stats?.daysTotal || 7;
   
   const remainingDays = currentTracking?.stats?.daysRemaining ?? 1;
   const remainingHoursFromApi = currentTracking?.stats?.hoursRemaining ?? 0;
   const remainingHours = remainingDays * 24 + remainingHoursFromApi;
 
+  const [dispersionK, setDispersionK] = useState(2.0);
+
   const probabilityModel = useMemo(() => {
     const C = currentTweetCount;
-    const daysRemaining = remainingDays;
-    const pace = apiPace;
+    const T = remainingHours;
+    const R = apiPace;
 
-    const remainingTweets = pace * daysRemaining;
-    const mu = C + remainingTweets;
-    
-    const sigmaBase = Math.sqrt(mu / daysTotal) * Math.sqrt(daysRemaining);
-    const sigmaCalc = Math.max(15, sigmaBase);
+    const E_rem = R * (T / 24);
+    const mu = C + E_rem;
+    const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
+    const sigmaMin = 20;
+    const sigmaCalc = Math.max(sigmaMin, sigmaBase * dispersionK);
 
     const normalCDF = (x: number): number => {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
@@ -283,8 +284,8 @@ export default function App() {
       return Math.max(0.0001, normalCDF(zMax) - normalCDF(zMin));
     };
 
-    return { mu, sigmaCalc, C, pace, daysRemaining, E_rem: remainingTweets, calculateRawProb };
-  }, [currentTweetCount, remainingDays, apiPace, daysTotal]);
+    return { mu, sigmaCalc, C, R, T, E_rem, k: dispersionK, calculateRawProb };
+  }, [currentTweetCount, remainingHours, apiPace, dispersionK]);
 
   const predictedCenter = Math.round(probabilityModel.mu);
 
@@ -964,11 +965,30 @@ export default function App() {
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">日均时速</span>
-                      <span className="text-sm font-semibold text-cyan-400">{probabilityModel.pace.toFixed(0)} 条/天</span>
+                      <span className="text-sm font-semibold text-cyan-400">{probabilityModel.R.toFixed(1)} 条/天</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">剩余推文</span>
                       <span className="text-sm font-semibold text-gray-300">{probabilityModel.E_rem.toFixed(0)} 条</span>
+                    </div>
+                    <div className="border-t border-gray-700 pt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-400">发疯系数 k</span>
+                        <span className="text-sm font-bold text-orange-400">{probabilityModel.k.toFixed(1)}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1.0"
+                        max="3.0"
+                        step="0.1"
+                        value={dispersionK}
+                        onChange={(e) => setDispersionK(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>保守 1.0</span>
+                        <span>疯狂 3.0</span>
+                      </div>
                     </div>
                     <div className="border-t border-gray-700 pt-3 text-xs text-gray-500">
                       基于正态逼近模型 + 连续性修正 + 概率归一化
