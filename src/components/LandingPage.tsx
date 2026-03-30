@@ -131,7 +131,7 @@ export function LandingPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href={`https://musk-tweet-quant-rtmv.vercel.app${REFERRAL}`}
+              href="https://buy.polar.sh/polar_cl_eS0DOBQMeKcjyNtWqGeBANg1uWdCuVPEzDE9n1xpkC3"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-lg rounded-xl hover:from-yellow-300 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/25"
@@ -306,7 +306,7 @@ export function LandingPage() {
             </div>
 
             <a
-              href={`https://musk-tweet-quant-rtmv.vercel.app${REFERRAL}`}
+              href="https://buy.polar.sh/polar_cl_Wr69bVRI6VXyaediphMwMxWl2PSbVljXCy11E1kEZSq"
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-lg rounded-xl text-center hover:from-yellow-300 hover:to-orange-400 transition-all"
@@ -407,7 +407,7 @@ export function LandingPage() {
             Tier 1 仅剩 18 席，越早加入越划算
           </p>
           <a
-            href={`https://musk-tweet-quant-rtmv.vercel.app${REFERRAL}`}
+            href="https://buy.polar.sh/polar_cl_eS0DOBQMeKcjyNtWqGeBANg1uWdCuVPEzDE9n1xpkC3"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold text-xl rounded-xl hover:from-yellow-300 hover:to-orange-400 transition-all shadow-lg shadow-orange-500/25"
