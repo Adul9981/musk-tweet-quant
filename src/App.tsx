@@ -247,6 +247,7 @@ export default function App() {
   const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
 
   const apiPace = currentTracking?.stats?.pace || 0;
+  const daysTotal = currentTracking?.stats?.daysTotal || 7;
   
   const remainingDays = currentTracking?.stats?.daysRemaining ?? 1;
   const remainingHoursFromApi = currentTracking?.stats?.hoursRemaining ?? 0;
@@ -257,11 +258,11 @@ export default function App() {
     const daysRemaining = remainingDays;
     const pace = apiPace;
 
-    const expectedTotal = C + (pace * daysRemaining);
-    const mu = Math.max(C, expectedTotal);
+    const remainingTweets = pace * daysRemaining;
+    const mu = C + remainingTweets;
     
-    const sigmaBase = Math.sqrt(Math.max(mu * 0.15, 20));
-    const sigmaCalc = Math.max(30, sigmaBase);
+    const sigmaBase = Math.sqrt(mu / daysTotal) * Math.sqrt(daysRemaining);
+    const sigmaCalc = Math.max(15, sigmaBase);
 
     const normalCDF = (x: number): number => {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
@@ -278,11 +279,11 @@ export default function App() {
       const adjustedMax = max + 0.5;
       const zMin = (adjustedMin - mu) / sigmaCalc;
       const zMax = (adjustedMax - mu) / sigmaCalc;
-      return Math.max(0, normalCDF(zMax) - normalCDF(zMin));
+      return Math.max(0.0001, normalCDF(zMax) - normalCDF(zMin));
     };
 
-    return { mu, sigmaCalc, C, pace, daysRemaining, E_rem: pace * daysRemaining, calculateRawProb };
-  }, [currentTweetCount, remainingDays, apiPace]);
+    return { mu, sigmaCalc, C, pace, daysRemaining, E_rem: remainingTweets, calculateRawProb };
+  }, [currentTweetCount, remainingDays, apiPace, daysTotal]);
 
   const predictedCenter = Math.round(probabilityModel.mu);
 
