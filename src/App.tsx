@@ -260,7 +260,7 @@ export default function App() {
     const E_rem = R * (T / 24);
     const mu = C + E_rem;
     const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
-    const sigmaMin = 5;
+    const sigmaMin = 10;
     const sigmaCalc = Math.max(sigmaMin, sigmaBase * dispersionK);
 
     const normalCDF = (x: number): number => {
