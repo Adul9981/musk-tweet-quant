@@ -953,7 +953,7 @@ export default function App() {
                       <span className="text-lg font-bold text-yellow-400">{compositeVelocity.toFixed(2)}/h</span>
                     </div>
                     <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400">
-                      剩余 {remainingHours.toFixed(0)} 小时 | 预期落点 ~{predictedCenter} 条
+                      剩余 {Math.round(remainingHours / 24).toString().padStart(2, '0')}天{Math.round(remainingHours % 24).toString().padStart(2, '0')}小时 | 预期落点 ~{predictedCenter} 条
                     </div>
                   </div>
                 </section>
@@ -1061,7 +1061,7 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, compo
 🎯 预测落点: ~${predictedCenter}条
 
 📍 阶段: ${phase.name}
-⏰ 剩余时间: ${Math.floor(remainingHours / 24)}天${Math.round(remainingHours % 24)}小时
+⏰ 剩余时间: ${Math.floor(Math.round(remainingHours) / 24)}天${Math.round(Math.round(remainingHours) % 24)}小时
 📍 中心区间: ${centerRange || '待确定'}
 
 💡 基于当前数据模型预测最终落点约${predictedCenter}条
