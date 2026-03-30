@@ -14,6 +14,7 @@ import {
   ChevronDown,
   TrendingUp
 } from 'lucide-react';
+import { HeatmapPreview } from './HeatmapPreview';
 
 const REFERRAL = '?via=serene77mc-g6kj';
 
@@ -186,6 +187,10 @@ export function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">📊 工具预览</h2>
           <p className="text-gray-400 text-center mb-12">界面截图展示</p>
+          
+          <div className="mb-8">
+            <HeatmapPreview isSubscribed={false} />
+          </div>
           
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
