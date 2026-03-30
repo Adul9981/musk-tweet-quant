@@ -335,7 +335,9 @@ export default function App() {
     };
   };
 
-  const intervalAnalysis = analysisData.map(calculateIntervalAnalysis).filter(Boolean);
+  const intervalAnalysis = useMemo(() => {
+    return analysisData.map(calculateIntervalAnalysis).filter(Boolean);
+  }, [analysisData, calculateIntervalAnalysis, remainingHours, currentTweetCount]);
 
   const reverseEngineering = intervalAnalysis.map(item => {
     if (!item) return null;
