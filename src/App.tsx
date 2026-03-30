@@ -17,7 +17,6 @@ import {
   Send
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
-import { SubscriptionGate } from './components/SubscriptionGate';
 
 const REFERRAL = '?via=serene77mc-g6kj';
 
@@ -357,7 +356,6 @@ export default function App() {
   }).filter(Boolean);
 
   return (
-    <SubscriptionGate>
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       <header className="bg-gray-900/90 backdrop-blur-sm border-b border-gray-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -1014,7 +1012,6 @@ export default function App() {
         )}
       </main>
     </div>
-    </SubscriptionGate>
   );
 }
 
