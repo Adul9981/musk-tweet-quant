@@ -110,8 +110,6 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const [currentTweetCount, setCurrentTweetCount] = useState(0);
-  const [snapshotCount, setSnapshotCount] = useState<number | ''>('');
-  const [hoursSinceSnapshot, setHoursSinceSnapshot] = useState<number | ''>('');
 
   useEffect(() => {
     const GIST_ID = 'd174b4498c408076ff218e164f24807e';
@@ -531,14 +529,14 @@ export default function App() {
                             {r.isCenter && <span className="ml-2 text-xs text-yellow-500">(中心)</span>}
                           </span>
                           <div className="flex items-center gap-3">
-                            <div className="w-24 bg-gray-700/50 rounded-full h-2">
+                            <div className="w-20 bg-gray-700/50 rounded-full h-2">
                               <div 
                                 className={`h-2 rounded-full ${r.isCenter ? 'bg-yellow-500' : 'bg-purple-500'}`}
-                                style={{ width: `${(r.price || 0) * 4}%` }}
+                                style={{ width: `${Math.min(r.price || 0, 25) * 4}%` }}
                               />
                             </div>
-                            <span className={`text-sm font-semibold w-14 text-right ${r.isCenter ? 'text-yellow-400' : 'text-purple-400'}`}>
-                              {r.price}%
+                            <span className={`text-sm font-semibold w-16 text-right ${r.isCenter ? 'text-yellow-400' : 'text-purple-400'}`}>
+                              {r.price.toFixed(1)}%
                             </span>
                           </div>
                         </div>
@@ -550,47 +548,15 @@ export default function App() {
                 <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
                   <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                     <Camera className="w-5 h-5 text-cyan-400" />
-                    动态快照法
+                    发推速率
                   </h2>
-                  <p className="text-xs text-gray-500 mb-4">输入两次观测的发推数据，系统自动计算动态时速</p>
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">当前推文总数</label>
-                      <input
-                        type="number"
-                        value={currentTweetCount}
-                        onChange={(e) => setCurrentTweetCount(Number(e.target.value))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">上次快照总数</label>
-                      <input
-                        type="number"
-                        value={snapshotCount}
-                        onChange={(e) => setSnapshotCount(Number(e.target.value))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">距上次(小时)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={hoursSinceSnapshot}
-                        onChange={(e) => setHoursSinceSnapshot(Number(e.target.value))}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-cyan-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
                   <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-xl border border-cyan-500/30">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-300">动态时速：</span>
-                      <span className="text-lg font-bold text-cyan-400">{Math.max(0, apiPace).toFixed(2)} 条/小时</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-300">API 速率</span>
+                      <span className="text-2xl font-bold text-cyan-400">{apiPace.toFixed(2)} <span className="text-sm font-normal text-gray-400">条/小时</span></span>
                     </div>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-500/20">
-                      <span className="text-sm text-gray-300">综合时速：</span>
-                      <span className="text-lg font-bold text-yellow-400">{apiPace.toFixed(2)} 条/小时</span>
+                    <div className="text-xs text-gray-500">
+                      数据来源: XTracker Polymarket
                     </div>
                   </div>
                 </section>
