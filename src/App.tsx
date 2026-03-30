@@ -246,20 +246,7 @@ export default function App() {
 
   const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
 
-  const snapshotVal = typeof snapshotCount === 'number' ? snapshotCount : 0;
-  const hoursVal = typeof hoursSinceSnapshot === 'number' && hoursSinceSnapshot > 0 ? hoursSinceSnapshot : 0;
-  
-  const daysElapsed = currentTracking?.stats?.percentComplete ? (currentTracking.stats.percentComplete / 100) * (currentTracking.stats.daysTotal || 7) : 0;
-  const hoursElapsed = daysElapsed * 24;
-  const currentVelocity = hoursElapsed > 0 ? currentTweetCount / hoursElapsed : 0;
-  
-  const dynamicVelocity = hoursVal > 0 && snapshotVal > 0 && snapshotVal < currentTweetCount
-    ? (currentTweetCount - snapshotVal) / hoursVal 
-    : 0;
-  
-  const compositeVelocity = dynamicVelocity > 0 
-    ? currentVelocity * 0.6 + dynamicVelocity * 0.4 
-    : currentVelocity;
+  const apiPace = currentTracking?.stats?.pace || 0;
   
   const remainingDays = currentTracking?.stats?.daysRemaining ?? 1;
   const remainingHoursFromApi = currentTracking?.stats?.hoursRemaining ?? 0;
@@ -267,15 +254,14 @@ export default function App() {
 
   const probabilityModel = useMemo(() => {
     const C = currentTweetCount;
-    const T = remainingHours;
-    const R = compositeVelocity;
+    const daysRemaining = remainingDays;
+    const pace = apiPace;
 
-    const E_rem = T * R;
-    const mu = C + E_rem;
-    const sigmaBase = Math.sqrt(Math.max(E_rem, 1));
-    const dispersionK = 2.2;
-    const sigma = Math.max(25, sigmaBase * dispersionK);
-    const sigmaCalc = Math.max(25, sigmaBase * 1.5);
+    const expectedTotal = C + (pace * daysRemaining);
+    const mu = Math.max(C, expectedTotal);
+    
+    const sigmaBase = Math.sqrt(Math.max(mu * 0.15, 20));
+    const sigmaCalc = Math.max(30, sigmaBase);
 
     const normalCDF = (x: number): number => {
       const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
@@ -295,8 +281,8 @@ export default function App() {
       return Math.max(0, normalCDF(zMax) - normalCDF(zMin));
     };
 
-    return { mu, sigma, sigmaCalc, dispersionK, E_rem, calculateRawProb, normalCDF };
-  }, [currentTweetCount, remainingHours, compositeVelocity]);
+    return { mu, sigmaCalc, C, pace, daysRemaining, E_rem: pace * daysRemaining, calculateRawProb };
+  }, [currentTweetCount, remainingDays, apiPace]);
 
   const predictedCenter = Math.round(probabilityModel.mu);
 
@@ -522,7 +508,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        基于当前时速 {compositeVelocity.toFixed(2)} 条/小时
+                        基于当前时速 {apiPace.toFixed(2)} 条/小时
                       </div>
                     </div>
                     
@@ -596,11 +582,11 @@ export default function App() {
                   <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-xl border border-cyan-500/30">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-300">动态时速：</span>
-                      <span className="text-lg font-bold text-cyan-400">{Math.max(0, dynamicVelocity).toFixed(2)} 条/小时</span>
+                      <span className="text-lg font-bold text-cyan-400">{Math.max(0, apiPace).toFixed(2)} 条/小时</span>
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-cyan-500/20">
                       <span className="text-sm text-gray-300">综合时速：</span>
-                      <span className="text-lg font-bold text-yellow-400">{compositeVelocity.toFixed(2)} 条/小时</span>
+                      <span className="text-lg font-bold text-yellow-400">{apiPace.toFixed(2)} 条/小时</span>
                     </div>
                   </div>
                 </section>
@@ -943,15 +929,15 @@ export default function App() {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">全局均速</span>
-                      <span className="text-sm font-semibold text-emerald-400">{(currentVelocity).toFixed(2)}/h</span>
+                      <span className="text-sm font-semibold text-emerald-400">{(apiPace).toFixed(2)}/h</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">动态时速</span>
-                      <span className="text-sm font-semibold text-cyan-400">{Math.max(0, dynamicVelocity).toFixed(2)}/h</span>
+                      <span className="text-sm font-semibold text-cyan-400">{Math.max(0, apiPace).toFixed(2)}/h</span>
                     </div>
                     <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
                       <span className="text-sm font-semibold text-white">综合时速</span>
-                      <span className="text-lg font-bold text-yellow-400">{compositeVelocity.toFixed(2)}/h</span>
+                      <span className="text-lg font-bold text-yellow-400">{apiPace.toFixed(2)}/h</span>
                     </div>
                     <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400">
                       剩余 {Math.round(remainingHours / 24).toString().padStart(2, '0')}天{Math.round(remainingHours % 24).toString().padStart(2, '0')}小时 | 预期落点 ~{predictedCenter} 条
@@ -974,8 +960,8 @@ export default function App() {
                       <span className="text-sm font-semibold text-yellow-400">{probabilityModel.sigmaCalc.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">发疯系数</span>
-                      <span className="text-sm font-semibold text-orange-400">{probabilityModel.dispersionK.toFixed(1)} (仅供参考)</span>
+                      <span className="text-sm text-gray-400">日均时速</span>
+                      <span className="text-sm font-semibold text-cyan-400">{probabilityModel.pace.toFixed(0)} 条/天</span>
                     </div>
                     <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
                       <span className="text-sm text-gray-400">剩余推文</span>
@@ -1026,7 +1012,7 @@ export default function App() {
             currentTracking={currentTracking}
             currentMarket={currentMarket}
             predictedCenter={predictedCenter}
-            compositeVelocity={compositeVelocity}
+            apiPace={apiPace}
             remainingHours={remainingHours}
             centerRange={analysisData.find(d => d.isCenter)?.range || ''}
           />
@@ -1040,12 +1026,12 @@ interface TweetGeneratorProps {
   currentTracking: Tracking | undefined;
   currentMarket: MarketData | null;
   predictedCenter: number;
-  compositeVelocity: number;
+  apiPace: number;
   remainingHours: number;
   centerRange: string;
 }
 
-function TweetGenerator({ currentTracking, currentMarket, predictedCenter, compositeVelocity, remainingHours, centerRange }: TweetGeneratorProps) {
+function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange }: TweetGeneratorProps) {
   const [copied, setCopied] = useState(false);
 
   const marketTitle = currentMarket?.title ? parseMarketTitle(currentMarket.title) : '预测市场';
@@ -1058,7 +1044,7 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, compo
     return `📊 ${marketTitle} 实时分析
 
 📈 当前进度: ${currentTotal} 条 (今日+${todayTotal})
-⚡ 发推时速: ${compositeVelocity.toFixed(2)}条/小时
+⚡ 发推时速: ${apiPace.toFixed(2)}条/小时
 🎯 预测落点: ~${predictedCenter}条
 
 📍 阶段: ${phase.name}
@@ -1070,7 +1056,7 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, compo
 🔗 Polymarket: https://polymarket.com${currentMarket?.slug ? '/event/' + currentMarket.slug : ''}${REFERRAL}
 
 #ElonMusk #PredictionMarket #X`;
-  }, [currentTracking, currentMarket, predictedCenter, compositeVelocity, remainingHours, centerRange, marketTitle]);
+  }, [currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, marketTitle]);
 
   const copyToClipboard = async () => {
     try {
