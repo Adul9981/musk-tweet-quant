@@ -77,7 +77,7 @@
           </svg>
           $1 体验 3 天
         </a>
-        <a href="https://polymarket.com/event/elon-musk-of-tweets?via=serene77mc-g6kj" target="_blank"
+        <a href="https://polymarket.com/event/elon-musk-of-tweets-march-31-april-7?via=serene77mc-g6kj" target="_blank"
            class="flex items-center justify-center gap-2 px-8 py-4 bg-gray-800 border border-gray-700 text-white font-semibold text-lg rounded-xl hover:bg-gray-700 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
@@ -143,15 +143,16 @@
           <p class="text-sm text-gray-400">告别死板估算，基于历史数据动态计算"发疯系数"，随时间流逝智能调整预测</p>
         </div>
 
-        <!-- Feature 4 -->
-        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mb-4">
+        <!-- Feature 4 - Coming Soon -->
+        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all opacity-60">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center mb-4 relative">
             <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
+            <span class="absolute -top-2 -right-2 px-2 py-0.5 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full">即将上线</span>
           </div>
           <h3 class="text-lg font-semibold mb-2">实时预警通知</h3>
-          <p class="text-sm text-gray-400">每当马斯克发推，立即推送至你的 Telegram，第一时间掌握市场异动</p>
+          <p class="text-sm text-gray-500">每当马斯克发推，立即推送至你的 Telegram，第一时间掌握市场异动</p>
         </div>
 
         <!-- Feature 5 -->
@@ -538,6 +539,69 @@
             当 Tier 1 的 30 个名额售完后，系统自动切换到 Tier 2（$35.99/月），依此类推。越早订阅越便宜。
           </div>
         </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(5)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">什么是 Polymarket 预测市场？</span>
+            <svg id="faq-icon-5" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-5" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            Polymarket 是一个基于区块链的预测市场，用户可以交易各种事件的概率预测（如"马斯克本周发多少条推文"）。当事件结果确定后，持有多方的人会获得收益。这个工具帮助你分析市场赔率，找到被低估或高估的区间。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(6)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">这个工具到底有什么用？</span>
+            <svg id="faq-icon-6" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-6" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            三个核心价值：<br>
+            1. <strong class="text-white">发现Alpha</strong>：通过AI概率模型，计算出市场的"真实概率"，找出被市场错误定价的区间<br>
+            2. <strong class="text-white">跟踪节奏</strong>：实时监控马斯克发推频率，与市场预期对比<br>
+            3. <strong class="text-white">制定策略</strong>：根据数据分析结果，决定在哪个区间建仓，获得优势
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(7)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">为什么马斯克发推频率很重要？</span>
+            <svg id="faq-icon-7" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-7" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            马斯克在X上的活跃度极高，他的一条推文可能引发加密市场剧烈波动。当市场预测"马斯克本周发推X条"时，如果你能提前判断他是否会"发疯"（超常发挥），就能在赔率低的区间买入，获得高回报。反之，如果发现他最近"萎了"，可以在高区间做空。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(8)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">什么是 Alpha（阿尔法）？</span>
+            <svg id="faq-icon-8" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-8" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            Alpha 指的是相对于市场的超额收益。当市场显示某个区间概率为20%，但你的AI模型计算出真实概率是30%时，Alpha = 30/20 = 1.5，意味着这个区间被低估了51%。Alpha > 1 表示买入机会，Alpha < 1 表示卖出机会。
+          </div>
+        </div>
+
+        <div class="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden">
+          <button onclick="toggleFaq(9)" class="w-full p-5 flex items-center justify-between text-left">
+            <span class="font-semibold">数据多久更新一次？</span>
+            <svg id="faq-icon-9" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          <div id="faq-content-9" class="hidden px-5 pb-5 text-gray-400 text-sm">
+            Polymarket 赔率数据约每5分钟自动刷新一次，热力图数据来自多个数据源综合计算。页面会自动获取最新数据，无需手动刷新。
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -577,9 +641,9 @@
         <a href="https://musk-tweet-quant-rtmv.vercel.app?via=serene77mc-g6kj" target="_blank" class="hover:text-white transition-colors">
           工具演示
         </a>
-        <a href="https://polymarket.com/event/elon-musk-of-tweets?via=serene77mc-g6kj" target="_blank" class="hover:text-white transition-colors">
-          Polymarket
-        </a>
+        <a href="https://polymarket.com/event/elon-musk-of-tweets-march-31-april-7?via=serene77mc-g6kj" target="_blank" class="hover:text-white transition-colors">
+           Polymarket
+         </a>
       </div>
     </div>
   </footer>
