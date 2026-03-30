@@ -397,7 +397,7 @@ export function TweetHeatmap() {
       {data.length > 0 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">图例</span>
+            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">北京时间</span>
             <div className="flex items-center gap-1.5">
               <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
               <span className="text-xs text-gray-500 mr-2">无</span>

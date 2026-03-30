@@ -600,7 +600,10 @@ export default function App() {
 
                 {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
                   <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-4">每日发推统计</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-300">每日发推统计</h3>
+                      <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">UTC 时区</span>
+                    </div>
                     <div className="space-y-2">
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
                         <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-gray-700/30 last:border-0">
@@ -964,7 +967,10 @@ export default function App() {
 
                 {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
                   <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-4">每日发推统计</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-300">每日发推统计</h3>
+                      <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">UTC 时区</span>
+                    </div>
                     <div className="space-y-2">
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
                         <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-gray-700/30 last:border-0">
