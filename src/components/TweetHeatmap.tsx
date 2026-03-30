@@ -4,6 +4,12 @@ import { Download, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 const XTRACKER_URL = 'https://xtracker.polymarket.com/user/elonmusk';
 const MAX_TWEETS_PER_HOUR = 25;
 
+const validateData = (data: HeatmapData[]): boolean => {
+  if (!data || data.length === 0) return false;
+  const hasAbnormal = data.some(item => item.count > MAX_TWEETS_PER_HOUR);
+  return !hasAbnormal;
+};
+
 interface HeatmapData {
   date: string;
   hour: number;
@@ -45,8 +51,11 @@ function getCache(): CacheData | null {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) return null;
-    return JSON.parse(cached);
+    const parsed = JSON.parse(cached);
+    if (!parsed.lastUpdated || !parsed.data) return null;
+    return parsed;
   } catch {
+    localStorage.removeItem(CACHE_KEY);
     return null;
   }
 }
@@ -67,6 +76,7 @@ function setCache(data: HeatmapData[], lastUpdated: string): void {
 function isCacheValid(): boolean {
   const cache = getCache();
   if (!cache) return false;
+  if (!validateData(cache.data)) return false;
   return Date.now() - cache.cachedAt < CACHE_TTL;
 }
 
