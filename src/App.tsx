@@ -659,9 +659,11 @@ export default function App() {
                         <tr className="text-xs text-gray-400 border-b border-gray-700">
                           <th className="text-left py-3 px-2 font-semibold">区间</th>
                           <th className="text-right py-3 px-2 font-semibold">市场%</th>
-                          <th className="text-right py-3 px-2 font-semibold">AI概率%</th>
+                          <th className="text-right py-3 px-2 font-semibold">AI%</th>
                           <th className="text-right py-3 px-2 font-semibold">Edge</th>
-                          <th className="text-right py-3 px-2 font-semibold">Alpha</th>
+                          <th className="text-right py-3 px-2 font-semibold">α</th>
+                          <th className="text-right py-3 px-2 font-semibold">时速下限</th>
+                          <th className="text-right py-3 px-2 font-semibold">时速上限</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -696,6 +698,12 @@ export default function App() {
                                 item.alpha < 1.0 ? 'text-rose-400' : 'text-gray-400'
                               }`}>
                                 {item.alpha.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-2 text-right text-amber-400">
+                                {item.minVelocity === Infinity ? '-' : item.minVelocity.toFixed(2)}
+                              </td>
+                              <td className="py-3 px-2 text-right text-purple-400">
+                                {item.maxVelocity === Infinity ? '-' : item.maxVelocity.toFixed(2)}
                               </td>
                             </tr>
                           ))}
@@ -901,24 +909,21 @@ export default function App() {
                 <section className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
                   <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-cyan-400" />
-                    时速分析
+                    发推速率
                   </h2>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">全局均速</span>
-                      <span className="text-sm font-semibold text-emerald-400">{(apiPace).toFixed(2)}/h</span>
+                  <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-xl border border-cyan-500/30">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-300">日均速率</span>
+                      <span className="text-2xl font-bold text-cyan-400">{apiPace.toFixed(1)} <span className="text-sm font-normal text-gray-400">条/天</span></span>
                     </div>
-                    <div className="flex justify-between items-center p-2 bg-gray-900/50 rounded-lg">
-                      <span className="text-sm text-gray-400">动态时速</span>
-                      <span className="text-sm font-semibold text-cyan-400">{Math.max(0, apiPace).toFixed(2)}/h</span>
+                    <div className="flex justify-between items-center text-xs text-gray-400">
+                      <span>≈ 每小时</span>
+                      <span className="text-cyan-300">{(apiPace / 24).toFixed(2)} 条/时</span>
                     </div>
-                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center">
-                      <span className="text-sm font-semibold text-white">综合时速</span>
-                      <span className="text-lg font-bold text-yellow-400">{apiPace.toFixed(2)}/h</span>
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400">
-                      剩余 {Math.round(remainingHours / 24).toString().padStart(2, '0')}天{Math.round(remainingHours % 24).toString().padStart(2, '0')}小时 | 预期落点 ~{predictedCenter} 条
-                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-700/50 text-xs text-gray-400 flex justify-between">
+                    <span>剩余 {Math.round(remainingHours / 24)}天{Math.round(remainingHours % 24)}小时</span>
+                    <span>预期落点 ~{predictedCenter} 条</span>
                   </div>
                 </section>
 
