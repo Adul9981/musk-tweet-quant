@@ -25,6 +25,8 @@ const getColorForCount = (count: number): string => {
   return '#cc7000';
 };
 
+const isAbnormal = (count: number): boolean => count > MAX_TWEETS_PER_HOUR;
+
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr);
   const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -369,6 +371,11 @@ export function TweetHeatmap() {
                           {count}
                         </span>
                       )}
+                      {isAbnormal(count) && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center" title="数据异常">
+                          <span className="text-[8px] font-bold text-white">!</span>
+                        </div>
+                      )}
                       {isCurrentHour && (
                         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
                       )}
@@ -441,8 +448,11 @@ export function TweetHeatmap() {
           </div>
           <div className="text-sm mt-1">
             <span className="text-gray-400">发推 </span>
-            <span className="text-yellow-400 font-bold text-xl">{hoveredCell.count}</span>
+            <span className={`font-bold text-xl ${isAbnormal(hoveredCell.count) ? 'text-rose-400' : 'text-yellow-400'}`}>{hoveredCell.count}</span>
             <span className="text-gray-400"> 条</span>
+            {isAbnormal(hoveredCell.count) && (
+              <span className="ml-2 text-xs bg-rose-500/30 text-rose-300 px-2 py-0.5 rounded">数据异常</span>
+            )}
           </div>
         </div>
       )}
