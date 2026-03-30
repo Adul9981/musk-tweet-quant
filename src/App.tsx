@@ -510,7 +510,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        基于当前时速 {apiPace.toFixed(2)} 条/小时
+                        基于当前日均 {apiPace.toFixed(2)} 条/天
                       </div>
                     </div>
                     
@@ -553,7 +553,7 @@ export default function App() {
                   <div className="p-4 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-xl border border-cyan-500/30">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-gray-300">API 速率</span>
-                      <span className="text-2xl font-bold text-cyan-400">{apiPace.toFixed(2)} <span className="text-sm font-normal text-gray-400">条/小时</span></span>
+                      <span className="text-2xl font-bold text-cyan-400">{apiPace.toFixed(2)} <span className="text-sm font-normal text-gray-400">条/天</span></span>
                     </div>
                     <div className="text-xs text-gray-500">
                       数据来源: XTracker Polymarket
@@ -1039,7 +1039,7 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     return `📊 ${marketTitle} 实时分析
 
 📈 当前进度: ${currentTotal} 条 (今日+${todayTotal})
-⚡ 发推时速: ${apiPace.toFixed(2)}条/小时
+⚡ 发推日均: ${apiPace.toFixed(2)}条/天
 🎯 预测落点: ~${predictedCenter}条
 
 📍 阶段: ${phase.name}
