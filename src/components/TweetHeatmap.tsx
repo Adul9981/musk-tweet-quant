@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Download, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 
 const XTRACKER_URL = 'https://xtracker.polymarket.com/user/elonmusk';
+const MAX_TWEETS_PER_HOUR = 25;
 
 interface HeatmapData {
   date: string;
@@ -138,9 +139,13 @@ export function TweetHeatmap() {
       }
       
       if (result.tweets && result.tweets.length > 0) {
-        setData(result.tweets);
+        const filteredData = result.tweets.map((item: HeatmapData) => ({
+          ...item,
+          count: Math.min(item.count, MAX_TWEETS_PER_HOUR)
+        }));
+        setData(filteredData);
         setLastUpdated(new Date(result.lastUpdated));
-        setCache(result.tweets, result.lastUpdated);
+        setCache(filteredData, result.lastUpdated);
         setIsFromCache(false);
       } else {
         setError('未获取到数据，请稍后重试');
@@ -162,7 +167,11 @@ export function TweetHeatmap() {
         typeof item.hour === 'number' && 
         typeof item.count === 'number'
       )) {
-        setData(parsed);
+        const filteredData = parsed.map((item: HeatmapData) => ({
+          ...item,
+          count: Math.min(item.count, MAX_TWEETS_PER_HOUR)
+        }));
+        setData(filteredData);
         setImportError('');
         setShowImport(false);
       } else {
