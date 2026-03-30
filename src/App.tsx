@@ -260,9 +260,9 @@ export default function App() {
     ? currentVelocity * 0.6 + dynamicVelocity * 0.4 
     : currentVelocity;
   
-  const daysTotal = currentTracking?.stats?.daysTotal || 7;
-  const totalHours = daysTotal * 24;
-  const remainingHours = Math.max(0, totalHours - hoursElapsed);
+  const remainingDays = currentTracking?.stats?.daysRemaining ?? 1;
+  const remainingHoursFromApi = currentTracking?.stats?.hoursRemaining ?? 0;
+  const remainingHours = remainingDays * 24 + remainingHoursFromApi;
 
   const probabilityModel = useMemo(() => {
     const C = currentTweetCount;
