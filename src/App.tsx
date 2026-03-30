@@ -117,8 +117,9 @@ export default function App() {
     
     const fetchGistData = async () => {
       try {
-        const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
+          headers: { 'Accept': 'application/vnd.github.v3+json' },
+          cache: 'no-store'
         });
         if (res.ok) {
           const gist = await res.json();
