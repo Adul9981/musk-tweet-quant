@@ -104,38 +104,40 @@ export default function App() {
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
-  const [, setIsLoadingGist] = useState(true);
+  const [isLoadingGist, setIsLoadingGist] = useState(true);
   const [, setIsLoadingTracker] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const [currentTweetCount, setCurrentTweetCount] = useState(0);
 
-  useEffect(() => {
+  const fetchGistData = async () => {
+    setIsLoadingGist(true);
     const GIST_ID = 'd174b4498c408076ff218e164f24807e';
     
-    const fetchGistData = async () => {
-      try {
-        const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' },
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const gist = await res.json();
-          const content = gist.files?.['polymarket-data.json']?.content;
-          if (content) {
-            const data = JSON.parse(content);
-            setGistData(data);
-            if (data[0]?.scraped_at) {
-              setLastUpdated(data[0].scraped_at);
-            }
+    try {
+      const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const gist = await res.json();
+        const content = gist.files?.['polymarket-data.json']?.content;
+        if (content) {
+          const data = JSON.parse(content);
+          setGistData(data);
+          if (data[0]?.scraped_at) {
+            setLastUpdated(data[0].scraped_at);
           }
         }
-      } catch (err) {
-        console.error('Failed to fetch Gist data:', err);
-      } finally {
-        setIsLoadingGist(false);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch Gist data:', err);
+    } finally {
+      setIsLoadingGist(false);
+    }
+  };
+
+  useEffect(() => {
 
     const fetchTrackerData = async () => {
       try {
@@ -493,7 +495,17 @@ export default function App() {
                 {currentMarket && (
                   <section className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm rounded-2xl p-6 border border-purple-500/20">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-bold text-white">Polymarket 赔率</h2>
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-lg font-bold text-white">Polymarket 赔率</h2>
+                        <button
+                          onClick={fetchGistData}
+                          disabled={isLoadingGist}
+                          className="flex items-center gap-1 px-2 py-1 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-xs rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isLoadingGist ? 'animate-spin' : ''}`} />
+                          {isLoadingGist ? '刷新中...' : '刷新'}
+                        </button>
+                      </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-400">交易量</p>
                         <p className="text-lg font-bold text-purple-400">
@@ -501,6 +513,11 @@ export default function App() {
                         </p>
                       </div>
                     </div>
+                    {lastUpdated && (
+                      <div className="text-xs text-gray-500 mb-3">
+                        数据更新: {new Date(lastUpdated).toLocaleString('zh-CN')}
+                      </div>
+                    )}
 
                     <div className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
                       <div className="flex items-center justify-between">
