@@ -41,7 +41,7 @@ const getETFromBeijing = (bjHour: number): string => {
 };
 
 const CACHE_KEY = 'musk_tweet_heatmap_data';
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000;
 
 interface CacheData {
   data: HeatmapData[];

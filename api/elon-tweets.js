@@ -94,7 +94,7 @@ export default async function handler(req, res) {
 
     const estimatedCost = (pageCount * 20 * 0.0002).toFixed(4);
 
-    res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate');
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
     return res.status(200).json({
       tweets: result,
       pagesFetched: pageCount,
