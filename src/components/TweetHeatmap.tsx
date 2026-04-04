@@ -17,12 +17,13 @@ interface HeatmapData {
 }
 
 const getColorForCount = (count: number): string => {
-  if (count === 0) return '#1e293b';
-  if (count <= 3) return '#0891b2';
-  if (count <= 7) return '#06b6d4';
-  if (count <= 12) return '#22d3ee';
-  if (count <= 18) return '#67e8f9';
-  return '#a5f3fc';
+  if (count === 0) return '#e2e8f0';
+  if (count <= 2) return '#c7d2fe';
+  if (count <= 5) return '#a5b4fc';
+  if (count <= 8) return '#818cf8';
+  if (count <= 12) return '#6366f1';
+  if (count <= 16) return '#4f46e5';
+  return '#4338ca';
 };
 
 const isAbnormal = (count: number): boolean => count > MAX_TWEETS_PER_HOUR;
@@ -333,86 +334,86 @@ export function TweetHeatmap() {
               ))}
             </div>
           
-            {uniqueDates.map((date) => (
-              <div key={date} className="flex items-center gap-1 mb-1">
-                <div className="w-14 flex flex-col items-end pr-2 leading-tight">
-                  <span className="text-sm text-slate-300 font-bold">{formatDate(date).split(' ')[0]}</span>
-                  <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
+            {uniqueDates.map((date) => {
+              const dayTotal = data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0);
+              return (
+                <div key={date} className="flex items-center gap-1 mb-1">
+                  <div className="w-14 flex flex-col items-end pr-2 leading-tight">
+                    <span className="text-sm text-slate-700 font-bold">{formatDate(date).split(' ')[0]}</span>
+                    <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
+                  </div>
+                  {hours.map(hour => {
+                    const cellData = data.find(d => d.date === date && d.hour === hour);
+                    const count = cellData?.count || 0;
+                    const isEmpty = count === 0;
+                    const isCurrentHour = date === currentDateStr && hour === currentBJHour;
+                    
+                    return (
+                      <div
+                        key={hour}
+                        className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
+                          isCurrentHour ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-white' : ''
+                        }`}
+                        style={{
+                          width: cellSize,
+                          height: cellSize,
+                          backgroundColor: getColorForCount(count),
+                        }}
+                        onMouseEnter={(e) => {
+                          setHoveredCell(cellData || { date, hour, count: 0 });
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
+                        }}
+                        onMouseLeave={() => setHoveredCell(null)}
+                      >
+                        {!isEmpty && (
+                          <span 
+                            className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                            style={{ 
+                              color: count <= 5 ? '#312e81' : '#ffffff',
+                            }}
+                          >
+                            {count}
+                          </span>
+                        )}
+                        {isAbnormal(count) && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center" title="数据异常">
+                            <span className="text-[8px] font-bold text-white">!</span>
+                          </div>
+                        )}
+                        {isCurrentHour && (
+                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-indigo-600" />
+                        )}
+                      </div>
+                    );
+                  })}
+                  <span className="text-sm font-bold text-indigo-600 w-14 text-right pl-2">
+                    {dayTotal}
+                  </span>
                 </div>
-                {hours.map(hour => {
-                  const cellData = data.find(d => d.date === date && d.hour === hour);
-                  const count = cellData?.count || 0;
-                  const isEmpty = count === 0;
-                  const isCurrentHour = date === currentDateStr && hour === currentBJHour;
-                  
-                  return (
-                    <div
-                      key={hour}
-                      className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                        isCurrentHour ? 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-800' : ''
-                      }`}
-                      style={{
-                        width: cellSize,
-                        height: cellSize,
-                        backgroundColor: getColorForCount(count),
-                      }}
-                      onMouseEnter={(e) => {
-                        setHoveredCell(cellData || { date, hour, count: 0 });
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
-                      }}
-                      onMouseLeave={() => setHoveredCell(null)}
-                    >
-                      {!isEmpty && (
-                        <span 
-                          className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-                          style={{ 
-                            color: count <= 7 ? '#e0f2fe' : '#0c4a6e',
-                          }}
-                        >
-                          {count}
-                        </span>
-                      )}
-                      {isAbnormal(count) && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center" title="数据异常">
-                          <span className="text-[8px] font-bold text-white">!</span>
-                        </div>
-                      )}
-                      {isCurrentHour && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-indigo-400" />
-                      )}
-                    </div>
-                  );
-                })}
-                <span className="text-xs text-slate-500 pl-2 w-6">
-                  {formatDate(date).split(' ')[1]}
-                </span>
-                <span className="text-xs font-bold text-cyan-400 w-10 text-right pl-2 border-l border-slate-700">
-                  {data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {data.length > 0 && (
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">北京时间</span>
+            <span className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded">北京时间</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#1e293b' }} />
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e2e8f0' }} />
               <span className="text-xs text-slate-500 mr-2">无</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0891b2' }} />
-              <span className="text-xs text-slate-500 mr-2">1-3</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#06b6d4' }} />
-              <span className="text-xs text-slate-500 mr-2">4-7</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#22d3ee' }} />
-              <span className="text-xs text-slate-500 mr-2">8-12</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#67e8f9' }} />
-              <span className="text-xs text-slate-500 mr-2">13-18</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#a5f3fc' }} />
-              <span className="text-xs text-slate-500">19+</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#c7d2fe' }} />
+              <span className="text-xs text-slate-500 mr-2">1-2</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#a5b4fc' }} />
+              <span className="text-xs text-slate-500 mr-2">3-5</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#818cf8' }} />
+              <span className="text-xs text-slate-500 mr-2">6-8</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#6366f1' }} />
+              <span className="text-xs text-slate-500 mr-2">9-12</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#4f46e5' }} />
+              <span className="text-xs text-slate-500">13+</span>
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs">

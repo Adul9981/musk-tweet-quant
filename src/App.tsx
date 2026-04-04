@@ -608,12 +608,21 @@ export default function App() {
                 ))}
               </div>
               <a
+                href="https://polymarket.com/?r=adul"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-all"
+              >
+                <span>Polymarket 主页</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
                 href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold rounded-lg transition-all shadow-md hover:shadow-lg"
               >
-                <span>下注</span>
+                <span>当前市场</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
