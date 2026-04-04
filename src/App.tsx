@@ -396,9 +396,6 @@ export default function App() {
     })).filter(d => d.parsed && d.price >= 1);
 
     if (ranges.length === 0) return [];
-
-    const varianceMultiplier = 2;
-    const effectiveLambda = mu * varianceMultiplier;
     
     let totalProb = 0;
     
@@ -406,7 +403,7 @@ export default function App() {
       const prob = getRangeProbability(
         range.parsed!.min,
         range.parsed!.max,
-        effectiveLambda
+        mu
       );
       
       totalProb += prob;
