@@ -823,39 +823,40 @@ export default function App() {
                       const isActive = i === selectedMarketIndex;
                       
                       return (
-                        <button
+                        <div
                           key={market.slug}
-                          onClick={() => handleSelectMarket(i)}
-                          className={`w-full p-4 rounded-xl border transition-all text-left ${
+                          className={`p-4 rounded-xl border transition-all ${
                             isActive 
                               ? 'bg-indigo-100 border-indigo-400' 
                               : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <span className={`text-sm font-semibold block ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
-                                {parseMarketTitle(market.title)}
-                              </span>
-                              <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天</span>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={() => handleSelectMarket(i)}
+                            className="w-full text-left mb-3"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <span className={`text-sm font-semibold block ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
+                                  {parseMarketTitle(market.title)}
+                                </span>
+                                <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天</span>
+                              </div>
                               <span className={`text-sm font-semibold ${isActive ? 'text-indigo-700' : 'text-indigo-600'}`}>
                                 ${(market.volume / 1000000).toFixed(1)}M
                               </span>
-                              <a
-                                href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
-                              >
-                                <span>下注</span>
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                          <a
+                            href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <span>下注</span>
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
                       );
                     })}
                   </div>
