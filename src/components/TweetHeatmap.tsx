@@ -334,65 +334,59 @@ export function TweetHeatmap() {
               ))}
             </div>
           
-            {uniqueDates.map((date) => {
-              const dayTotal = data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0);
-              return (
-                <div key={date} className="flex items-center gap-0 mb-1">
-                  <div className="w-14 flex flex-col items-end pr-2 leading-tight">
-                    <span className="text-sm text-slate-700 font-bold">{formatDate(date).split(' ')[0]}</span>
-                    <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
-                  </div>
-                  {hours.map(hour => {
-                    const cellData = data.find(d => d.date === date && d.hour === hour);
-                    const count = cellData?.count || 0;
-                    const isEmpty = count === 0;
-                    const isCurrentHour = date === currentDateStr && hour === currentBJHour;
-                    
-                    return (
-                      <div
-                        key={hour}
-                        className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                          isCurrentHour ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-white' : ''
-                        }`}
-                        style={{
-                          width: cellSize,
-                          height: cellSize,
-                          backgroundColor: getColorForCount(count),
-                        }}
-                        onMouseEnter={(e) => {
-                          setHoveredCell(cellData || { date, hour, count: 0 });
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
-                        }}
-                        onMouseLeave={() => setHoveredCell(null)}
-                      >
-                        {!isEmpty && (
-                          <span 
-                            className="absolute inset-0 flex items-center justify-center text-xs font-bold"
-                            style={{ 
-                              color: count <= 5 ? '#312e81' : '#ffffff',
-                            }}
-                          >
-                            {count}
-                          </span>
-                        )}
-                        {isAbnormal(count) && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center" title="数据异常">
-                            <span className="text-[8px] font-bold text-white">!</span>
-                          </div>
-                        )}
-                        {isCurrentHour && (
-                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-indigo-600" />
-                        )}
-                      </div>
-                    );
-                  })}
-                  <span className="text-sm font-bold text-indigo-600 w-12 text-right pl-2">
-                    {dayTotal}
-                  </span>
+            {uniqueDates.map((date) => (
+              <div key={date} className="flex items-center gap-1 mb-1">
+                <div className="w-14 flex flex-col items-end pr-2 leading-tight">
+                  <span className="text-sm text-slate-700 font-bold">{formatDate(date).split(' ')[0]}</span>
+                  <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
                 </div>
-              );
-            })}
+                {hours.map(hour => {
+                  const cellData = data.find(d => d.date === date && d.hour === hour);
+                  const count = cellData?.count || 0;
+                  const isEmpty = count === 0;
+                  const isCurrentHour = date === currentDateStr && hour === currentBJHour;
+                  
+                  return (
+                    <div
+                      key={hour}
+                      className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
+                        isCurrentHour ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-white' : ''
+                      }`}
+                      style={{
+                        width: cellSize,
+                        height: cellSize,
+                        backgroundColor: getColorForCount(count),
+                      }}
+                      onMouseEnter={(e) => {
+                        setHoveredCell(cellData || { date, hour, count: 0 });
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredPos({ x: rect.left + rect.width / 2, y: rect.top });
+                      }}
+                      onMouseLeave={() => setHoveredCell(null)}
+                    >
+                      {!isEmpty && (
+                        <span 
+                          className="absolute inset-0 flex items-center justify-center text-xs font-bold"
+                          style={{ 
+                            color: count <= 5 ? '#312e81' : '#ffffff',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
+                      {isAbnormal(count) && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center" title="数据异常">
+                          <span className="text-[8px] font-bold text-white">!</span>
+                        </div>
+                      )}
+                      {isCurrentHour && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-indigo-600" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -430,7 +424,7 @@ export function TweetHeatmap() {
               ))}
               <span className="text-slate-500 text-[10px]">(4小时区间)</span>
             </div>
-            <span className="text-slate-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
+            <span className="text-slate-500 text-[10px]">灰色数字为美东时间</span>
           </div>
         </div>
       )}
