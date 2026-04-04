@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     let allTweets = [];
     let cursor = null;
     let pageCount = 0;
-    const maxPages = 10;
+    const maxPages = 30;
 
     while (pageCount < maxPages) {
       const url = cursor
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       }
       
       cursor = responseData.cursor;
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     const tweets = allTweets;
