@@ -614,18 +614,9 @@ export default function App() {
                 href="https://polymarket.com/?r=adul"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-medium rounded-lg transition-all"
-              >
-                <span>Polymarket 主页</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <a
-                href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold rounded-lg transition-all shadow-md hover:shadow-lg"
               >
-                <span>当前市场</span>
+                <span>Polymarket</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -827,8 +818,8 @@ export default function App() {
                           key={market.slug}
                           className={`p-4 rounded-xl border transition-all ${
                             isActive 
-                              ? 'bg-indigo-100 border-indigo-400' 
-                              : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                              ? 'bg-indigo-50 border-indigo-400' 
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                           }`}
                         >
                           <button
@@ -840,20 +831,18 @@ export default function App() {
                                 <span className={`text-sm font-semibold block ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
                                   {parseMarketTitle(market.title)}
                                 </span>
-                                <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天</span>
+                                <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天 · ${(market.volume / 1000000).toFixed(1)}M</span>
                               </div>
-                              <span className={`text-sm font-semibold ${isActive ? 'text-indigo-700' : 'text-indigo-600'}`}>
-                                ${(market.volume / 1000000).toFixed(1)}M
-                              </span>
+                              <div className={`w-2 h-2 rounded-full mt-2 ${isActive ? 'bg-indigo-500' : 'bg-slate-300'}`} />
                             </div>
                           </button>
                           <a
                             href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            className="flex items-center justify-center gap-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors border border-slate-200"
                           >
-                            <span>下注</span>
+                            <span>进入市场</span>
                             <ExternalLink className="w-4 h-4" />
                           </a>
                         </div>
