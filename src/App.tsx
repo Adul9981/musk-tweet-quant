@@ -397,13 +397,16 @@ export default function App() {
 
     if (ranges.length === 0) return [];
 
+    const varianceMultiplier = 2;
+    const effectiveLambda = mu * varianceMultiplier;
+    
     let totalProb = 0;
     
     const results = ranges.map(range => {
       const prob = getRangeProbability(
         range.parsed!.min,
         range.parsed!.max,
-        mu
+        effectiveLambda
       );
       
       totalProb += prob;
@@ -804,27 +807,6 @@ export default function App() {
                     </div>
                   </section>
                 )}
-
-                <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
-                  <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
-                      <Activity className="w-4 h-4 text-cyan-600" />
-                    </div>
-                    发推速率
-                  </h2>
-                  <div className="p-5 bg-cyan-50 rounded-xl border border-cyan-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-600 font-medium">日均速率</span>
-                      <div className="text-right">
-                        <span className="text-3xl font-bold text-cyan-600">{apiPace.toFixed(1)}</span>
-                        <span className="text-sm text-slate-500 ml-1">条/天</span>
-                      </div>
-                    </div>
-                    <div className="text-sm text-slate-500">
-                      ≈ {apiPace.toFixed(2)} 条/时
-                    </div>
-                  </div>
-                </section>
               </div>
 
               <div className="space-y-6">
@@ -857,7 +839,7 @@ export default function App() {
                               </span>
                               <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天</span>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
+                            <div className="flex flex-col items-end gap-2">
                               <span className={`text-sm font-semibold ${isActive ? 'text-indigo-700' : 'text-indigo-600'}`}>
                                 ${(market.volume / 1000000).toFixed(1)}M
                               </span>
@@ -866,9 +848,10 @@ export default function App() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-xs text-indigo-500 hover:text-indigo-700 underline"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
                               >
-                                进入市场
+                                <span>下注</span>
+                                <ExternalLink className="w-3 h-3" />
                               </a>
                             </div>
                           </div>
@@ -1001,7 +984,7 @@ export default function App() {
                                      item.difficulty === 'easy' ? 'bg-emerald-50 border-emerald-200' :
                                      item.difficulty === 'medium' ? 'bg-amber-50 border-amber-200' :
                                      'bg-violet-50 border-violet-200';
-                      const label = item.difficulty === 'impossible' ? '不可能' :
+                      const label = item.difficulty === 'impossible' ? '需加速' :
                                    item.difficulty === 'easy' ? '轻松' :
                                    item.difficulty === 'medium' ? '中等' : '困难';
                       const textColor = item.difficulty === 'impossible' ? 'text-rose-600' :
@@ -1068,7 +1051,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded bg-rose-300"></div>
-                        <span className="text-rose-600">不可能</span>
+                        <span className="text-rose-600">需加速</span>
                       </div>
                     </div>
                   </div>
