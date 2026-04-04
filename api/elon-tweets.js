@@ -1,88 +1,105 @@
+const CACHE_TTL_MS = 60 * 60 * 1000;
+
+let cache = {
+  data: null,
+  timestamp: 0
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const SOCIALDATA_API_KEY = process.env.SOCIALDATA_API_KEY;
-  const ELON_MUSK_USER_ID = '44196397';
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+  const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST;
 
-  if (!SOCIALDATA_API_KEY) {
-    return res.status(500).json({ error: 'API key not configured' });
+  if (!RAPIDAPI_KEY || !RAPIDAPI_HOST) {
+    return res.status(500).json({ error: 'RapidAPI credentials not configured' });
+  }
+
+  const now = Date.now();
+  if (cache.data && (now - cache.timestamp) < CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate');
+    return res.status(200).json({
+      ...cache.data,
+      fromCache: true,
+      cacheAge: Math.round((now - cache.timestamp) / 1000)
+    });
   }
 
   try {
-    const tweetsMap = new Map();
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 20);
+    let allTweets = [];
     let cursor = null;
     let pageCount = 0;
-    const maxPages = 30;
+    const maxPages = 10;
 
-    for (let page = 0; page < maxPages; page++) {
-      const url = cursor 
-        ? `https://api.socialdata.tools/twitter/user/${ELON_MUSK_USER_ID}/tweets?cursor=${encodeURIComponent(cursor)}`
-        : `https://api.socialdata.tools/twitter/user/${ELON_MUSK_USER_ID}/tweets`;
+    while (pageCount < maxPages) {
+      const url = cursor
+        ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}`
+        : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk`;
       
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${SOCIALDATA_API_KEY}`,
-          'Accept': 'application/json',
-        },
+          'x-rapidapi-host': RAPIDAPI_HOST,
+          'x-rapidapi-key': RAPIDAPI_KEY,
+          'Content-Type': 'application/json'
+        }
       });
-
-      if (response.status === 402) {
-        return res.status(402).json({ error: 'Insufficient balance. Please add credits.' });
-      }
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`API error: ${response.status} - ${errorText}`);
+        throw new Error(`RapidAPI error: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
+      const tweets = Array.isArray(responseData) ? responseData : (responseData.data || []);
       
-      if (!data.tweets || data.tweets.length === 0) {
+      if (!Array.isArray(tweets) || tweets.length === 0) {
         break;
       }
-
-      let hasOldTweet = false;
       
-      for (const tweet of data.tweets) {
-        const createdAtStr = tweet.tweet_created_at;
-        const createdAt = new Date(createdAtStr);
-        
-        if (isNaN(createdAt.getTime())) {
-          continue;
-        }
-        
-        if (createdAt < cutoffDate) {
-          hasOldTweet = true;
-          break;
-        }
-        
-        const utcHour = createdAt.getUTCHours();
-        let hour = utcHour + 8;
-        let tweetDate = new Date(createdAt);
-        
-        if (hour >= 24) {
-          hour = hour - 24;
-          tweetDate.setDate(tweetDate.getDate() + 1);
-        }
-        
-        const dateStr = `${tweetDate.getFullYear()}-${String(tweetDate.getMonth() + 1).padStart(2, '0')}-${String(tweetDate.getDate()).padStart(2, '0')}`;
-        
-        const key = `${dateStr}-${hour}`;
-        tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
-      }
-      
+      allTweets = allTweets.concat(tweets);
       pageCount++;
       
-      if (hasOldTweet || !data.next_cursor) {
+      if (!responseData.cursor || responseData.cursor === cursor) {
         break;
       }
       
-      cursor = data.next_cursor;
+      cursor = responseData.cursor;
       await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    const tweets = allTweets;
+
+    if (!Array.isArray(tweets) || tweets.length === 0) {
+      throw new Error('No tweets returned from API');
+    }
+
+    const tweetsMap = new Map();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+
+    for (const tweet of tweets) {
+      const createdAtStr = tweet.created_at;
+      const createdAt = new Date(createdAtStr);
+      
+      if (isNaN(createdAt.getTime()) || createdAt < cutoffDate) {
+        continue;
+      }
+      
+      const utcHour = createdAt.getUTCHours();
+      let hour = utcHour + 8;
+      let tweetDate = new Date(createdAt);
+      
+      if (hour >= 24) {
+        hour -= 24;
+        tweetDate.setDate(tweetDate.getDate() + 1);
+      }
+      
+      const dateStr = `${tweetDate.getFullYear()}-${String(tweetDate.getMonth() + 1).padStart(2, '0')}-${String(tweetDate.getDate()).padStart(2, '0')}`;
+      const key = `${dateStr}-${hour}`;
+      tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
     }
 
     const result = Array.from(tweetsMap.entries()).map(([key, count]) => {
@@ -92,20 +109,42 @@ export default async function handler(req, res) {
       return { date, hour, count };
     });
 
-    const estimatedCost = (pageCount * 20 * 0.0002).toFixed(4);
+    const latestTweet = tweets[0];
+    const totalTweetCount = latestTweet?.user?.legacy?.statuses_count || 0;
 
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
-    return res.status(200).json({
+    const cacheData = {
       tweets: result,
-      pagesFetched: pageCount,
-      estimatedCost: `$${estimatedCost}`,
-      lastUpdated: new Date().toISOString(),
+      totalTweets: totalTweetCount,
+      tweetCount: tweets.length,
+      lastUpdated: new Date().toISOString()
+    };
+
+    cache = {
+      data: cacheData,
+      timestamp: now
+    };
+
+    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate');
+    return res.status(200).json({
+      ...cacheData,
+      fromCache: false
     });
+
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error fetching tweets:', error);
+    
+    if (cache.data) {
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      return res.status(200).json({
+        ...cache.data,
+        fromCache: true,
+        stale: true
+      });
+    }
+    
     return res.status(500).json({ 
       error: 'Failed to fetch tweets',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 }

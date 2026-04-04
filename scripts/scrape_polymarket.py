@@ -10,16 +10,16 @@ import requests
 from datetime import datetime
 from typing import Dict, List, Optional
 
-GIST_URL = "https://gist.github.com/coveym/d174b4498c408076ff218e164f24807e"
+GIST_URL = "https://gist.github.com/Adul9981/d174b4498c408076ff218e164f24807e"
 GIST_TOKEN = "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"
 GIST_FILE = "polymarket-data.json"
 
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 MARKET_SLUGS = [
-    "elon-musk-of-tweets-march-24-march-31",
     "elon-musk-of-tweets-march-27-april-3",
     "elon-musk-of-tweets-march-31-april-7",
+    "elon-musk-of-tweets-april-7-april-14",
 ]
 
 
@@ -42,6 +42,7 @@ def get_event_data(slug: str) -> Optional[Dict]:
             "title": event.get("title"),
             "volume": event.get("volume"),
             "liquidity": event.get("liquidity"),
+            "start_date": event.get("startDate"),
             "end_date": event.get("endDate"),
             "markets": event.get("markets", []),
             "scraped_at": datetime.utcnow().isoformat(),
@@ -163,7 +164,7 @@ def main():
             print(f"  No data found")
 
     if all_data:
-        if "coveym" not in GIST_URL or "REPLACE" in GIST_TOKEN:
+        if not GIST_URL or not GIST_TOKEN or "REPLACE" in GIST_TOKEN:
             print("\n⚠️  Gist not configured. Data:")
             print(json.dumps(all_data, indent=2, ensure_ascii=False))
         else:

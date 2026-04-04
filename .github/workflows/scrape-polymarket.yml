@@ -23,6 +23,6 @@ jobs:
 
       - name: Run scraper
         env:
-          GIST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |
           python scripts/scrape_polymarket.py

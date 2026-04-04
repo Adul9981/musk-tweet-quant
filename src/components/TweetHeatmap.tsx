@@ -17,12 +17,12 @@ interface HeatmapData {
 }
 
 const getColorForCount = (count: number): string => {
-  if (count === 0) return '#0d4f4f';
-  if (count <= 3) return '#f5e6a3';
-  if (count <= 7) return '#f5d066';
-  if (count <= 12) return '#f5b833';
-  if (count <= 18) return '#e69500';
-  return '#cc7000';
+  if (count === 0) return '#1e293b';
+  if (count <= 3) return '#0891b2';
+  if (count <= 7) return '#06b6d4';
+  if (count <= 12) return '#22d3ee';
+  if (count <= 18) return '#67e8f9';
+  return '#a5f3fc';
 };
 
 const isAbnormal = (count: number): boolean => count > MAX_TWEETS_PER_HOUR;
@@ -41,7 +41,7 @@ const getETFromBeijing = (bjHour: number): string => {
 };
 
 const CACHE_KEY = 'musk_tweet_heatmap_data';
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 20 * 60 * 1000;
 
 interface CacheData {
   data: HeatmapData[];
@@ -142,10 +142,10 @@ export function TweetHeatmap() {
       const result = await response.json();
       
       if (!response.ok) {
-        if (response.status === 402) {
-          setError('SocialData 余额不足，请充值');
+        if (result.error?.includes('credentials') || result.error?.includes('configured')) {
+          setError('API 配置错误，请检查环境变量');
         } else {
-          setError(result.message || '获取数据失败');
+          setError(result.message || result.error || '获取数据失败');
         }
         return;
       }
@@ -245,17 +245,19 @@ export function TweetHeatmap() {
   const cellSize = 38;
 
   return (
-    <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-yellow-400 flex items-center gap-3">
-            <span className="text-3xl">♟</span>
-            马斯克发推热力图
-          </h3>
+            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-100 to-cyan-100 flex items-center justify-center">
+                <span className="text-2xl">📊</span>
+              </div>
+              马斯克发推热力图
+            </h3>
           <div className="flex items-center gap-4 mt-2">
             {lastUpdated && (
-              <span className="text-xs text-gray-500">
-                {isFromCache && <span className="text-yellow-500/60 mr-1">[缓存]</span>}
+              <span className="text-xs text-slate-500">
+                {isFromCache && <span className="text-amber-500 mr-1">缓存</span>}
                 更新: {new Date(lastUpdated).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
@@ -265,21 +267,21 @@ export function TweetHeatmap() {
           <button
             onClick={() => fetchRealData()}
             disabled={isLoading}
-            className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-sm rounded-lg transition-colors disabled:opacity-50 border border-cyan-500/30"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 inline mr-1 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
             {isLoading ? '加载中...' : isRefreshing ? '刷新中...' : '刷新数据'}
           </button>
           <button
             onClick={exportData}
-            className="p-2 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 rounded-lg"
+            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
             title="导出"
           >
             <Download className="w-4 h-4" />
           </button>
           <button
             onClick={() => setShowImport(!showImport)}
-            className="text-sm px-3 py-1.5 bg-gray-700/50 hover:bg-gray-600/50 text-gray-400 rounded-lg"
+            className="text-sm px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg transition-colors"
           >
             {showImport ? '收起' : '导入'}
           </button>
@@ -287,7 +289,7 @@ export function TweetHeatmap() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400">
+        <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-400">
           {error}
           {error.includes('余额') && (
             <a href="https://socialdata.tools" target="_blank" rel="noopener noreferrer" className="ml-2 underline">
@@ -298,34 +300,34 @@ export function TweetHeatmap() {
       )}
 
       {isLoading && data.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-          <Loader2 className="w-12 h-12 animate-spin text-cyan-400 mb-4" />
-          <p className="text-lg">正在从 SocialData 获取数据...</p>
-          <p className="text-sm text-gray-500 mt-2">约需 10-20 秒</p>
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mb-4" />
+          <p className="text-lg">正在获取数据...</p>
+          <p className="text-sm text-slate-500 mt-2">约需 10-20 秒</p>
         </div>
       )}
 
       {!isLoading && data.length === 0 && !error && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
           <p className="text-lg">暂无数据</p>
-          <p className="text-sm text-gray-500 mt-2">点击上方按钮获取数据</p>
+          <p className="text-sm text-slate-500 mt-2">点击上方按钮获取数据</p>
         </div>
       )}
 
       {data.length > 0 && (
         <div className="overflow-x-auto pb-4">
-          <div className="inline-block">
-            <div className="flex gap-1 mb-1 pl-12">
+          <div className="inline-block min-w-full">
+            <div className="flex gap-1 mb-1 pl-14">
               {hours.map(hour => (
                 <div
                   key={hour}
                   className="flex flex-col items-center"
                   style={{ width: cellSize }}
                 >
-                  <span className="text-xs text-yellow-400 font-medium">{hour}点</span>
-                  <span className="text-[9px] text-gray-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
+                  <span className="text-xs text-slate-400 font-medium">{hour}点</span>
+                  <span className="text-[9px] text-slate-500">({getETFromBeijing(hour).replace(' ET', '')})</span>
                   {hour === currentBJHour && (
-                    <div className="w-1 h-1 bg-cyan-400 rounded-full mt-0.5" />
+                    <div className="w-1 h-1 bg-indigo-400 rounded-full mt-0.5" />
                   )}
                 </div>
               ))}
@@ -334,8 +336,8 @@ export function TweetHeatmap() {
             {uniqueDates.map((date) => (
               <div key={date} className="flex items-center gap-1 mb-1">
                 <div className="w-14 flex flex-col items-end pr-2 leading-tight">
-                  <span className="text-sm text-gray-300 font-bold">{formatDate(date).split(' ')[0]}</span>
-                  <span className="text-xs text-gray-500">{formatDate(date).split(' ')[1]}</span>
+                  <span className="text-sm text-slate-300 font-bold">{formatDate(date).split(' ')[0]}</span>
+                  <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
                 </div>
                 {hours.map(hour => {
                   const cellData = data.find(d => d.date === date && d.hour === hour);
@@ -347,7 +349,7 @@ export function TweetHeatmap() {
                     <div
                       key={hour}
                       className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
-                        isCurrentHour ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-gray-900' : ''
+                        isCurrentHour ? 'ring-2 ring-indigo-400 ring-offset-1 ring-offset-slate-800' : ''
                       }`}
                       style={{
                         width: cellSize,
@@ -365,7 +367,7 @@ export function TweetHeatmap() {
                         <span 
                           className="absolute inset-0 flex items-center justify-center text-xs font-bold"
                           style={{ 
-                            color: count <= 7 ? '#1a1a2e' : '#ffffff',
+                            color: count <= 7 ? '#e0f2fe' : '#0c4a6e',
                           }}
                         >
                           {count}
@@ -377,15 +379,15 @@ export function TweetHeatmap() {
                         </div>
                       )}
                       {isCurrentHour && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-cyan-400" />
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-indigo-400" />
                       )}
                     </div>
                   );
                 })}
-                <span className="text-xs text-gray-500 pl-2 w-6">
+                <span className="text-xs text-slate-500 pl-2 w-6">
                   {formatDate(date).split(' ')[1]}
                 </span>
-                <span className="text-xs font-bold text-yellow-400 w-10 text-right pl-2 border-l border-gray-700">
+                <span className="text-xs font-bold text-cyan-400 w-10 text-right pl-2 border-l border-slate-700">
                   {data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0)}
                 </span>
               </div>
@@ -395,61 +397,61 @@ export function TweetHeatmap() {
       )}
 
       {data.length > 0 && (
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700/50">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">北京时间</span>
+            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">北京时间</span>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0d4f4f' }} />
-              <span className="text-xs text-gray-500 mr-2">无</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5e6a3' }} />
-              <span className="text-xs text-gray-500 mr-2">1-3</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5d066' }} />
-              <span className="text-xs text-gray-500 mr-2">4-7</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#f5b833' }} />
-              <span className="text-xs text-gray-500 mr-2">8-12</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#e69500' }} />
-              <span className="text-xs text-gray-500 mr-2">13-18</span>
-              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#cc7000' }} />
-              <span className="text-xs text-gray-500">19+</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#1e293b' }} />
+              <span className="text-xs text-slate-500 mr-2">无</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#0891b2' }} />
+              <span className="text-xs text-slate-500 mr-2">1-3</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#06b6d4' }} />
+              <span className="text-xs text-slate-500 mr-2">4-7</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#22d3ee' }} />
+              <span className="text-xs text-slate-500 mr-2">8-12</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#67e8f9' }} />
+              <span className="text-xs text-slate-500 mr-2">13-18</span>
+              <div className="w-5 h-5 rounded" style={{ backgroundColor: '#a5f3fc' }} />
+              <span className="text-xs text-slate-500">19+</span>
             </div>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-cyan-400 rounded-full" />
-              <span className="text-gray-400">当前时段</span>
+              <div className="w-2 h-2 bg-indigo-400 rounded-full" />
+              <span className="text-slate-400">当前时段</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-gray-400">高频时段:</span>
+              <span className="text-slate-400">高频时段:</span>
               {stats.topBlocks.slice(0, 2).map((block, i) => (
-                <span key={i} className={`text-xs px-2 py-0.5 rounded ${i === 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-700/50 text-gray-400'}`}>
+                <span key={i} className={`text-xs px-2 py-0.5 rounded ${i === 0 ? 'bg-indigo-500/20 text-indigo-300' : 'bg-slate-700 text-slate-400'}`}>
                   {block.start}:00-{block.start + 3}:59
                 </span>
               ))}
-              <span className="text-gray-500 text-[10px]">(4小时区间)</span>
+              <span className="text-slate-500 text-[10px]">(4小时区间)</span>
             </div>
-            <span className="text-gray-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
+            <span className="text-slate-500 text-[10px]">右侧为当日发推总数 | 灰色数字为美东时间</span>
           </div>
         </div>
       )}
 
       {hoveredCell && (
         <div 
-          className="fixed z-50 bg-gray-800 border border-yellow-500/50 rounded-lg px-4 py-3 shadow-2xl pointer-events-none"
+          className="fixed z-50 bg-slate-800 border border-indigo-500/50 rounded-xl px-4 py-3 shadow-xl pointer-events-none"
           style={{
             left: hoveredPos.x,
             top: hoveredPos.y - 100,
             transform: 'translateX(-50%)',
           }}
         >
-          <div className="text-sm text-gray-300">{formatDate(hoveredCell.date)}</div>
+          <div className="text-sm text-slate-400">{formatDate(hoveredCell.date)}</div>
           <div className="text-base font-bold text-white flex items-center gap-3">
             <span>{hoveredCell.hour.toString().padStart(2, '0')}:00 北京时间</span>
-            <span className="text-gray-400 text-sm">({getETFromBeijing(hoveredCell.hour)})</span>
+            <span className="text-slate-400 text-sm">({getETFromBeijing(hoveredCell.hour)})</span>
           </div>
           <div className="text-sm mt-1">
-            <span className="text-gray-400">发推 </span>
-            <span className={`font-bold text-xl ${isAbnormal(hoveredCell.count) ? 'text-rose-400' : 'text-yellow-400'}`}>{hoveredCell.count}</span>
-            <span className="text-gray-400"> 条</span>
+            <span className="text-slate-400">发推 </span>
+            <span className={`font-bold text-xl ${isAbnormal(hoveredCell.count) ? 'text-rose-400' : 'text-cyan-400'}`}>{hoveredCell.count}</span>
+            <span className="text-slate-400"> 条</span>
             {isAbnormal(hoveredCell.count) && (
               <span className="ml-2 text-xs bg-rose-500/30 text-rose-300 px-2 py-0.5 rounded">数据异常</span>
             )}
@@ -458,18 +460,18 @@ export function TweetHeatmap() {
       )}
 
       {showImport && (
-        <div className="mt-4 pt-4 border-t border-gray-700/50">
-          <h4 className="text-sm font-medium text-gray-300 mb-2">导入 JSON 数据</h4>
+        <div className="mt-6 pt-6 border-t border-slate-700">
+          <h4 className="text-sm font-medium text-slate-300 mb-2">导入 JSON 数据</h4>
           <textarea
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
             placeholder='[{"date": "2026-03-27", "hour": 14, "count": 8}, ...]'
-            className="w-full h-24 bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-300 font-mono resize-none"
+            className="w-full h-24 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
-          {importError && <p className="text-xs text-red-400 mt-2">{importError}</p>}
+          {importError && <p className="text-xs text-rose-400 mt-2">{importError}</p>}
           <button
             onClick={handleImport}
-            className="mt-2 px-4 py-1.5 bg-yellow-500/20 text-yellow-400 text-sm rounded-lg border border-yellow-500/30"
+            className="mt-3 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-500 transition-colors"
           >
             应用
           </button>
@@ -522,9 +524,9 @@ function LatestTweets() {
   };
 
   return (
-    <div className="mt-6 pt-6 border-t border-gray-700/50">
+    <div className="mt-8 pt-6 border-t border-slate-700">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+        <h4 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
           <span className="text-lg">📝</span>
           最新推文
         </h4>
@@ -532,14 +534,14 @@ function LatestTweets() {
           href={XTRACKER_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg border border-cyan-500/30 transition-colors"
+          className="flex items-center gap-2 text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg transition-colors"
         >
           <span>查看全部</span>
-          <ExternalLink className="w-3 h-3" />
+          <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
       {isLoading ? (
-        <p className="text-sm text-gray-500">加载中...</p>
+        <p className="text-sm text-slate-500">加载中...</p>
       ) : posts.length > 0 ? (
         <div className="space-y-3">
           {posts.map((post) => (
@@ -548,20 +550,20 @@ function LatestTweets() {
               href={`https://x.com/elonmusk/status/${post.platformId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block bg-gray-800/30 rounded-lg p-4 border border-gray-700/30 hover:border-cyan-500/50 hover:bg-gray-800/50 transition-colors"
+              className="block bg-slate-900/50 rounded-xl p-4 border border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-colors"
             >
-              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {truncateContent(post.content)}
               </p>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs text-gray-500">{formatTimeAgo(post.createdAt)}</span>
-                <ExternalLink className="w-3 h-3 text-gray-500" />
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs text-slate-500">{formatTimeAgo(post.createdAt)}</span>
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
               </div>
             </a>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500">暂无推文数据</p>
+        <p className="text-sm text-slate-500">暂无推文数据</p>
       )}
     </div>
   );
