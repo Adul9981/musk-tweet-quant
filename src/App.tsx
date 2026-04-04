@@ -841,45 +841,38 @@ export default function App() {
                       const isActive = i === selectedMarketIndex;
                       
                       return (
-                        <div
+                        <button
                           key={market.slug}
-                          className={`p-4 rounded-xl border transition-all ${
+                          onClick={() => handleSelectMarket(i)}
+                          className={`w-full p-4 rounded-xl border transition-all text-left ${
                             isActive 
-                              ? 'bg-indigo-50 border-indigo-300' 
+                              ? 'bg-indigo-100 border-indigo-400' 
                               : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                           }`}
                         >
-                          <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-start justify-between">
                             <div>
-                              <span className={`text-sm font-semibold block ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
+                              <span className={`text-sm font-semibold block ${isActive ? 'text-indigo-800' : 'text-slate-700'}`}>
                                 {parseMarketTitle(market.title)}
                               </span>
                               <span className="text-xs text-slate-400 mt-1 block">剩余 {daysLeft} 天</span>
                             </div>
-                            <span className="text-indigo-600 text-sm font-semibold">${(market.volume / 1000000).toFixed(1)}M</span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={`text-sm font-semibold ${isActive ? 'text-indigo-700' : 'text-indigo-600'}`}>
+                                ${(market.volume / 1000000).toFixed(1)}M
+                              </span>
+                              <a
+                                href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-indigo-500 hover:text-indigo-700 underline"
+                              >
+                                进入市场
+                              </a>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleSelectMarket(i)}
-                              className={`flex-1 text-xs py-1.5 px-3 rounded-lg transition-all ${
-                                isActive 
-                                  ? 'bg-indigo-600 text-white' 
-                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                              }`}
-                            >
-                              {isActive ? '当前选中' : '查看分析'}
-                            </button>
-                            <a
-                              href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex-1 text-xs py-1.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all text-center"
-                            >
-                              进入市场
-                              <ExternalLink className="w-3 h-3 inline ml-1" />
-                            </a>
-                          </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>

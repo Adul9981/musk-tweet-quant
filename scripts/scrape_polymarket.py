@@ -17,8 +17,8 @@ GIST_FILE = "polymarket-data.json"
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 MARKET_SLUGS = [
-    "elon-musk-of-tweets-march-27-april-3",
     "elon-musk-of-tweets-march-31-april-7",
+    "elon-musk-of-tweets-april-3-april-10",
     "elon-musk-of-tweets-april-7-april-14",
 ]
 
