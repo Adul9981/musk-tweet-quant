@@ -337,7 +337,7 @@ export function TweetHeatmap() {
             {uniqueDates.map((date) => {
               const dayTotal = data.filter(d => d.date === date).reduce((sum, d) => sum + d.count, 0);
               return (
-                <div key={date} className="flex items-center gap-1 mb-1">
+                <div key={date} className="flex items-center gap-0 mb-1">
                   <div className="w-14 flex flex-col items-end pr-2 leading-tight">
                     <span className="text-sm text-slate-700 font-bold">{formatDate(date).split(' ')[0]}</span>
                     <span className="text-xs text-slate-500">{formatDate(date).split(' ')[1]}</span>
@@ -387,7 +387,7 @@ export function TweetHeatmap() {
                       </div>
                     );
                   })}
-                  <span className="text-sm font-bold text-indigo-600 w-12 text-right ml-2">
+                  <span className="text-sm font-bold text-indigo-600 text-right">
                     {dayTotal}
                   </span>
                 </div>
