@@ -592,31 +592,22 @@ export default function App() {
                   <span>美东 {parseTimestamp(lastUpdated).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               )}
-              <div className="hidden lg:flex items-center gap-2">
-                {activeMarkets.slice(0, 2).map((m, i) => (
-                  <a
-                    key={m.slug}
-                    href={`https://polymarket.com/event/${m.slug}${REFERRAL}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                      i === selectedMarketIndex 
-                        ? 'bg-white text-indigo-700 shadow-md' 
-                        : 'bg-white/20 text-white hover:bg-white/30'
-                    }`}
-                  >
-                    <span>{parseMarketTitle(m.title).split(' ')[0]}</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                ))}
-              </div>
               <a
                 href="https://polymarket.com/?r=adul"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 text-sm font-semibold rounded-lg transition-all shadow-md hover:shadow-lg"
               >
-                <span>Polymarket</span>
+                <span>主页</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
+                href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white hover:bg-indigo-400 text-sm font-medium rounded-lg transition-all shadow-md hover:shadow-lg"
+              >
+                <span>进入市场</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
