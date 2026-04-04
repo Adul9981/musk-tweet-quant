@@ -470,68 +470,6 @@ export default function App() {
     return analysisData.map(calculateIntervalAnalysis).filter(Boolean);
   }, [analysisData, calculateIntervalAnalysis, remainingHours, currentTweetCount]);
 
-  const strategyRecommendations = useMemo(() => {
-    const recommendations: Array<{
-      action: '买入' | '卖出' | '观望';
-      range: string;
-      reason: string;
-      priority: number;
-    }> = [];
-
-    intervalAnalysis.forEach((item) => {
-      if (!item || !item.status) return;
-      const alpha = item.alpha;
-      const edge = item.edge;
-      const status = item.status;
-      
-      if (status === 'busted') {
-        recommendations.push({
-          action: '卖出',
-          range: item.range,
-          reason: '已破，当前推文数已超过该区间上限',
-          priority: 1
-        });
-      } else if (status === 'passed') {
-        recommendations.push({
-          action: '观望',
-          range: item.range,
-          reason: '已过，价格已归零',
-          priority: 3
-        });
-      } else if (alpha > 1.3 && edge > 8) {
-        recommendations.push({
-          action: '买入',
-          range: item.range,
-          reason: `α=${alpha.toFixed(2)}x, Edge=+${edge.toFixed(1)}%，显著低估`,
-          priority: 1
-        });
-      } else if (alpha > 1.1 && edge > 3) {
-        recommendations.push({
-          action: '买入',
-          range: item.range,
-          reason: `α=${alpha.toFixed(2)}x, Edge=+${edge.toFixed(1)}%，轻微低估`,
-          priority: 2
-        });
-      } else if (alpha < 0.7 && edge < -10) {
-        recommendations.push({
-          action: '卖出',
-          range: item.range,
-          reason: `α=${alpha.toFixed(2)}x, Edge=${edge.toFixed(1)}%，显著高估`,
-          priority: 1
-        });
-      } else if (alpha < 0.85 && edge < -5) {
-        recommendations.push({
-          action: '卖出',
-          range: item.range,
-          reason: `α=${alpha.toFixed(2)}x, Edge=${edge.toFixed(1)}%，轻微高估`,
-          priority: 2
-        });
-      }
-    });
-
-    return recommendations.sort((a, b) => a.priority - b.priority);
-  }, [intervalAnalysis]);
-
   const velocityRanges = useMemo(() => {
     const currentSpeed = apiPace / 24;
     const activeIntervals = intervalAnalysis.filter(i => i?.status === 'active');
@@ -1051,71 +989,75 @@ export default function App() {
                     const centerRatio = totalProb > 0 ? (centerProb / totalProb * 100) : 0;
                     
                     const undervaluedItems = intervalAnalysis.filter(i => i && i.status === 'active' && i.alpha > 1.1);
-                    
-                    const leftEdge = intervalAnalysis.find(i => i && i.parsed?.min < (centerItem?.parsed?.min || 0));
-                    const rightEdge = intervalAnalysis.find(i => i && i.parsed?.min > (centerItem?.parsed?.max || 0));
+                    const maxLoss = centerItem?.marketPrice ? (100 - centerItem.marketPrice) : 0;
+                    const maxGain = centerItem?.marketPrice ? (100 / centerItem.marketPrice * 100 - 100) : 0;
                     
                     return (
                       <div className="space-y-4">
-                        <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="px-3 py-1 bg-indigo-200 text-indigo-700 rounded-full text-sm font-semibold">核心仓位</span>
-                            <span className="text-slate-800 font-bold text-lg">{centerItem?.range || '-'}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center">
-                              <p className="text-3xl font-bold text-indigo-600">{centerRatio.toFixed(0)}%</p>
-                              <p className="text-xs text-slate-500">推荐仓位比例</p>
+                        {centerItem && (
+                          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                            <div className="flex items-center gap-3 mb-4">
+                              <span className="px-3 py-1 bg-indigo-200 text-indigo-700 rounded-full text-sm font-semibold">核心仓位</span>
+                              <span className="text-slate-800 font-bold text-lg">{centerItem.range}</span>
                             </div>
-                            <div className="text-center">
-                              <p className="text-3xl font-bold text-cyan-600">{centerItem?.trueProb.toFixed(1)}%</p>
-                              <p className="text-xs text-slate-500">真实概率</p>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                              <div className="text-center p-3 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-indigo-600">{centerRatio.toFixed(0)}%</p>
+                                <p className="text-xs text-slate-500">仓位比例</p>
+                              </div>
+                              <div className="text-center p-3 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-cyan-600">{centerItem.trueProb.toFixed(1)}%</p>
+                                <p className="text-xs text-slate-500">真实概率</p>
+                              </div>
+                              <div className="text-center p-3 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-rose-600">{maxLoss.toFixed(0)}%</p>
+                                <p className="text-xs text-slate-500">潜在亏损</p>
+                              </div>
+                              <div className="text-center p-3 bg-white rounded-lg">
+                                <p className="text-2xl font-bold text-emerald-600">{maxGain.toFixed(0)}%</p>
+                                <p className="text-xs text-slate-500">潜在收益</p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/50 p-3 rounded-lg">
+                              <span className="font-medium">风险收益比:</span>
+                              <span className="text-rose-500 font-semibold">-{maxLoss.toFixed(0)}%</span>
+                              <span className="text-slate-400">vs</span>
+                              <span className="text-emerald-500 font-semibold">+{maxGain.toFixed(0)}%</span>
+                              <span className="text-slate-400 ml-2">(赔率 {centerItem.marketPrice.toFixed(1)}%)</span>
                             </div>
                           </div>
-                        </div>
+                        )}
                         
                         <div className="p-4 bg-slate-100 border border-slate-200 rounded-xl">
-                          <h3 className="text-sm font-semibold text-slate-600 mb-3">边缘仓位配置</h3>
-                          <div className="grid grid-cols-2 gap-3">
-                            {leftEdge && (
-                              <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
-                                <p className="text-xs text-slate-500 mb-1">左侧边缘</p>
-                                <p className="font-bold text-slate-700">{leftEdge.range}</p>
-                                <p className="text-sm text-violet-600">{leftEdge.trueProb.toFixed(1)}%</p>
-                                <p className="text-xs text-slate-400">推荐 {(leftEdge.trueProb / totalProb * 50).toFixed(0)}% 仓位</p>
+                          <h3 className="text-sm font-semibold text-slate-600 mb-3">下注区间参考</h3>
+                          <div className="space-y-2">
+                            {intervalAnalysis.slice(0, 8).map(item => item && (
+                              <div key={item.range} className={`flex items-center justify-between p-2 rounded-lg ${item.isCenter ? 'bg-indigo-100 border border-indigo-300' : 'bg-white'}`}>
+                                <span className={`font-medium ${item.isCenter ? 'text-indigo-700' : 'text-slate-700'}`}>
+                                  {item.range}
+                                  {item.isCenter && <span className="ml-2 text-xs bg-indigo-200 text-indigo-700 px-2 py-0.5 rounded">推荐</span>}
+                                </span>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="text-slate-500">赔率: {item.marketPrice.toFixed(1)}%</span>
+                                  <span className={`font-medium ${item.alpha > 1 ? 'text-emerald-600' : item.alpha < 1 ? 'text-rose-600' : 'text-slate-600'}`}>
+                                    α: {item.alpha.toFixed(2)}
+                                  </span>
+                                </div>
                               </div>
-                            )}
-                            {rightEdge && (
-                              <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
-                                <p className="text-xs text-slate-500 mb-1">右侧边缘</p>
-                                <p className="font-bold text-slate-700">{rightEdge.range}</p>
-                                <p className="text-sm text-cyan-600">{rightEdge.trueProb.toFixed(1)}%</p>
-                                <p className="text-xs text-slate-400">推荐 {(rightEdge.trueProb / totalProb * 50).toFixed(0)}% 仓位</p>
-                              </div>
-                            )}
+                            ))}
                           </div>
                         </div>
                         
                         {undervaluedItems.length > 0 && (
                           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                            <h3 className="text-sm font-semibold text-emerald-600 mb-2">被低估区间 (α &gt; 1.1)</h3>
+                            <h3 className="text-sm font-semibold text-emerald-600 mb-2">价值区间 (α &gt; 1.1)</h3>
+                            <p className="text-xs text-slate-500 mb-2">市场定价低于真实概率，值得关注</p>
                             <div className="flex flex-wrap gap-2">
                               {undervaluedItems.slice(0, 5).map(item => item && (
                                 <span key={item.range} className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">
-                                  {item.range} ({item.trueProb.toFixed(1)}%)
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {strategyRecommendations.filter(r => r.action === '卖出').length > 0 && (
-                          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                            <h3 className="text-sm font-semibold text-rose-600 mb-2">卖出建议</h3>
-                            <div className="flex flex-wrap gap-2">
-                              {strategyRecommendations.filter(r => r.action === '卖出').slice(0, 5).map((rec, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-sm">
-                                  {rec.range}
+                                  {item.range} α={item.alpha.toFixed(2)}
                                 </span>
                               ))}
                             </div>
