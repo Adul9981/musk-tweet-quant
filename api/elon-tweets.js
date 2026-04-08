@@ -1,4 +1,4 @@
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 let cache = {
   data: null,
@@ -17,9 +17,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'RapidAPI credentials not configured' });
   }
 
+  const forceRefresh = req.query.refresh === '1';
   const now = Date.now();
-  if (cache.data && (now - cache.timestamp) < CACHE_TTL_MS) {
-    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate');
+  
+  if (!forceRefresh && cache.data && (now - cache.timestamp) < CACHE_TTL_MS) {
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate');
     return res.status(200).json({
       ...cache.data,
       fromCache: true,
@@ -32,42 +34,51 @@ export default async function handler(req, res) {
     let cursor = null;
     let pageCount = 0;
     const maxPages = 30;
+    let lastError = null;
 
-    while (pageCount < maxPages) {
-      const url = cursor
-        ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}`
-        : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'x-rapidapi-host': RAPIDAPI_HOST,
-          'x-rapidapi-key': RAPIDAPI_KEY,
-          'Content-Type': 'application/json'
+    for (let attempt = 0; attempt < 3 && pageCount < maxPages; attempt++) {
+      try {
+        const url = cursor
+          ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}`
+          : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk`;
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': RAPIDAPI_HOST,
+            'x-rapidapi-key': RAPIDAPI_KEY,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`RapidAPI error: ${response.status}`);
         }
-      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`RapidAPI error: ${response.status} - ${errorText}`);
+        const responseData = await response.json();
+        const tweets = Array.isArray(responseData) ? responseData : (responseData.data || []);
+        
+        if (!Array.isArray(tweets) || tweets.length === 0) {
+          break;
+        }
+        
+        allTweets = allTweets.concat(tweets);
+        pageCount++;
+        
+        if (!responseData.cursor || responseData.cursor === cursor) {
+          break;
+        }
+        
+        cursor = responseData.cursor;
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (e) {
+        lastError = e;
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+    }
 
-      const responseData = await response.json();
-      const tweets = Array.isArray(responseData) ? responseData : (responseData.data || []);
-      
-      if (!Array.isArray(tweets) || tweets.length === 0) {
-        break;
-      }
-      
-      allTweets = allTweets.concat(tweets);
-      pageCount++;
-      
-      if (!responseData.cursor || responseData.cursor === cursor) {
-        break;
-      }
-      
-      cursor = responseData.cursor;
-      await new Promise(resolve => setTimeout(resolve, 500));
+    if (allTweets.length === 0 && lastError) {
+      throw lastError;
     }
 
     const tweets = allTweets;
