@@ -827,8 +827,7 @@ export default function App() {
                           <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">区间</th>
                           <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">赔率</th>
                           <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">真实概率</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">α值</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Edge</th>
+                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">回报率</th>
                           <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">状态</th>
                         </tr>
                       </thead>
@@ -842,25 +841,20 @@ export default function App() {
                           const statusText = item.isCenter ? '中心' : 
                                            item.status === 'busted' ? '已破' :
                                            item.status === 'passed' ? '已过' : '活跃';
-                          
+                          const payout = item.marketPrice > 0 ? (100 / item.marketPrice * 100 - 100) : 0;
+                          const payoutClass = payout > 100 ? 'text-emerald-600' : payout > 50 ? 'text-cyan-600' : 'text-slate-500';
+                          const isPositive = item.trueProb > item.marketPrice;
+                          const trueProbClass = isPositive ? 'text-emerald-600' : 'text-rose-500';
+                           
                           return (
                             <tr key={item.range} className={`border-b border-slate-100 hover:bg-slate-50 ${item.isCenter ? 'bg-indigo-50' : ''}`}>
                               <td className={`py-3 px-2 font-semibold ${item.isCenter ? 'text-indigo-700' : 'text-slate-700'}`}>
                                 {item.range}
                               </td>
                               <td className="py-3 px-2 text-right text-slate-500">{item.marketPrice.toFixed(1)}%</td>
-                              <td className="py-3 px-2 text-right font-semibold text-slate-800">{item.trueProb.toFixed(1)}%</td>
-                              <td className={`py-3 px-2 text-right font-semibold ${
-                                item.alpha > 1.2 ? 'text-emerald-600' : 
-                                item.alpha < 0.8 ? 'text-rose-400' : 'text-slate-400'
-                              }`}>
-                                {item.alpha.toFixed(2)}x
-                              </td>
-                              <td className={`py-3 px-2 text-right font-semibold ${
-                                item.edge > 5 ? 'text-emerald-400' : 
-                                item.edge < -5 ? 'text-rose-400' : 'text-slate-400'
-                              }`}>
-                                {item.edge > 0 ? '+' : ''}{item.edge.toFixed(1)}%
+                              <td className={`py-3 px-2 text-right font-semibold ${trueProbClass}`}>{item.trueProb.toFixed(1)}%</td>
+                              <td className={`py-3 px-2 text-right font-semibold ${payoutClass}`}>
+                                {payout > 0 ? '+' : ''}{payout.toFixed(0)}%
                               </td>
                               <td className="py-3 px-2 text-right">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
@@ -874,8 +868,7 @@ export default function App() {
                     </table>
                   </div>
                   <div className="mt-4 p-4 bg-slate-100 rounded-xl text-xs text-slate-600">
-                    <p className="mb-1">基于泊松分布模型计算：预测中心 μ = {mu.toFixed(1)}</p>
-                    <p>• <span className="text-emerald-600 font-medium">α &gt; 1.2</span>: 被低估 | <span className="text-rose-600 font-medium">α &lt; 0.8</span>: 被高估</p>
+                    <p>基于泊松分布模型计算：预测中心 μ = {mu.toFixed(1)}</p>
                   </div>
                 </section>
 
