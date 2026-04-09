@@ -33,14 +33,19 @@ export default async function handler(req, res) {
     let allTweets = [];
     let cursor = null;
     let pageCount = 0;
-    const maxPages = 30;
-    let lastError = null;
+    const maxPages = 50;
+    let consecutiveEmpty = 0;
+    let maxRetries = 5;
+    let retryCount = 0;
 
-    for (let attempt = 0; attempt < 3 && pageCount < maxPages; attempt++) {
+    while (pageCount < maxPages && consecutiveEmpty < 3) {
       try {
-        const url = cursor
-          ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}`
-          : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk`;
+        let url;
+        if (cursor) {
+          url = `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}&count=100`;
+        } else {
+          url = `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&count=100`;
+        }
         
         const response = await fetch(url, {
           method: 'GET',
@@ -52,30 +57,52 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
+          console.log(`API response status: ${response.status}`);
+          if (response.status === 429) {
+            retryCount++;
+            if (retryCount >= maxRetries) break;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            continue;
+          }
           throw new Error(`RapidAPI error: ${response.status}`);
         }
 
         const responseData = await response.json();
-        const tweets = Array.isArray(responseData) ? responseData : (responseData.data || []);
         
-        if (!Array.isArray(tweets) || tweets.length === 0) {
+        let tweets = [];
+        if (Array.isArray(responseData)) {
+          tweets = responseData;
+        } else if (responseData.data) {
+          tweets = Array.isArray(responseData.data) ? responseData.data : responseData.data.tweets || [];
+        } else if (responseData.tweets) {
+          tweets = Array.isArray(responseData.tweets) ? responseData.tweets : [];
+        }
+        
+        if (!tweets || tweets.length === 0) {
+          consecutiveEmpty++;
           break;
         }
         
-        allTweets = allTweets.concat(tweets);
+        allTweets = [...allTweets, ...tweets];
         pageCount++;
+        consecutiveEmpty = 0;
         
-        if (!responseData.cursor || responseData.cursor === cursor) {
+        if (!responseData.cursor) {
           break;
         }
         
         cursor = responseData.cursor;
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
       } catch (e) {
-        lastError = e;
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log(`Error on page ${pageCount}: ${e.message}`);
+        retryCount++;
+        if (retryCount >= maxRetries) break;
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
+
+    console.log(`Fetched ${allTweets.length} tweets in ${pageCount} pages`);
 
     if (allTweets.length === 0 && lastError) {
       throw lastError;
