@@ -809,26 +809,50 @@ export default function App() {
               <div className="lg:col-span-2 space-y-6">
                 <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                        <BarChart3 className="w-4 h-4 text-amber-600" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 text-amber-600" />
                       </div>
-                      盘口价值比分析
-                    </h2>
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-800">盘口价值比分析</h2>
+                        <p className="text-xs text-slate-500">基于泊松分布 · 预测中心 μ = {mu.toFixed(1)}</p>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Clock className="w-3 h-3" />
                       {lastUpdated && new Date(lastUpdated).toLocaleTimeString('zh-CN')}
                     </div>
                   </div>
+                  
+                  <div className="grid grid-cols-4 gap-4 mb-6">
+                    <div className="text-center p-4 bg-indigo-50 rounded-xl">
+                      <p className="text-2xl font-bold text-indigo-600">{currentTweetCount}</p>
+                      <p className="text-xs text-indigo-500">当前推文</p>
+                    </div>
+                    <div className="text-center p-4 bg-cyan-50 rounded-xl">
+                      <p className="text-2xl font-bold text-cyan-600">{apiPace.toFixed(1)}</p>
+                      <p className="text-xs text-cyan-500">日均时速</p>
+                    </div>
+                    <div className="text-center p-4 bg-amber-50 rounded-xl">
+                      <p className="text-2xl font-bold text-amber-600">{E_rem.toFixed(0)}</p>
+                      <p className="text-xs text-amber-500">预期剩余</p>
+                    </div>
+                    <div className="text-center p-4 bg-violet-50 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-600">{remainingDays}d</p>
+                      <p className="text-xs text-violet-500">剩余时间</p>
+                    </div>
+                  </div>
+
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-slate-200">
-                          <th className="text-left py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">区间</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">赔率</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">真实概率</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">回报率</th>
-                          <th className="text-right py-3 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">状态</th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase">区间</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">赔率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">真实概率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">回报率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">盈亏</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">状态</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -845,18 +869,23 @@ export default function App() {
                           const payoutClass = payout > 100 ? 'text-emerald-600' : payout > 50 ? 'text-cyan-600' : 'text-slate-500';
                           const isPositive = item.trueProb > item.marketPrice;
                           const trueProbClass = isPositive ? 'text-emerald-600' : 'text-rose-500';
+                          const profitLoss = item.trueProb - item.marketPrice;
+                          const plClass = profitLoss > 0 ? 'text-emerald-500' : profitLoss < 0 ? 'text-rose-500' : 'text-slate-400';
                            
                           return (
                             <tr key={item.range} className={`border-b border-slate-100 hover:bg-slate-50 ${item.isCenter ? 'bg-indigo-50' : ''}`}>
-                              <td className={`py-3 px-2 font-semibold ${item.isCenter ? 'text-indigo-700' : 'text-slate-700'}`}>
+                              <td className={`py-3 px-3 font-semibold ${item.isCenter ? 'text-indigo-700' : 'text-slate-700'}`}>
                                 {item.range}
                               </td>
-                              <td className="py-3 px-2 text-right text-slate-500">{item.marketPrice.toFixed(1)}%</td>
-                              <td className={`py-3 px-2 text-right font-semibold ${trueProbClass}`}>{item.trueProb.toFixed(1)}%</td>
-                              <td className={`py-3 px-2 text-right font-semibold ${payoutClass}`}>
+                              <td className="py-3 px-3 text-right text-slate-500">{item.marketPrice.toFixed(1)}%</td>
+                              <td className={`py-3 px-3 text-right font-semibold ${trueProbClass}`}>{item.trueProb.toFixed(1)}%</td>
+                              <td className={`py-3 px-3 text-right font-semibold ${payoutClass}`}>
                                 {payout > 0 ? '+' : ''}{payout.toFixed(0)}%
                               </td>
-                              <td className="py-3 px-2 text-right">
+                              <td className={`py-3 px-3 text-right font-semibold ${plClass}`}>
+                                {profitLoss > 0 ? '+' : ''}{profitLoss.toFixed(1)}%
+                              </td>
+                              <td className="py-3 px-3 text-right">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
                                   {statusText}
                                 </span>
@@ -867,22 +896,26 @@ export default function App() {
                       </tbody>
                     </table>
                   </div>
-                  <div className="mt-4 p-4 bg-slate-100 rounded-xl text-xs text-slate-600">
-                    <p>基于泊松分布模型计算：预测中心 μ = {mu.toFixed(1)}</p>
+                  
+                  <div className="mt-4 flex items-center justify-between text-xs text-slate-500 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span>真实概率 &gt; 赔率 = <span className="text-emerald-600 font-medium">盈利</span></span>
+                      <span>真实概率 &lt; 赔率 = <span className="text-rose-500 font-medium">亏损</span></span>
+                    </div>
+                    <span>回报率 = 1/赔率 - 1</span>
                   </div>
                 </section>
 
                 <section className="bg-white rounded-2xl p-6 border border-slate-200 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
-                        <Gauge className="w-4 h-4 text-cyan-600" />
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+                        <Gauge className="w-5 h-5 text-cyan-600" />
                       </div>
-                      目标区间时速倒推雷达
-                    </h2>
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500">当前速率:</span>
-                      <span className="text-cyan-600 font-bold">{(apiPace / 24).toFixed(2)} 条/时</span>
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-800">目标区间时速倒推雷达</h2>
+                        <p className="text-xs text-slate-500">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
+                      </div>
                     </div>
                   </div>
                   
