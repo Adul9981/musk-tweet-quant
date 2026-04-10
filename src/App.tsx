@@ -1176,6 +1176,7 @@ export default function App() {
             apiPace={apiPace}
             remainingHours={remainingHours}
             centerRange={analysisData.find(d => d.isCenter)?.range || ''}
+            intervalAnalysis={intervalAnalysis}
           />
         )}
       </main>
@@ -1190,9 +1191,10 @@ interface TweetGeneratorProps {
   apiPace: number;
   remainingHours: number;
   centerRange: string;
+  intervalAnalysis: any[];
 }
 
-function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange }: TweetGeneratorProps) {
+function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, intervalAnalysis }: TweetGeneratorProps) {
   const [copied, setCopied] = useState(false);
 
   const marketTitle = currentMarket?.title ? parseMarketTitle(currentMarket.title) : '预测市场';
@@ -1201,6 +1203,19 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
     const currentTotal = currentTracking?.stats?.total || 0;
     const todayTotal = currentTracking?.stats?.todayTotal || 0;
+    
+    const activeIntervals = intervalAnalysis?.filter((i: any) => i && i.status === 'active') || [];
+    const topIntervals = activeIntervals
+      .sort((a: any, b: any) => (b.trueProb - b.marketPrice) - (a.trueProb - a.marketPrice))
+      .slice(0, 4);
+    
+    const intervalInfo = topIntervals.length > 0 
+      ? '\n📊 区间盈亏分析:\n' + topIntervals.map((i: any) => {
+          const profit = i.trueProb - i.marketPrice;
+          const sign = profit > 0 ? '✅' : profit < 0 ? '❌' : '➖';
+          return `${sign} ${i.range}: 真实${i.trueProb.toFixed(1)}% vs 赔率${i.marketPrice.toFixed(1)}% (${profit > 0 ? '+' : ''}${profit.toFixed(1)}%)`;
+        }).join('\n')
+      : '';
 
     return `📊 ${marketTitle} 实时分析
 
@@ -1211,13 +1226,14 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
 📍 阶段: ${phase.name}
 ⏰ 剩余时间: ${Math.floor(Math.round(remainingHours) / 24)}天${Math.round(Math.round(remainingHours) % 24)}小时
 📍 中心区间: ${centerRange || '待确定'}
+${intervalInfo}
 
 💡 基于当前数据模型预测最终落点约${predictedCenter}条
 
 🔗 Polymarket: https://polymarket.com${currentMarket?.slug ? '/event/' + currentMarket.slug : ''}${REFERRAL}
 
 #ElonMusk #PredictionMarket #X`;
-  }, [currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, marketTitle]);
+  }, [currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, marketTitle, intervalAnalysis]);
 
   const copyToClipboard = async () => {
     try {
