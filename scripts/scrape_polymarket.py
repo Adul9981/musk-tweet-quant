@@ -35,97 +35,118 @@ _MONTHS = [
 
 def generate_candidate_slugs() -> List[str]:
     """
-    Generate candidate event slugs based on the current date window.
-    Covers any market starting/ending within ±3 weeks of today.
+    Generate every-day-start candidates with 7-day duration, covering
+    start dates from 14 days ago to 10 days ahead.
+    Handles irregular/overlapping market schedules (not limited to Fridays).
     """
     now = datetime.now(timezone.utc)
-    seen = set()
-    slugs = []
-    for start_offset in range(-21, 21):
-        start = now + timedelta(days=start_offset)
-        for duration in [5, 6, 7, 8, 9, 10]:
-            end = start + timedelta(days=duration)
-            s = f"elon-musk-of-tweets-{_MONTHS[start.month-1]}-{start.day}-{_MONTHS[end.month-1]}-{end.day}"
-            if s not in seen:
-                seen.add(s)
-                slugs.append(s)
+    seen: set = set()
+    slugs: List[str] = []
+    for days_offset in range(-14, 11):
+        start = now + timedelta(days=days_offset)
+        end = start + timedelta(days=7)
+        slug = (
+            f"elon-musk-of-tweets-"
+            f"{_MONTHS[start.month - 1]}-{start.day}-"
+            f"{_MONTHS[end.month - 1]}-{end.day}"
+        )
+        if slug not in seen:
+            seen.add(slug)
+            slugs.append(slug)
     return slugs
 
 
 def discover_market_slugs() -> List[str]:
     """
-    Step 1: Query Gamma API for active Elon tweet markets (broad filter).
-    Step 2: If API returns nothing useful, probe date-based candidate slugs directly.
+    Discover all currently active Elon Musk tweet prediction markets.
+
+    Polymarket runs these markets with irregular (non-Friday) start dates,
+    sometimes with 2-3 overlapping 7-day windows simultaneously.
+
+    Strategy A — Gamma API broad active search (fastest, catches all):
+      Fetch all active events, filter by title/slug for Elon tweet markets.
+      This is the most reliable method since there's no dedicated tag.
+
+    Strategy B — Every-day slug probe (fallback if API search misses any):
+      Directly test each candidate slug against Gamma API.
     """
     now = datetime.now(timezone.utc)
     url = f"{GAMMA_API}/events"
+    found: List[str] = []
 
-    # ── Strategy A: Gamma API search ─────────────────────────────────────────
+    # ── Strategy A: Gamma API broad active search ─────────────────────────────
+    print("[discovery] Querying Gamma API for active Elon tweet markets...")
     for params in [
-        {"tag_slug": "elon-musk", "active": "true", "limit": "50"},
-        {"active": "true", "limit": "200"},
+        {"active": "true", "closed": "false", "limit": "100",
+         "order": "endDate", "ascending": "true"},
+        {"active": "true", "closed": "false", "archived": "false", "limit": "200"},
     ]:
         try:
             resp = requests.get(url, params=params, timeout=30)
             if not resp.ok:
                 continue
             slugs = _filter_tweet_markets(resp.json(), now)
-            if slugs:
-                print(f"[discovery] Gamma API found {len(slugs)} market(s): {slugs}")
-                return slugs
+            for s in slugs:
+                if s not in found:
+                    found.append(s)
+            if found:
+                break  # Got results from first query
         except Exception as exc:
-            print(f"[discovery] Gamma API strategy failed: {exc}")
+            print(f"[discovery] Gamma API search error: {exc}")
 
-    # ── Strategy B: Probe date-based slugs directly ───────────────────────────
-    print("[discovery] Gamma API yielded nothing — probing candidate slugs...")
+    if found:
+        print(f"[discovery] Strategy A found {len(found)} market(s): {found}")
+        return found
+
+    # ── Strategy B: Probe every-day candidates ────────────────────────────────
+    print("[discovery] Strategy A found nothing — probing candidate slugs...")
     candidates = generate_candidate_slugs()
-    found: List[str] = []
+    print(f"[discovery] Testing {len(candidates)} candidates...")
+
     for slug in candidates:
         try:
-            resp = requests.get(url, params={"slug": slug}, timeout=15)
+            resp = requests.get(url, params={"slug": slug}, timeout=10)
             if not resp.ok:
                 continue
             data = resp.json()
-            if data and isinstance(data, list) and len(data) > 0:
-                event = data[0]
-                end_str = event.get("endDate") or event.get("end_date", "")
-                if end_str:
-                    end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
-                    if end > now:
-                        found.append(slug)
-                        print(f"[discovery] Probe hit: {slug}")
-        except Exception:
-            pass
+            if not (data and isinstance(data, list)):
+                continue
+            event = data[0]
+            end_str = event.get("endDate") or event.get("end_date", "")
+            if end_str and not event.get("closed", False):
+                end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+                if end > now and slug not in found:
+                    found.append(slug)
+                    print(f"[discovery] ✓ {slug} (ends {end.strftime('%m-%d %H:%M')} UTC)")
+        except Exception as exc:
+            print(f"[discovery] Probe error {slug}: {exc}")
 
     if found:
+        print(f"[discovery] Strategy B found {len(found)} market(s): {found}")
         return found
 
-    # ── Strategy C: Nothing found — return an empty list (skip scraping) ──────
-    print("[discovery] No active markets found. Skipping this run.")
+    print("[discovery] No active markets found — skipping this run.")
     return []
 
 
 def _filter_tweet_markets(events: List[Dict], now: datetime) -> List[str]:
-    """Filter Gamma events for active Elon tweet markets (5-10 day window)."""
+    """Filter Gamma event list for active Elon tweet markets."""
     slugs = []
     for event in events:
         title = (event.get("title") or "").lower()
-        slug = (event.get("slug") or "")
+        slug = event.get("slug") or ""
         slug_lower = slug.lower()
         if not slug:
             continue
         if not (("elon" in title or "elon-musk" in slug_lower) and
                 ("tweet" in title or "post" in title)):
             continue
-        start_str = event.get("startDate") or event.get("start_date")
-        end_str = event.get("endDate") or event.get("end_date")
-        if not (start_str and end_str):
+        end_str = event.get("endDate") or event.get("end_date", "")
+        if not end_str:
             continue
         try:
-            start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
             end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
-            days = (end - start).days
-            if 5 <= days <= 10 and end > now:
+            if end > now and not event.get("closed", False):
                 slugs.append(slug)
         except Exception:
             pass

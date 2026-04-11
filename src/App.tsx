@@ -114,6 +114,13 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [currentTweetCount, setCurrentTweetCount] = useState(0);
   const [priceHistory, setPriceHistory] = useState<PriceSnapshot[]>([]);
+  const [now, setNow] = useState(() => new Date());
+
+  // Live clock — ticks every second
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load saved history from localStorage on mount
   useEffect(() => {
@@ -391,6 +398,7 @@ export default function App() {
       })),
     };
     try {
+      // Save to localStorage (12h rolling window for cache)
       const existing = JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY) || '[]') as PriceSnapshot[];
       const cutoff = Date.now() - 12 * 60 * 60 * 1000;
       const filtered = existing
@@ -398,7 +406,16 @@ export default function App() {
         .slice(-(PRICE_HISTORY_MAX - 1));
       filtered.push(snapshot);
       localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(filtered));
-      setPriceHistory(filtered);
+
+      // Merge new snapshot into existing state — do NOT overwrite Gist history
+      setPriceHistory(prev => {
+        const TWO_MIN = 2 * 60 * 1000;
+        // Remove any near-duplicate from current state
+        const deduped = prev.filter(
+          s => !(s.marketSlug === snapshot.marketSlug && Math.abs(s.timestamp - snapshot.timestamp) < TWO_MIN)
+        );
+        return [...deduped, snapshot].sort((a, b) => a.timestamp - b.timestamp);
+      });
     } catch { /* localStorage full or unavailable */ }
   }, [lastUpdated]); // intentionally only re-run on new Gist fetch
 
@@ -624,14 +641,27 @@ export default function App() {
               <span className="px-2.5 py-1 rounded text-xs font-medium bg-sky-500/10 border border-sky-500/30 text-sky-400">
                 {phase.name}
               </span>
-              {lastUpdated && (
-                <div className="hidden lg:flex items-center gap-2 text-xs text-slate-500 font-mono">
-                  <Clock className="w-3 h-3 text-slate-600" />
-                  <span>BJ {parseTimestamp(lastUpdated).toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="text-slate-700">·</span>
-                  <span>ET {parseTimestamp(lastUpdated).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+              <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
+                {/* Live clock */}
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <Clock className="w-3 h-3 text-sky-500" />
+                  <span>{now.toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                  <span className="text-slate-600">BJ</span>
                 </div>
-              )}
+                {/* Data freshness */}
+                {lastUpdated && (() => {
+                  const ageMs = now.getTime() - parseTimestamp(lastUpdated).getTime();
+                  const ageMins = Math.floor(ageMs / 60000);
+                  const ageText = ageMins < 1 ? '刚刚' : ageMins < 60 ? `${ageMins}分钟前` : `${Math.floor(ageMins / 60)}小时前`;
+                  const isStale = ageMins > 10;
+                  return (
+                    <div className={`flex items-center gap-1 ${isStale ? 'text-amber-500' : 'text-slate-500'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isStale ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                      <span>数据 {ageText}</span>
+                    </div>
+                  );
+                })()}
+              </div>
               <a
                 href="https://polymarket.com/?r=adul"
                 target="_blank"
