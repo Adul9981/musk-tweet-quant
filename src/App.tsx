@@ -34,6 +34,7 @@ interface MarketData {
   title: string;
   volume: number;
   liquidity: number;
+  start_date: string;
   end_date: string;
   ranges: RangeData[];
   top_ranges: RangeData[];
@@ -90,11 +91,18 @@ function getPhase(remainingDays: number): { name: string; color: string; bg: str
 function parseMarketTitle(title: string): string {
   return title
     .replace(/\s*\?\s*$/, '')
+    .replace(/January\s*(\d+)/g, '1月$1日')
+    .replace(/February\s*(\d+)/g, '2月$1日')
     .replace(/March\s*(\d+)/g, '3月$1日')
     .replace(/April\s*(\d+)/g, '4月$1日')
     .replace(/May\s*(\d+)/g, '5月$1日')
-    .replace(/January\s*(\d+)/g, '1月$1日')
-    .replace(/February\s*(\d+)/g, '2月$1日');
+    .replace(/June\s*(\d+)/g, '6月$1日')
+    .replace(/July\s*(\d+)/g, '7月$1日')
+    .replace(/August\s*(\d+)/g, '8月$1日')
+    .replace(/September\s*(\d+)/g, '9月$1日')
+    .replace(/October\s*(\d+)/g, '10月$1日')
+    .replace(/November\s*(\d+)/g, '11月$1日')
+    .replace(/December\s*(\d+)/g, '12月$1日');
 }
 
 function parseTimestamp(ts: string): Date {
@@ -157,11 +165,13 @@ function parseGammaEvent(event: any, slugHint?: string): MarketData | null {
     });
 
   const slug = event.slug ?? slugHint ?? '';
+  const startDate = event.startDate || event.start_date || '';
   return {
     slug,
     title: event.title ?? '',
     volume: parseFloat(event.volume ?? 0),
     liquidity: parseFloat(event.liquidity ?? 0),
+    start_date: startDate,
     end_date: endDate,
     ranges,
     top_ranges: [...ranges].sort((a, b) => b.price - a.price).slice(0, 3),
@@ -170,9 +180,47 @@ function parseGammaEvent(event: any, slugHint?: string): MarketData | null {
 }
 
 async function discoverElonMarkets(): Promise<MarketData[]> {
-  // Elon tweet markets don't appear in Gamma's broad search results.
-  // The only reliable method is probing candidate slugs directly.
-  // We probe all 25 candidates in parallel — each is a lightweight request.
+  // In production, use the Vercel server-side proxy (avoids CORS issues entirely).
+  const isProduction = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+  if (isProduction) {
+    try {
+      const res = await fetch('/api/discover-markets', {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.markets?.length > 0) {
+          console.log(`[markets] Vercel proxy returned ${data.markets.length} market(s)`);
+          // Normalize: server returns endDate/startDate, we need end_date/start_date
+          return (data.markets as any[]).map(m => ({
+            slug: m.slug ?? '',
+            title: m.title ?? '',
+            volume: parseFloat(m.volume ?? 0),
+            liquidity: parseFloat(m.liquidity ?? 0),
+            start_date: m.startDate || m.start_date || '',
+            end_date: m.endDate || m.end_date || '',
+            ranges: (m.ranges ?? []).map((r: any) => ({
+              range: r.range,
+              price: r.price ?? 0,
+              liquidity: parseFloat(r.liquidity ?? 0),
+              slug: r.slug ?? '',
+            })),
+            top_ranges: (m.top_ranges ?? []).map((r: any) => ({
+              range: r.range,
+              price: r.price ?? 0,
+              liquidity: parseFloat(r.liquidity ?? 0),
+              slug: r.slug ?? '',
+            })),
+            scraped_at: m.scraped_at ?? new Date().toISOString(),
+          })) as MarketData[];
+        }
+      }
+    } catch (e) {
+      console.warn('[markets] Vercel proxy failed, falling back to direct fetch:', e);
+    }
+  }
+
+  // Local dev (or production fallback): probe candidate slugs directly via Gamma API.
   const candidates = candidateElonSlugs();
   const foundSlugs = new Set<string>();
 
@@ -180,6 +228,7 @@ async function discoverElonMarkets(): Promise<MarketData[]> {
     candidates.map(slug =>
       fetch(`${GAMMA_BASE}/events?slug=${encodeURIComponent(slug)}`, {
         headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
       })
         .then(r => r.ok ? r.json() : [])
         .then((data: any[]) => {
@@ -198,6 +247,7 @@ async function discoverElonMarkets(): Promise<MarketData[]> {
     }
   }
 
+  console.log(`[markets] Direct slug probe found ${found.length} market(s)`);
   return found.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
 }
 
@@ -261,11 +311,21 @@ export default function App() {
       const gist = await res.json();
       const content = gist.files?.['polymarket-data.json']?.content;
       if (content) {
-        const data = JSON.parse(content);
-        if (data?.length > 0) {
-          setGistData(data);
-          if (data[0]?.scraped_at) setLastUpdated(data[0].scraped_at);
-          console.log('[markets] Loaded from Gist fallback');
+        const raw = JSON.parse(content);
+        const data: MarketData[] = (Array.isArray(raw) ? raw : []).map((m: any) => ({
+          ...m,
+          start_date: m.start_date || m.startDate || '',
+          end_date: m.end_date || m.endDate || '',
+        }));
+        // Only use if there are non-expired markets
+        const nowTs = Date.now();
+        const active = data.filter(m => new Date(m.end_date).getTime() > nowTs);
+        if (active.length > 0) {
+          setGistData(active);
+          if (active[0]?.scraped_at) setLastUpdated(active[0].scraped_at);
+          console.log('[markets] Loaded from Gist fallback, active:', active.length);
+        } else {
+          console.warn('[markets] Gist fallback data is stale (all markets expired)');
         }
       }
     } catch (err) {
@@ -532,8 +592,9 @@ export default function App() {
       );
       if (recent) return;
       const cutoff = now - 12 * 60 * 60 * 1000;
+      // Keep all markets' snapshots (not just current), trimmed to max
       const trimmed = existing
-        .filter(s => s.marketSlug === currentMarket.slug && s.timestamp > cutoff)
+        .filter(s => s.timestamp > cutoff)
         .slice(-(PRICE_HISTORY_MAX - 1));
       trimmed.push(snapshot);
       localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(trimmed));
@@ -1390,8 +1451,8 @@ export default function App() {
               history={priceHistory.filter(
                 s => !currentMarket || s.marketSlug === currentMarket.slug
               )}
-              marketStartDate={currentTracking?.startDate}
-              marketEndDate={currentTracking?.endDate}
+              marketStartDate={currentTracking?.startDate || currentMarket?.start_date}
+              marketEndDate={currentTracking?.endDate || currentMarket?.end_date}
             />
           </div>
         )}
