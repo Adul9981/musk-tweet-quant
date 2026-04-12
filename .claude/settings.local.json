@@ -7,7 +7,8 @@
       "Bash(python3 -m py_compile scripts/scrape_polymarket.py)",
       "Bash(curl -s \"https://gamma-api.polymarket.com/events?active=true&closed=false&limit=200&order=endDate&ascending=true\")",
       "Bash(curl -s \"https://gamma-api.polymarket.com/events?slug=elon-musk-of-tweets-april-10-april-17\")",
-      "Bash(curl -s 'https://gamma-api.polymarket.com/events?slug=__TRACKED_VAR__')"
+      "Bash(curl -s 'https://gamma-api.polymarket.com/events?slug=__TRACKED_VAR__')",
+      "Bash(curl -s \"https://api.github.com/gists/d174b4498c408076ff218e164f24807e\")"
     ]
   }
 }

@@ -409,43 +409,6 @@ export default function App() {
     };
   }, []);
 
-  // Save a price snapshot whenever Gist data refreshes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!lastUpdated || analysisData.length === 0 || !currentMarket) return;
-    const snapshot: PriceSnapshot = {
-      timestamp: Date.now(),
-      marketSlug: currentMarket.slug,
-      tweetCount: currentTweetCount,
-      ranges: analysisData.map(r => ({
-        range: r.range,
-        price: r.price,
-        modelProb: r.realProb,
-        liquidity: r.liquidity || 0,
-      })),
-    };
-    try {
-      // Save to localStorage (12h rolling window for cache)
-      const existing = JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY) || '[]') as PriceSnapshot[];
-      const cutoff = Date.now() - 12 * 60 * 60 * 1000;
-      const filtered = existing
-        .filter(s => s.marketSlug === currentMarket.slug && s.timestamp > cutoff)
-        .slice(-(PRICE_HISTORY_MAX - 1));
-      filtered.push(snapshot);
-      localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(filtered));
-
-      // Merge new snapshot into existing state — do NOT overwrite Gist history
-      setPriceHistory(prev => {
-        const TWO_MIN = 2 * 60 * 1000;
-        // Remove any near-duplicate from current state
-        const deduped = prev.filter(
-          s => !(s.marketSlug === snapshot.marketSlug && Math.abs(s.timestamp - snapshot.timestamp) < TWO_MIN)
-        );
-        return [...deduped, snapshot].sort((a, b) => a.timestamp - b.timestamp);
-      });
-    } catch { /* localStorage full or unavailable */ }
-  }, [lastUpdated]); // intentionally only re-run on new Gist fetch
-
   const activeMarkets = useMemo(() => {
     const now = Date.now();
     return [...gistData]
@@ -543,6 +506,45 @@ export default function App() {
   }, [currentMarket, mu]);
 
   const predictedCenter = Math.round(mu);
+
+  // Save a price snapshot immediately when analysisData is ready, and on each refresh.
+  // Deduplicates within 4 minutes so we don't spam on re-renders.
+  useEffect(() => {
+    if (analysisData.length === 0 || !currentMarket) return;
+    const FOUR_MIN = 4 * 60 * 1000;
+    const now = Date.now();
+    const snapshot: PriceSnapshot = {
+      timestamp: now,
+      marketSlug: currentMarket.slug,
+      tweetCount: currentTweetCount,
+      ranges: analysisData.map(r => ({
+        range: r.range,
+        price: r.price,
+        modelProb: r.realProb,
+        liquidity: r.liquidity || 0,
+      })),
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY) || '[]') as PriceSnapshot[];
+      // Skip if a very recent snapshot already exists for this market
+      const recent = existing.find(
+        s => s.marketSlug === currentMarket.slug && now - s.timestamp < FOUR_MIN
+      );
+      if (recent) return;
+      const cutoff = now - 12 * 60 * 60 * 1000;
+      const trimmed = existing
+        .filter(s => s.marketSlug === currentMarket.slug && s.timestamp > cutoff)
+        .slice(-(PRICE_HISTORY_MAX - 1));
+      trimmed.push(snapshot);
+      localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(trimmed));
+      setPriceHistory(prev => {
+        const deduped = prev.filter(
+          s => !(s.marketSlug === snapshot.marketSlug && Math.abs(s.timestamp - now) < FOUR_MIN)
+        );
+        return [...deduped, snapshot].sort((a, b) => a.timestamp - b.timestamp);
+      });
+    } catch { /* localStorage full */ }
+  }, [analysisData, currentMarket, currentTweetCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Normal distribution comparison ──────────────────────────────────────
   const normalSigma = Math.max(8, Math.sqrt(Math.max(0, E_rem)) * 2.2);
