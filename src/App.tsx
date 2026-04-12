@@ -131,33 +131,67 @@ export default function App() {
     } catch { /* ignore parse errors */ }
   }, []);
 
-  const handleRefresh = async () => {
+  // ── Fetch market list + prices from Gamma API via Vercel proxy ────────────
+  const fetchMarketData = async () => {
     setIsLoadingGist(true);
-    setIsLoadingTracker(true);
-    
     try {
-      const GIST_ID = 'd174b4498c408076ff218e164f24807e';
-      const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
-        headers: { 'Accept': 'application/vnd.github.v3+json' },
-        cache: 'no-store'
-      });
+      const res = await fetch(`/api/discover-markets?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
-        const gist = await res.json();
-        const content = gist.files?.['polymarket-data.json']?.content;
-        if (content) {
-          const data = JSON.parse(content);
-          setGistData(data);
-          if (data[0]?.scraped_at) {
-            setLastUpdated(data[0].scraped_at);
-          }
+        const json = await res.json();
+        const markets: MarketData[] = (json.markets || []);
+        if (markets.length > 0) {
+          setGistData(markets);
+          setLastUpdated(new Date().toISOString());
         }
       }
     } catch (err) {
-      console.error('Failed to fetch Gist data:', err);
+      console.error('Failed to fetch market data:', err);
     } finally {
       setIsLoadingGist(false);
     }
-    
+  };
+
+  // ── Load historical price snapshots from Gist (for probability chart) ──────
+  const fetchGistHistory = async () => {
+    const GIST_ID = 'd174b4498c408076ff218e164f24807e';
+    try {
+      const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const gist = await res.json();
+      const histContent = gist.files?.['polymarket-history.json']?.content;
+      if (!histContent) return;
+
+      const histData = JSON.parse(histContent);
+      const snaps: PriceSnapshot[] = (histData.snapshots || []).flatMap((snap: any) =>
+        (snap.markets || []).map((m: any) => ({
+          timestamp: snap.ts,
+          marketSlug: m.slug,
+          tweetCount: 0,
+          ranges: (m.ranges || []).map((r: any) => ({
+            range: r.r,
+            price: r.p,
+            modelProb: r.p,
+            liquidity: r.l || 0,
+          })),
+        }))
+      );
+
+      if (snaps.length > 0) {
+        setPriceHistory(prev => {
+          const gistKeys = new Set(snaps.map(s => `${s.timestamp}-${s.marketSlug}`));
+          const localOnly = prev.filter(s => !gistKeys.has(`${s.timestamp}-${s.marketSlug}`));
+          return [...snaps, ...localOnly].sort((a, b) => a.timestamp - b.timestamp);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load Gist history:', err);
+    }
+  };
+
+  const fetchTrackerData = async () => {
     try {
       const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true');
       if (res.ok) {
@@ -167,7 +201,7 @@ export default function App() {
             const days = (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24);
             return days >= 5 && days <= 10;
           });
-          
+
           const trackingsWithStats = await Promise.all(
             sevenDay.slice(0, 5).map(async (t: any) => {
               try {
@@ -183,14 +217,14 @@ export default function App() {
                       return dBJ === todayBJ;
                     })
                     .reduce((sum: number, d: any) => sum + d.count, 0);
-                  
+
                   const stats = statsData.data?.stats;
                   const daysTotal = stats?.daysTotal || 7;
                   const endDate = new Date(t.endDate);
                   const diffMs = endDate.getTime() - now.getTime();
                   const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                   const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                  
+
                   const dailyData = stats?.daily || [];
                   const dailyMap = new Map();
                   for (const d of dailyData) {
@@ -200,7 +234,7 @@ export default function App() {
                   const dailyTotals = Array.from(dailyMap.entries())
                     .map(([date, count]) => ({ date, count }))
                     .sort((a, b) => a.date.localeCompare(b.date));
-                  
+
                   return {
                     id: t.id,
                     title: t.title,
@@ -216,16 +250,17 @@ export default function App() {
                       hoursRemaining,
                       todayTotal,
                       daysTotal,
-                      daily: dailyTotals
-                    }
+                      daily: dailyTotals,
+                    },
                   };
                 }
-              } catch {}
-              return null;
+              } catch (e) {
+                console.error('Failed to fetch stats:', e);
+              }
+              return { id: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate, marketLink: t.marketLink, slug: '', stats: null };
             })
           );
-          
-          setTrackings(trackingsWithStats.filter(Boolean) as any);
+          setTrackings(trackingsWithStats);
         }
       }
     } catch (err) {
@@ -235,151 +270,21 @@ export default function App() {
     }
   };
 
-  const fetchGistData = async () => {
-    setIsLoadingGist(true);
-    const GIST_ID = 'd174b4498c408076ff218e164f24807e';
-
-    try {
-      const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
-        headers: { 'Accept': 'application/vnd.github.v3+json' },
-        cache: 'no-store'
-      });
-      if (res.ok) {
-        const gist = await res.json();
-
-        // ── Load current market data ──────────────────────────────────────
-        const content = gist.files?.['polymarket-data.json']?.content;
-        if (content) {
-          const data = JSON.parse(content);
-          setGistData(data);
-          if (data[0]?.scraped_at) {
-            setLastUpdated(data[0].scraped_at);
-          }
-        }
-
-        // ── Load historical snapshots for probability chart ───────────────
-        const histContent = gist.files?.['polymarket-history.json']?.content;
-        if (histContent) {
-          try {
-            const histData = JSON.parse(histContent);
-            const snaps: PriceSnapshot[] = (histData.snapshots || []).map((snap: any) => {
-              // Each snap may contain multiple markets; flatten into one PriceSnapshot per market
-              return (snap.markets || []).map((m: any) => ({
-                timestamp: snap.ts,
-                marketSlug: m.slug,
-                tweetCount: 0, // not stored in history (comes from xtracker)
-                ranges: (m.ranges || []).map((r: any) => ({
-                  range: r.r,
-                  price: r.p,
-                  modelProb: r.p, // fallback: show market price in both modes for historical data
-                  liquidity: r.l || 0,
-                })),
-              }));
-            }).flat();
-
-            // Merge with localStorage history (deduplicate by timestamp+slug)
-            setPriceHistory(prev => {
-              const gistSet = new Set(snaps.map(s => `${s.timestamp}-${s.marketSlug}`));
-              const localOnly = prev.filter(s => !gistSet.has(`${s.timestamp}-${s.marketSlug}`));
-              return [...snaps, ...localOnly].sort((a, b) => a.timestamp - b.timestamp);
-            });
-          } catch (e) {
-            console.error('Failed to parse history:', e);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch Gist data:', err);
-    } finally {
-      setIsLoadingGist(false);
-    }
+  const handleRefresh = async () => {
+    await Promise.all([fetchMarketData(), fetchTrackerData()]);
   };
 
   useEffect(() => {
-    const fetchTrackerData = async () => {
-      try {
-        const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data) {
-            const sevenDay = data.data.filter((t: any) => {
-              const days = (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24);
-              return days >= 5 && days <= 10;
-            });
-            
-            const trackingsWithStats = await Promise.all(
-              sevenDay.slice(0, 5).map(async (t: any) => {
-                try {
-                  const slug = t.marketLink?.split('/').pop() || t.title?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
-                  const statsRes = await fetch(`https://xtracker.polymarket.com/api/trackings/${t.id}?includeStats=true`);
-                  if (statsRes.ok) {
-                    const statsData = await statsRes.json();
-                    const now = new Date();
-                    const todayBJ = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                    const todayTotal = (statsData.data?.stats?.daily || [])
-                      .filter((d: any) => {
-                        const dBJ = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                        return dBJ === todayBJ;
-                      })
-                      .reduce((sum: number, d: any) => sum + d.count, 0);
-                    
-                    const stats = statsData.data?.stats;
-                    const daysTotal = stats?.daysTotal || 7;
-                    const endDate = new Date(t.endDate);
-                    const diffMs = endDate.getTime() - now.getTime();
-                    const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    
-                      const dailyData = stats?.daily || [];
-                      const dailyMap = new Map();
-                      for (const d of dailyData) {
-                        const dateStr = d.date.split('T')[0];
-                        dailyMap.set(dateStr, (dailyMap.get(dateStr) || 0) + d.count);
-                      }
-                      const dailyTotals = Array.from(dailyMap.entries())
-                        .map(([date, count]) => ({ date, count }))
-                        .sort((a, b) => a.date.localeCompare(b.date));
-                    
-                      return {
-                        id: t.id,
-                        title: t.title,
-                        startDate: t.startDate,
-                        endDate: t.endDate,
-                        marketLink: t.marketLink,
-                        slug,
-                        stats: {
-                          total: stats?.total || 0,
-                          pace: stats?.daysElapsed > 0 ? Math.round(stats.total / stats.daysElapsed) : 0,
-                          percentComplete: stats?.percentComplete || 0,
-                          daysRemaining,
-                          hoursRemaining,
-                          todayTotal,
-                          daysTotal,
-                          daily: dailyTotals,
-                        },
-                      };
-                  }
-                } catch (e) {
-                  console.error('Failed to fetch stats:', e);
-                }
-                return { id: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate, marketLink: t.marketLink, slug: '', stats: null };
-              })
-            );
-            setTrackings(trackingsWithStats);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch tracker data:', err);
-      } finally {
-        setIsLoadingTracker(false);
-      }
-    };
-
-    fetchGistData();
+    fetchMarketData();
     fetchTrackerData();
-    
-    const interval = setInterval(fetchGistData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    fetchGistHistory();
+
+    const marketInterval = setInterval(fetchMarketData, 5 * 60 * 1000);
+    const histInterval = setInterval(fetchGistHistory, 10 * 60 * 1000);
+    return () => {
+      clearInterval(marketInterval);
+      clearInterval(histInterval);
+    };
   }, []);
 
   // Save a price snapshot whenever Gist data refreshes
