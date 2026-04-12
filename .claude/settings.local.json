@@ -4,7 +4,10 @@
       "Bash(npm install:*)",
       "Bash(npm run:*)",
       "Bash(python3 -c ':*)",
-      "Bash(python3 -m py_compile scripts/scrape_polymarket.py)"
+      "Bash(python3 -m py_compile scripts/scrape_polymarket.py)",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/events?active=true&closed=false&limit=200&order=endDate&ascending=true\")",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/events?slug=elon-musk-of-tweets-april-10-april-17\")",
+      "Bash(curl -s 'https://gamma-api.polymarket.com/events?slug=__TRACKED_VAR__')"
     ]
   }
 }

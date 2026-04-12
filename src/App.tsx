@@ -104,6 +104,103 @@ function parseTimestamp(ts: string): Date {
   return new Date(ts);
 }
 
+// ─── Gamma API direct discovery (browser fetch, no proxy needed) ─────────────
+
+const GAMMA_BASE = 'https://gamma-api.polymarket.com';
+const MONTH_NAMES = [
+  'january','february','march','april','may','june',
+  'july','august','september','october','november','december',
+];
+
+function candidateElonSlugs(): string[] {
+  const now = new Date();
+  const seen = new Set<string>();
+  const slugs: string[] = [];
+  for (let d = -14; d <= 10; d++) {
+    const start = new Date(now.getTime() + d * 86400000);
+    const end   = new Date(start.getTime() + 7 * 86400000);
+    const slug = `elon-musk-of-tweets-${MONTH_NAMES[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTH_NAMES[end.getUTCMonth()]}-${end.getUTCDate()}`;
+    if (!seen.has(slug)) { seen.add(slug); slugs.push(slug); }
+  }
+  return slugs;
+}
+
+function parseGammaEvent(event: any, slugHint?: string): MarketData | null {
+  const now = Date.now();
+  const endDate = event.endDate || event.end_date || '';
+  if (!endDate || new Date(endDate).getTime() <= now) return null;
+  if (event.closed || event.archived) return null;
+
+  const ranges: RangeData[] = (event.markets || [])
+    .map((m: any) => {
+      const match = (m.question || '').match(/(\d+-\d+|\d+\+)/);
+      if (!match) return null;
+      let price: number | null = null;
+      try {
+        const prices = typeof m.outcomePrices === 'string'
+          ? JSON.parse(m.outcomePrices) : (m.outcomePrices ?? []);
+        price = prices[0] != null ? Math.round(parseFloat(prices[0]) * 1000) / 10 : null;
+      } catch { /* ignore */ }
+      if (price === null) return null;
+      return {
+        range: match[1],
+        price,
+        liquidity: parseFloat(m.liquidity ?? 0),
+        slug: m.slug ?? '',
+      } as RangeData;
+    })
+    .filter(Boolean)
+    .sort((a: RangeData, b: RangeData) => {
+      const aMin = parseInt(a.range.split('-')[0]) || 9999;
+      const bMin = parseInt(b.range.split('-')[0]) || 9999;
+      return aMin - bMin;
+    });
+
+  const slug = event.slug ?? slugHint ?? '';
+  return {
+    slug,
+    title: event.title ?? '',
+    volume: parseFloat(event.volume ?? 0),
+    liquidity: parseFloat(event.liquidity ?? 0),
+    end_date: endDate,
+    ranges,
+    top_ranges: [...ranges].sort((a, b) => b.price - a.price).slice(0, 3),
+    scraped_at: new Date().toISOString(),
+  };
+}
+
+async function discoverElonMarkets(): Promise<MarketData[]> {
+  // Elon tweet markets don't appear in Gamma's broad search results.
+  // The only reliable method is probing candidate slugs directly.
+  // We probe all 25 candidates in parallel — each is a lightweight request.
+  const candidates = candidateElonSlugs();
+  const foundSlugs = new Set<string>();
+
+  const results = await Promise.allSettled(
+    candidates.map(slug =>
+      fetch(`${GAMMA_BASE}/events?slug=${encodeURIComponent(slug)}`, {
+        headers: { Accept: 'application/json' },
+      })
+        .then(r => r.ok ? r.json() : [])
+        .then((data: any[]) => {
+          if (!data?.length) return null;
+          return parseGammaEvent(data[0], slug);
+        })
+        .catch(() => null)
+    )
+  );
+
+  const found: MarketData[] = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value && !foundSlugs.has(r.value.slug)) {
+      foundSlugs.add(r.value.slug);
+      found.push(r.value);
+    }
+  }
+
+  return found.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
@@ -131,23 +228,48 @@ export default function App() {
     } catch { /* ignore parse errors */ }
   }, []);
 
-  // ── Fetch market list + prices from Gamma API via Vercel proxy ────────────
+  // ── Fetch market list + prices directly from Gamma API (browser fetch, CORS open) ──
   const fetchMarketData = async () => {
     setIsLoadingGist(true);
     try {
-      const res = await fetch(`/api/discover-markets?t=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        const markets: MarketData[] = (json.markets || []);
-        if (markets.length > 0) {
-          setGistData(markets);
-          setLastUpdated(new Date().toISOString());
-        }
+      const markets = await discoverElonMarkets();
+      if (markets.length > 0) {
+        setGistData(markets);
+        setLastUpdated(new Date().toISOString());
+        console.log(`[markets] Loaded ${markets.length} active market(s)`);
+      } else {
+        // Fallback: try Gist cache
+        await fetchGistFallback();
       }
     } catch (err) {
       console.error('Failed to fetch market data:', err);
+      await fetchGistFallback();
     } finally {
       setIsLoadingGist(false);
+    }
+  };
+
+  // Gist fallback — use last scraped data if Gamma API fails
+  const fetchGistFallback = async () => {
+    try {
+      const GIST_ID = 'd174b4498c408076ff218e164f24807e';
+      const res = await fetch(`https://api.github.com/gists/${GIST_ID}?t=${Date.now()}`, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' },
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const gist = await res.json();
+      const content = gist.files?.['polymarket-data.json']?.content;
+      if (content) {
+        const data = JSON.parse(content);
+        if (data?.length > 0) {
+          setGistData(data);
+          if (data[0]?.scraped_at) setLastUpdated(data[0].scraped_at);
+          console.log('[markets] Loaded from Gist fallback');
+        }
+      }
+    } catch (err) {
+      console.error('Gist fallback failed:', err);
     }
   };
 
