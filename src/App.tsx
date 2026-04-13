@@ -266,65 +266,92 @@ async function discoverElonMarkets(): Promise<MarketData[]> {
 
 const CLOB_BASE = 'https://clob.polymarket.com';
 
+// Fetch full price history for a single YES-token from market creation to now.
+// Requires interval=max; startTs/endTs parameters are NOT used by this endpoint.
+// fidelity=1 gives minute-level granularity (typically 500-600 points per 7-day market).
 async function fetchClobTokenHistory(
   tokenId: string,
-  startTs: number,  // unix seconds
-  endTs: number,    // unix seconds
-  fidelity = 60,    // minutes per interval
 ): Promise<Array<{ t: number; p: number }>> {
   try {
-    const url = `${CLOB_BASE}/prices-history?market=${tokenId}&startTs=${startTs}&endTs=${endTs}&fidelity=${fidelity}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const url = `${CLOB_BASE}/prices-history?market=${tokenId}&interval=max&fidelity=1`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return [];
     const data = await res.json();
-    return data.history ?? [];
+    return (data.history ?? []) as Array<{ t: number; p: number }>;
   } catch {
     return [];
   }
 }
 
 // Build PriceSnapshot[] from CLOB history for a given market.
-// Fetches YES-token price history for every range sub-market in parallel.
+// Strategy:
+//  1. Fetch minute-level YES-token history for every range in parallel.
+//  2. Bucket into 30-minute intervals so all ranges align in time.
+//  3. For each bucket, use the last-known price per range (fill-forward).
+//  4. Only emit a snapshot if at least 1 range has data.
 async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> {
   const rangesWithToken = market.ranges.filter(r => r.tokenId);
   if (rangesWithToken.length === 0) return [];
 
-  const startTs = market.start_date ? Math.floor(new Date(market.start_date).getTime() / 1000) : 0;
-  const endTs = Math.floor(Math.min(new Date(market.end_date).getTime(), Date.now()) / 1000);
-  if (startTs <= 0 || endTs <= startTs) return [];
-
+  // Fetch all ranges' price histories in parallel
   const histories = await Promise.allSettled(
-    rangesWithToken.map(r => fetchClobTokenHistory(r.tokenId!, startTs, endTs, 60))
+    rangesWithToken.map(r => fetchClobTokenHistory(r.tokenId!))
   );
 
-  // Group prices by timestamp → { [tsMs]: { [range]: pricePct } }
-  const byTs = new Map<number, Record<string, number>>();
+  // Build per-range sorted price series (unix seconds)
+  type PriceSeries = Array<{ t: number; p: number }>;
+  const seriesMap = new Map<string, PriceSeries>();
   histories.forEach((result, i) => {
-    if (result.status !== 'fulfilled') return;
+    if (result.status !== 'fulfilled' || result.value.length === 0) return;
     const rangeName = rangesWithToken[i].range;
-    result.value.forEach(({ t, p }) => {
-      const tsMs = t * 1000;
-      if (!byTs.has(tsMs)) byTs.set(tsMs, {});
-      byTs.get(tsMs)![rangeName] = Math.round(p * 1000) / 10; // → percentage
-    });
+    seriesMap.set(rangeName, [...result.value].sort((a, b) => a.t - b.t));
   });
+  if (seriesMap.size === 0) return [];
+
+  // Determine bucket range: from earliest data point to now
+  const allTsMs = [...seriesMap.values()].flatMap(s => s.map(p => p.t * 1000));
+  const minTsMs = Math.min(...allTsMs);
+  const maxTsMs = Math.min(Math.max(...allTsMs), Date.now());
+
+  const BUCKET_MS = 30 * 60 * 1000; // 30-minute buckets
+  const buckets: number[] = [];
+  // Round first bucket down to nearest 30-min boundary
+  const firstBucket = Math.floor(minTsMs / BUCKET_MS) * BUCKET_MS;
+  for (let t = firstBucket; t <= maxTsMs + BUCKET_MS; t += BUCKET_MS) {
+    buckets.push(t);
+  }
+
+  // For a given sorted series, get the last known price at or before tsMs
+  function lastPriceAt(series: PriceSeries, tsMs: number): number | null {
+    const tsSec = tsMs / 1000;
+    let last: number | null = null;
+    for (const point of series) {
+      if (point.t <= tsSec) last = point.p;
+      else break;
+    }
+    return last;
+  }
 
   const snapshots: PriceSnapshot[] = [];
-  for (const [tsMs, prices] of byTs) {
-    const ranges = market.ranges
-      .filter(r => prices[r.range] !== undefined)
-      .map(r => ({
-        range: r.range,
-        price: prices[r.range],
-        modelProb: prices[r.range],
-        liquidity: r.liquidity,
-      }));
+  for (const tsMs of buckets) {
+    const ranges: import('./components/ProbabilityChart').RangeSnapshot[] = [];
+    for (const [rangeName, series] of seriesMap) {
+      const price = lastPriceAt(series, tsMs);
+      if (price === null) continue;
+      const pct = Math.round(price * 1000) / 10; // 0-1 → percentage
+      ranges.push({
+        range: rangeName,
+        price: pct,
+        modelProb: pct,
+        liquidity: market.ranges.find(r => r.range === rangeName)?.liquidity ?? 0,
+      });
+    }
     if (ranges.length > 0) {
       snapshots.push({ timestamp: tsMs, marketSlug: market.slug, tweetCount: 0, ranges });
     }
   }
 
-  return snapshots.sort((a, b) => a.timestamp - b.timestamp);
+  return snapshots;
 }
 
 export default function App() {

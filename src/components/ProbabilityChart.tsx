@@ -188,7 +188,7 @@ export function ProbabilityChart({ history, marketStartDate, marketEndDate }: Pr
     for (let t = startMs; t <= endMs; t += TICK_INTERVAL) ticks.push(t);
     if (ticks[ticks.length - 1] !== endMs) ticks.push(endMs);
 
-    const SNAP_WINDOW = 15 * 60 * 1000;
+    const SNAP_WINDOW = 20 * 60 * 1000; // 20 min — wide enough to match 30-min CLOB buckets
     let currentNowIndex = ticks.findIndex(t => t >= nowMs);
     if (currentNowIndex === -1) currentNowIndex = ticks.length - 1;
 
