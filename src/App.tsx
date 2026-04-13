@@ -27,6 +27,7 @@ interface RangeData {
   price: number;
   liquidity: number;
   slug: string;
+  tokenId?: string;  // CLOB YES-token ID, for historical price lookup
 }
 
 interface MarketData {
@@ -150,11 +151,19 @@ function parseGammaEvent(event: any, slugHint?: string): MarketData | null {
         price = prices[0] != null ? Math.round(parseFloat(prices[0]) * 1000) / 10 : null;
       } catch { /* ignore */ }
       if (price === null) return null;
+      // Extract YES-side token ID for CLOB historical price lookup
+      let tokenId: string | undefined;
+      try {
+        const ids = typeof m.clobTokenIds === 'string'
+          ? JSON.parse(m.clobTokenIds) : (m.clobTokenIds ?? []);
+        tokenId = ids[0] ?? undefined;
+      } catch { /* ignore */ }
       return {
         range: match[1],
         price,
         liquidity: parseFloat(m.liquidity ?? 0),
         slug: m.slug ?? '',
+        tokenId,
       } as RangeData;
     })
     .filter(Boolean)
@@ -251,6 +260,73 @@ async function discoverElonMarkets(): Promise<MarketData[]> {
   return found.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime());
 }
 
+// ─── CLOB historical price data ──────────────────────────────────────────────
+// Polymarket CLOB API provides full price history from market creation.
+// Each binary sub-market has a YES-token whose prices we fetch hourly.
+
+const CLOB_BASE = 'https://clob.polymarket.com';
+
+async function fetchClobTokenHistory(
+  tokenId: string,
+  startTs: number,  // unix seconds
+  endTs: number,    // unix seconds
+  fidelity = 60,    // minutes per interval
+): Promise<Array<{ t: number; p: number }>> {
+  try {
+    const url = `${CLOB_BASE}/prices-history?market=${tokenId}&startTs=${startTs}&endTs=${endTs}&fidelity=${fidelity}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.history ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// Build PriceSnapshot[] from CLOB history for a given market.
+// Fetches YES-token price history for every range sub-market in parallel.
+async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> {
+  const rangesWithToken = market.ranges.filter(r => r.tokenId);
+  if (rangesWithToken.length === 0) return [];
+
+  const startTs = market.start_date ? Math.floor(new Date(market.start_date).getTime() / 1000) : 0;
+  const endTs = Math.floor(Math.min(new Date(market.end_date).getTime(), Date.now()) / 1000);
+  if (startTs <= 0 || endTs <= startTs) return [];
+
+  const histories = await Promise.allSettled(
+    rangesWithToken.map(r => fetchClobTokenHistory(r.tokenId!, startTs, endTs, 60))
+  );
+
+  // Group prices by timestamp → { [tsMs]: { [range]: pricePct } }
+  const byTs = new Map<number, Record<string, number>>();
+  histories.forEach((result, i) => {
+    if (result.status !== 'fulfilled') return;
+    const rangeName = rangesWithToken[i].range;
+    result.value.forEach(({ t, p }) => {
+      const tsMs = t * 1000;
+      if (!byTs.has(tsMs)) byTs.set(tsMs, {});
+      byTs.get(tsMs)![rangeName] = Math.round(p * 1000) / 10; // → percentage
+    });
+  });
+
+  const snapshots: PriceSnapshot[] = [];
+  for (const [tsMs, prices] of byTs) {
+    const ranges = market.ranges
+      .filter(r => prices[r.range] !== undefined)
+      .map(r => ({
+        range: r.range,
+        price: prices[r.range],
+        modelProb: prices[r.range],
+        liquidity: r.liquidity,
+      }));
+    if (ranges.length > 0) {
+      snapshots.push({ timestamp: tsMs, marketSlug: market.slug, tweetCount: 0, ranges });
+    }
+  }
+
+  return snapshots.sort((a, b) => a.timestamp - b.timestamp);
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
@@ -287,6 +363,8 @@ export default function App() {
         setGistData(markets);
         setLastUpdated(new Date().toISOString());
         console.log(`[markets] Loaded ${markets.length} active market(s)`);
+        // Load full CLOB history in the background (don't await — non-blocking)
+        fetchClobHistoryForMarkets(markets);
       } else {
         // Fallback: try Gist cache
         await fetchGistFallback();
@@ -370,6 +448,27 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to load Gist history:', err);
+    }
+  };
+
+  // ── Fetch full price history from Polymarket CLOB API ─────────────────────
+  // Called once after markets are discovered. Provides historical data from
+  // market creation date — fills in the chart for periods before the site launched.
+  const fetchClobHistoryForMarkets = async (markets: MarketData[]) => {
+    for (const market of markets) {
+      try {
+        const snapshots = await buildClobSnapshots(market);
+        if (snapshots.length === 0) continue;
+        console.log(`[clob] Loaded ${snapshots.length} hourly snapshots for ${market.slug}`);
+        setPriceHistory(prev => {
+          // Merge: CLOB data wins for its timestamps, keep local/Gist data for others
+          const clobKeys = new Set(snapshots.map(s => `${s.timestamp}-${s.marketSlug}`));
+          const rest = prev.filter(s => !clobKeys.has(`${s.timestamp}-${s.marketSlug}`));
+          return [...snapshots, ...rest].sort((a, b) => a.timestamp - b.timestamp);
+        });
+      } catch (err) {
+        console.warn(`[clob] Failed for ${market.slug}:`, err);
+      }
     }
   };
 
@@ -1491,79 +1590,108 @@ interface TweetGeneratorProps {
   priceHistory: PriceSnapshot[];
 }
 
-function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, intervalAnalysis, priceHistory }: TweetGeneratorProps) {
+function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPace, intervalAnalysis }: TweetGeneratorProps) {
   const [copied, setCopied] = useState(false);
 
-  const marketTitle = currentMarket?.title ? parseMarketTitle(currentMarket.title) : '预测市场';
-
   const tweetContent = useMemo(() => {
-    const phase = currentTracking?.stats ? getPhase(currentTracking.stats.daysRemaining) : getPhase(7);
-    const currentTotal = currentTracking?.stats?.total || 0;
-    const todayTotal = currentTracking?.stats?.todayTotal || 0;
-    const daysRem = currentTracking?.stats?.daysRemaining ?? 0;
-    const hoursRem = currentTracking?.stats?.hoursRemaining ?? 0;
-    const currentSpeed = apiPace / 24;
-    const remainingText = daysRem > 0 ? `${daysRem}天${hoursRem}h` : `${hoursRem}h`;
+    const currentTotal = currentTracking?.stats?.total ?? 0;
+    const todayTotal   = currentTracking?.stats?.todayTotal ?? 0;
+    const daysRem      = currentTracking?.stats?.daysRemaining ?? 0;
+    const hoursRem     = currentTracking?.stats?.hoursRemaining ?? 0;
+    const currentSpeed = apiPace / 24; // tweets per hour
 
-    // Top 3 active intervals by model probability
-    const activeIntervals = (intervalAnalysis ?? []).filter((i: any) => i && i.status === 'active');
-    const topIntervals = [...activeIntervals]
-      .sort((a: any, b: any) => b.trueProb - a.trueProb)
-      .slice(0, 3);
+    const remainingText = daysRem > 0
+      ? `${daysRem}天${hoursRem > 0 ? hoursRem + 'h' : ''}`
+      : `${hoursRem}h`;
 
-    // Center interval for velocity comparison
-    const centerInterval = (intervalAnalysis ?? []).find((i: any) => i?.isCenter);
+    const lastLine = daysRem > 0
+      ? `最后${daysRem}天，你押哪个？👇`
+      : `最后${hoursRem}小时，你押哪个？👇`;
 
-    // ── Section 1: Multi-range comparison (model vs market) ──
-    const rangeLines = topIntervals.map((i: any) => {
-      const diff = i.trueProb - i.marketPrice;
-      const sign = diff >= 2 ? '🟢' : diff <= -2 ? '🔴' : '⚪';
-      const diffStr = diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`;
-      return `${sign} [${i.range}]  模型${i.trueProb.toFixed(1)}% | 市场${i.marketPrice.toFixed(1)}%  (${diffStr})`;
+    // ── 区间列表：active 区间，中心区间排第一，其余按 trueProb 降序 ──
+    const activeIntervals: any[] = (intervalAnalysis ?? []).filter((i: any) => i?.status === 'active');
+    const centerInterval = activeIntervals.find((i: any) => i?.isCenter);
+    const otherIntervals = activeIntervals
+      .filter((i: any) => !i?.isCenter)
+      .sort((a: any, b: any) => b.trueProb - a.trueProb);
+    const orderedIntervals = centerInterval
+      ? [centerInterval, ...otherIntervals]
+      : otherIntervals;
+    const displayIntervals = orderedIntervals.slice(0, 5);
+
+    // ── 区间数据行 ──
+    const rangeLines = displayIntervals.map((i: any) => {
+      // 回报率 = 100 / marketPrice，e.g. 20% → 5.0x
+      const returnX = i.marketPrice > 0
+        ? (100 / i.marketPrice).toFixed(1) + 'x'
+        : '—';
+
+      // 所需速率：需要多少条/h 才能落入该区间最低值
+      const minV = i.minVelocity;
+      const maxV = i.maxVelocity;
+      const alreadyCovered = isFinite(minV) && currentSpeed >= minV;
+      const needsSlowDown  = isFinite(maxV) && maxV < currentSpeed && maxV >= 0;
+      const gap            = isFinite(minV) ? minV - currentSpeed : Infinity;
+
+      // 颜色逻辑
+      let emoji: string;
+      if (alreadyCovered && i.edge > 0) {
+        emoji = '🟢';
+      } else if (!alreadyCovered && isFinite(gap) && gap <= 0.2) {
+        emoji = '🟡'; // 差距 ≤ 0.2条/h
+      } else if (!alreadyCovered && isFinite(gap) && gap / Math.max(minV, 0.01) <= 0.15) {
+        emoji = '🟡'; // 差距比例 ≤ 15%
+      } else {
+        emoji = '🔴';
+      }
+
+      // 状态标注
+      let status = '';
+      if (alreadyCovered) {
+        status = ' ✅ 当前已覆盖';
+      } else if (needsSlowDown) {
+        status = ' 需要减速';
+      } else if (isFinite(gap) && gap > 0 && gap <= 0.2) {
+        status = ` 差${gap.toFixed(2)}条/h`;
+      }
+
+      // 所需速率文字
+      let velocityText = '';
+      if (alreadyCovered) {
+        velocityText = isFinite(minV) ? `需 ${minV.toFixed(1)}条/h` : '—';
+      } else if (needsSlowDown) {
+        velocityText = isFinite(maxV) ? `需 ≤${maxV.toFixed(1)}条/h` : '—';
+      } else {
+        velocityText = isFinite(minV) ? `需 ${minV.toFixed(1)}条/h` : '—';
+      }
+
+      return `${emoji} ${i.range} ｜ ${returnX}回报 ｜ ${velocityText}${status}`;
     }).join('\n');
 
-    // ── Section 2: Velocity comparison ──
-    let velocityLine = '';
-    if (centerInterval) {
-      const minV = centerInterval.minVelocity === Infinity ? '∞' : centerInterval.minVelocity.toFixed(2);
-      const maxV = centerInterval.maxVelocity === Infinity ? '∞' : centerInterval.maxVelocity.toFixed(2);
-      const ok = currentSpeed >= (centerInterval.minVelocity || 0);
-      velocityLine = `⚡ [${centerInterval.range}] 所需 ${minV}~${maxV}/h  当前 ${currentSpeed.toFixed(2)}/h  ${ok ? '✅' : '⚠️'}`;
+    // ── 关键判断一句话 ──
+    const keyInterval = centerInterval || displayIntervals[0];
+    let keyJudgement = '';
+    if (keyInterval) {
+      const edgeText = keyInterval.edge > 3
+        ? '市场低估，性价比高'
+        : keyInterval.edge < -3
+          ? '市场高估，需谨慎'
+          : '接近公允';
+      keyJudgement = `落点~${predictedCenter}条，${keyInterval.range}是最值得关注的区间，${edgeText}。`;
     }
 
-    // ── Section 3: 1-hour price trend from history ──
-    let trendLine = '';
-    const marketHistory = priceHistory.filter(s => s.marketSlug === currentMarket?.slug);
-    if (marketHistory.length >= 2) {
-      const oneHourAgo = Date.now() - 60 * 60 * 1000;
-      const oldSnap = [...marketHistory].reverse().find(s => s.timestamp <= oneHourAgo);
-      if (oldSnap && topIntervals.length > 0) {
-        const trends = topIntervals.map((interval: any) => {
-          const prev = oldSnap.ranges.find(r => r.range === interval.range);
-          if (!prev) return null;
-          const delta = interval.marketPrice - prev.price;
-          if (Math.abs(delta) < 0.5) return `[${interval.range}]→`;
-          return `[${interval.range}]${delta > 0 ? '↑' : '↓'}${Math.abs(delta).toFixed(1)}%`;
-        }).filter(Boolean);
-        if (trends.length > 0) {
-          trendLine = `\n📉 1h赔率变化: ${trends.join('  ')}`;
-        }
-      }
-    }
+    return `🗓️ 马斯克推文预测 · 剩余${remainingText}
 
-    return `📊 ${marketTitle}
+📊 ${currentTotal}条 ｜ 今日+${todayTotal} ｜ ${apiPace.toFixed(0)}条/天
+📍 模型落点预测：~${predictedCenter}条
 
-📍 ${currentTotal}条 (今日+${todayTotal}) · 剩余${remainingText} · ${phase.name}
-🎯 落点预测: ~${predictedCenter}条  日均 ${apiPace.toFixed(0)}条/天
-
-📊 高概率区间 (模型概率 vs 市场赔率):
 ${rangeLines}
-${trendLine}
-${velocityLine ? '\n' + velocityLine : ''}
-🔗 polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}
 
-#ElonMusk #Polymarket #预测市场`.trim();
-  }, [currentTracking, currentMarket, predictedCenter, apiPace, remainingHours, centerRange, marketTitle, intervalAnalysis, priceHistory]);
+${keyJudgement}
+${lastLine}
+
+#Polymarket`.trim();
+  }, [currentTracking, currentMarket, predictedCenter, apiPace, intervalAnalysis]);
 
   const copyToClipboard = async () => {
     try {
