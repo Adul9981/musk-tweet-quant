@@ -15,9 +15,11 @@ import {
   CheckCircle,
   Gauge,
   LineChart as LineChartIcon,
+  BookOpen,
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
 import { ProbabilityChart } from './components/ProbabilityChart';
+import { StrategyGuide } from './components/StrategyGuide';
 import type { PriceSnapshot } from './components/ProbabilityChart';
 
 const REFERRAL = '?via=serene77mc-g6kj';
@@ -355,7 +357,7 @@ async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> 
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart' | 'guide'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
@@ -911,6 +913,7 @@ export default function App() {
               { id: 'chart', label: '概率走势', icon: LineChartIcon },
               { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
               { id: 'tweet', label: '推文生成', icon: FileText },
+              { id: 'guide', label: '策略指南', icon: BookOpen },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1586,6 +1589,12 @@ export default function App() {
         {activeTab === 'heatmap' && (
           <div className="max-w-6xl mx-auto">
             <TweetHeatmap />
+          </div>
+        )}
+
+        {activeTab === 'guide' && (
+          <div className="max-w-4xl mx-auto">
+            <StrategyGuide />
           </div>
         )}
 
