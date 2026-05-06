@@ -122,15 +122,9 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
               </p>
             </div>
           </div>
-          {totalValue > 0 && (
-            <div className="mt-4 p-3 bg-slate-800/40 rounded-lg text-xs text-slate-500">
-              <span className="text-slate-400">中奖后总收益：</span>
-              <span className="font-mono text-sky-400 font-semibold">
-                ${enriched.reduce((s, p) => s + p.shares, 0).toFixed(0)}
-              </span>
-              <span className="text-slate-600 ml-1">USDC（假设全部中奖 · 不考虑手续费）</span>
-            </div>
-          )}
+          <div className="mt-4 p-3 bg-slate-800/40 rounded-lg text-xs text-slate-500 border border-slate-700/40">
+            ⚠️ 各区间互斥，最终只有一个区间结算为 YES。当前估值与浮盈均按市价折算，非中奖金额。
+          </div>
         </div>
       )}
 
@@ -363,7 +357,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
 
           {/* Payout projection */}
           <div className="mt-4 p-4 bg-sky-500/5 rounded-xl border border-sky-500/10">
-            <p className="text-xs text-slate-500 mb-3 font-medium">到期结算预测（各区间独立）</p>
+            <p className="text-xs text-slate-500 mb-3 font-medium">若该区间命中，单笔收益（各区间互斥，只有一个兑现）</p>
             <div className="space-y-2">
               {enriched.map(pos => {
                 const winPayout = pos.shares;          // each YES share pays $1 if correct
