@@ -840,6 +840,109 @@ export default function App() {
     }).filter(Boolean).sort((a, b) => (a!.parsed?.min || 0) - (b!.parsed?.min || 0));
   }, [intervalAnalysis, apiPace, mu]);
 
+  // ── Alert computation ──────────────────────────────────────────────────────
+  interface AppAlert {
+    id: string;
+    type: 'boundary' | 'pace';
+    severity: 'critical' | 'warning';
+    title: string;
+    body: string;
+    action: string;
+  }
+
+  const alerts = useMemo((): AppAlert[] => {
+    const list: AppAlert[] = [];
+
+    // 1. Boundary alert: current count within N tweets of a range boundary
+    if (currentMarket && currentTweetCount > 0) {
+      const THRESHOLD = 5;
+      const rangesWithBounds = currentMarket.ranges
+        .map(r => ({ ...r, parsed: parseRange(r.range) }))
+        .filter(r => r.parsed);
+
+      // Find the range that contains the current count
+      const inRange = rangesWithBounds.find(
+        r => currentTweetCount >= r.parsed!.min && currentTweetCount <= r.parsed!.max
+      );
+
+      if (inRange?.parsed) {
+        const distUp   = inRange.parsed.max - currentTweetCount;
+        const distDown = currentTweetCount - inRange.parsed.min;
+
+        if (distUp <= THRESHOLD) {
+          const nextMin = inRange.parsed.max + 1;
+          const nextMax = inRange.parsed.max + 20;
+          list.push({
+            id: `boundary-up-${inRange.range}`,
+            type: 'boundary',
+            severity: distUp <= 2 ? 'critical' : 'warning',
+            title: `接近区间上边界 · 仅差 ${distUp} 条`,
+            body: `当前 ${currentTweetCount} 条，区间 ${inRange.range} 的上边界为 ${inRange.parsed.max} 条。再发 ${distUp} 条就进入 ${nextMin}–${nextMax}。`,
+            action: '建议立即评估是否执行边界分仓（同时持有两侧区间）',
+          });
+        }
+        if (distDown <= THRESHOLD) {
+          const prevMax = inRange.parsed.min - 1;
+          const prevMin = inRange.parsed.min - 20;
+          list.push({
+            id: `boundary-down-${inRange.range}`,
+            type: 'boundary',
+            severity: distDown <= 2 ? 'critical' : 'warning',
+            title: `接近区间下边界 · 仅差 ${distDown} 条`,
+            body: `当前 ${currentTweetCount} 条，区间 ${inRange.range} 的下边界为 ${inRange.parsed.min} 条。若减速 ${distDown} 条以内将跌入 ${prevMin}–${prevMax}。`,
+            action: '建议立即评估是否执行边界分仓（同时持有两侧区间）',
+          });
+        }
+      }
+    }
+
+    // 2. Pace anomaly alert: today's per-hour pace vs historical daily average
+    if (currentTracking?.stats?.todayTotal != null && apiPace > 0) {
+      const nowUtc = new Date();
+      const bjHour   = (nowUtc.getUTCHours() + 8) % 24;
+      const bjMinute = nowUtc.getUTCMinutes();
+      const hoursElapsed = Math.max(0.5, bjHour + bjMinute / 60);
+      const todayHourly  = currentTracking.stats.todayTotal / hoursElapsed;
+      const normalHourly = apiPace / 24;
+      const ratio = todayHourly / normalHourly;
+
+      if (ratio > 1.4) {
+        list.push({
+          id: `pace-high-${Math.floor(ratio * 10)}`,
+          type: 'pace',
+          severity: ratio > 2.0 ? 'critical' : 'warning',
+          title: `发推速率显著偏高 · 今日 ${todayHourly.toFixed(1)} 条/h（+${((ratio - 1) * 100).toFixed(0)}%）`,
+          body: `日均速率 ${normalHourly.toFixed(1)} 条/h，今日实际 ${todayHourly.toFixed(1)} 条/h。若此速率持续，落点预测将上移。`,
+          action: '建议重新确认中心落点，考虑向上相邻区间加仓',
+        });
+      } else if (ratio < 0.6 && bjHour >= 6) {
+        list.push({
+          id: `pace-low-${Math.floor(ratio * 10)}`,
+          type: 'pace',
+          severity: ratio < 0.3 ? 'critical' : 'warning',
+          title: `发推速率显著偏低 · 今日 ${todayHourly.toFixed(1)} 条/h（-${((1 - ratio) * 100).toFixed(0)}%）`,
+          body: `日均速率 ${normalHourly.toFixed(1)} 条/h，今日实际 ${todayHourly.toFixed(1)} 条/h。若此速率持续，落点预测将下移。`,
+          action: '建议重新确认中心落点，考虑向下相邻区间加仓',
+        });
+      }
+    }
+
+    return list;
+  }, [currentMarket, currentTweetCount, currentTracking, apiPace]);
+
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id));
+
+  // Auto-clear dismissed list when alert IDs change (new boundary condition)
+  const alertIds = alerts.map(a => a.id).join(',');
+  useEffect(() => {
+    setDismissedAlerts(prev => {
+      const currentIds = new Set(alerts.map(a => a.id));
+      const next = new Set([...prev].filter(id => currentIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [alertIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="min-h-screen bg-[#0d1829]">
       {/* ── Header ── */}
@@ -859,6 +962,19 @@ export default function App() {
               <span className="px-2.5 py-1 rounded text-xs font-medium bg-sky-500/10 border border-sky-500/30 text-sky-400">
                 {phase.name}
               </span>
+              {visibleAlerts.length > 0 && (
+                <span
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold border ${
+                    visibleAlerts.some(a => a.severity === 'critical')
+                      ? 'bg-rose-500/15 border-rose-500/50 text-rose-400 animate-pulse'
+                      : 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                  }`}
+                  title={visibleAlerts.map(a => a.title).join(' | ')}
+                >
+                  <span>{visibleAlerts.some(a => a.severity === 'critical') ? '🚨' : '⚠️'}</span>
+                  <span>{visibleAlerts.length} 条预警</span>
+                </span>
+              )}
               <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
                 {/* Live clock */}
                 <div className="flex items-center gap-1.5 text-slate-300">
@@ -931,6 +1047,42 @@ export default function App() {
           </div>
         </div>
       </nav>
+
+      {/* ── Alert Banners ── */}
+      {visibleAlerts.length > 0 && (
+        <div className="max-w-7xl mx-auto px-6 pt-4 space-y-2">
+          {visibleAlerts.map(alert => {
+            const isCritical = alert.severity === 'critical';
+            const isBoundary = alert.type === 'boundary';
+            const colors = isCritical
+              ? 'bg-rose-500/10 border-rose-500/50 text-rose-200'
+              : isBoundary
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                : 'bg-violet-500/10 border-violet-500/40 text-violet-200';
+            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : 'text-violet-400';
+            const pulse = isCritical ? 'animate-pulse' : '';
+            return (
+              <div key={alert.id} className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${colors}`}>
+                <div className={`text-lg shrink-0 ${pulse}`}>
+                  {isCritical ? '🚨' : isBoundary ? '⚠️' : '📊'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-semibold ${iconColor}`}>{alert.title}</div>
+                  <div className="text-xs mt-0.5 opacity-80">{alert.body}</div>
+                  <div className="text-xs mt-1 font-medium opacity-90">→ {alert.action}</div>
+                </div>
+                <button
+                  onClick={() => setDismissedAlerts(prev => new Set([...prev, alert.id]))}
+                  className="shrink-0 text-xs opacity-50 hover:opacity-100 transition-opacity px-2 py-1 rounded hover:bg-white/10"
+                  title="关闭提醒"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'market' && (
