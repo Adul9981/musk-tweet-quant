@@ -14,16 +14,15 @@ import {
   Copy,
   CheckCircle,
   Gauge,
-  LineChart as LineChartIcon,
   BookOpen,
   Wallet,
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
-import { ProbabilityChart } from './components/ProbabilityChart';
 import { StrategyGuide } from './components/StrategyGuide';
 import { PositionManager } from './components/PositionManager';
 import type { Position } from './components/PositionManager';
 import type { PriceSnapshot } from './components/ProbabilityChart';
+// ProbabilityChart component kept for potential future use; tab removed
 
 const REFERRAL = '?via=serene77mc-g6kj';
 
@@ -361,7 +360,7 @@ async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> 
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart' | 'guide' | 'positions'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'guide' | 'positions'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
@@ -1101,7 +1100,6 @@ export default function App() {
               { id: 'market', label: '市场概览', icon: TrendingUp },
               { id: 'analysis', label: '概率分析', icon: BarChart3 },
               { id: 'positions', label: '持仓管理', icon: Wallet },
-              { id: 'chart', label: '概率走势', icon: LineChartIcon },
               { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
               { id: 'tweet', label: '推文生成', icon: FileText },
               { id: 'guide', label: '策略指南', icon: BookOpen },
@@ -1812,18 +1810,6 @@ export default function App() {
               onDelete={handleDeletePosition}
               rangeOptions={rangeOptions}
               currentMarketSlug={currentMarket?.slug ?? ''}
-            />
-          </div>
-        )}
-
-        {activeTab === 'chart' && (
-          <div className="max-w-5xl mx-auto space-y-6">
-            <ProbabilityChart
-              history={priceHistory.filter(
-                s => !currentMarket || s.marketSlug === currentMarket.slug
-              )}
-              marketStartDate={currentTracking?.startDate || currentMarket?.start_date}
-              marketEndDate={currentTracking?.endDate || currentMarket?.end_date}
             />
           </div>
         )}
