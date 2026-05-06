@@ -16,10 +16,13 @@ import {
   Gauge,
   LineChart as LineChartIcon,
   BookOpen,
+  Wallet,
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
 import { ProbabilityChart } from './components/ProbabilityChart';
 import { StrategyGuide } from './components/StrategyGuide';
+import { PositionManager } from './components/PositionManager';
+import type { Position } from './components/PositionManager';
 import type { PriceSnapshot } from './components/ProbabilityChart';
 
 const REFERRAL = '?via=serene77mc-g6kj';
@@ -67,6 +70,7 @@ interface Tracking {
 
 const PRICE_HISTORY_KEY = 'musk_price_history_v1';
 const PRICE_HISTORY_MAX = 144; // 12 hours at 5-min intervals
+const POSITIONS_KEY = 'musk_positions_v1';
 
 function parseRange(range: string): { min: number; max: number } | null {
   const match = range.match(/(\d+)-(\d+)/);
@@ -357,7 +361,7 @@ async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> 
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart' | 'guide'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'chart' | 'guide' | 'positions'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
@@ -367,6 +371,10 @@ export default function App() {
   const [currentTweetCount, setCurrentTweetCount] = useState(0);
   const [priceHistory, setPriceHistory] = useState<PriceSnapshot[]>([]);
   const [now, setNow] = useState(() => new Date());
+  const [positions, setPositions] = useState<Position[]>(() => {
+    try { return JSON.parse(localStorage.getItem(POSITIONS_KEY) || '[]') as Position[]; }
+    catch { return []; }
+  });
 
   // Live clock — ticks every second
   useEffect(() => {
@@ -382,6 +390,12 @@ export default function App() {
       setPriceHistory(saved.filter(s => s.timestamp > cutoff));
     } catch { /* ignore parse errors */ }
   }, []);
+
+  // Persist positions to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(POSITIONS_KEY, JSON.stringify(positions)); }
+    catch { /* ignore quota errors */ }
+  }, [positions]);
 
   // ── Fetch market list + prices directly from Gamma API (browser fetch, CORS open) ──
   const fetchMarketData = async () => {
@@ -777,6 +791,24 @@ export default function App() {
     setSelectedMarketIndex(index);
   };
 
+  // ── Position management handlers ──────────────────────────────────────────
+  const handleAddPosition = (pos: Position) => {
+    setPositions(prev => [...prev, pos]);
+  };
+
+  const handleDeletePosition = (id: string) => {
+    setPositions(prev => prev.filter(p => p.id !== id));
+  };
+
+  const rangeOptions = useMemo(() =>
+    analysisData.map(r => ({
+      range: r.range,
+      currentPrice: r.price,
+      modelProb: r.realProb,
+      isCenter: r.isCenter ?? false,
+    })),
+  [analysisData]);
+
   const calculateIntervalAnalysis = (item: typeof analysisData[0]) => {
     if (!item?.parsed) return null;
     const marketPrice = item.price;
@@ -843,7 +875,7 @@ export default function App() {
   // ── Alert computation ──────────────────────────────────────────────────────
   interface AppAlert {
     id: string;
-    type: 'boundary' | 'pace';
+    type: 'boundary' | 'pace' | 'position';
     severity: 'critical' | 'warning';
     title: string;
     body: string;
@@ -927,8 +959,50 @@ export default function App() {
       }
     }
 
+    // 3. Position alerts: take profit / stop loss / model exit
+    for (const pos of positions) {
+      const opt = rangeOptions.find(r => r.range === pos.range);
+      const currentPrice = opt?.currentPrice ?? 0;
+      const modelProb    = opt?.modelProb ?? 0;
+      const pnlPct = currentPrice > 0
+        ? ((currentPrice - pos.entryPrice) / pos.entryPrice) * 100
+        : 0;
+      const currentValue = currentPrice > 0
+        ? pos.shares * (currentPrice / 100)
+        : 0;
+
+      if (currentPrice >= 70) {
+        list.push({
+          id: `pos-takeprofit-${pos.id}`,
+          type: 'position',
+          severity: currentPrice >= 85 ? 'critical' : 'warning',
+          title: `止盈信号 · ${pos.range} 现价 ${currentPrice.toFixed(1)}%`,
+          body: `入场 ${pos.entryPrice.toFixed(1)}% → 当前 ${currentPrice.toFixed(1)}%，浮盈 ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(0)}%。$${pos.amount.toFixed(0)} → $${currentValue.toFixed(0)}`,
+          action: '价格接近峰值，建议锁定部分利润；继续上涨边际概率递减',
+        });
+      } else if (currentPrice > 0 && currentPrice <= pos.entryPrice * 0.4) {
+        list.push({
+          id: `pos-stoploss-${pos.id}`,
+          type: 'position',
+          severity: 'critical',
+          title: `减仓信号 · ${pos.range} 已跌至入场价 ${((currentPrice / pos.entryPrice) * 100).toFixed(0)}%`,
+          body: `入场 ${pos.entryPrice.toFixed(1)}% → 当前 ${currentPrice.toFixed(1)}%，浮亏 ${pnlPct.toFixed(0)}%。市场正在抛弃该区间。`,
+          action: '建议止损出场，释放资金重新部署至中心区间',
+        });
+      } else if (modelProb > 0 && modelProb < 3) {
+        list.push({
+          id: `pos-modelexit-${pos.id}`,
+          type: 'position',
+          severity: 'warning',
+          title: `出场信号 · ${pos.range} 模型概率仅 ${modelProb.toFixed(1)}%`,
+          body: `模型判断该区间落点概率极低（<3%），中心落点已大幅偏移。`,
+          action: '建议出场并将资金重新部署至当前中心区间',
+        });
+      }
+    }
+
     return list;
-  }, [currentMarket, currentTweetCount, currentTracking, apiPace]);
+  }, [currentMarket, currentTweetCount, currentTracking, apiPace, positions, rangeOptions]);
 
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id));
@@ -1026,6 +1100,7 @@ export default function App() {
             {[
               { id: 'market', label: '市场概览', icon: TrendingUp },
               { id: 'analysis', label: '概率分析', icon: BarChart3 },
+              { id: 'positions', label: '持仓管理', icon: Wallet },
               { id: 'chart', label: '概率走势', icon: LineChartIcon },
               { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
               { id: 'tweet', label: '推文生成', icon: FileText },
@@ -1054,17 +1129,20 @@ export default function App() {
           {visibleAlerts.map(alert => {
             const isCritical = alert.severity === 'critical';
             const isBoundary = alert.type === 'boundary';
+            const isPosition = alert.type === 'position';
             const colors = isCritical
               ? 'bg-rose-500/10 border-rose-500/50 text-rose-200'
               : isBoundary
                 ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
-                : 'bg-violet-500/10 border-violet-500/40 text-violet-200';
-            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : 'text-violet-400';
+                : isPosition
+                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
+                  : 'bg-violet-500/10 border-violet-500/40 text-violet-200';
+            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : isPosition ? 'text-emerald-400' : 'text-violet-400';
             const pulse = isCritical ? 'animate-pulse' : '';
             return (
               <div key={alert.id} className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${colors}`}>
                 <div className={`text-lg shrink-0 ${pulse}`}>
-                  {isCritical ? '🚨' : isBoundary ? '⚠️' : '📊'}
+                  {isCritical ? '🚨' : isBoundary ? '⚠️' : isPosition ? '💼' : '📊'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-semibold ${iconColor}`}>{alert.title}</div>
@@ -1723,6 +1801,18 @@ export default function App() {
               </div>
             </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'positions' && (
+          <div className="max-w-4xl mx-auto">
+            <PositionManager
+              positions={positions}
+              onAdd={handleAddPosition}
+              onDelete={handleDeletePosition}
+              rangeOptions={rangeOptions}
+              currentMarketSlug={currentMarket?.slug ?? ''}
+            />
           </div>
         )}
 
