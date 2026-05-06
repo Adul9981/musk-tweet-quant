@@ -884,21 +884,23 @@ export default function App() {
   const alerts = useMemo((): AppAlert[] => {
     const list: AppAlert[] = [];
 
-    // 1. Boundary alert: current count within N tweets of a range boundary
-    if (currentMarket && currentTweetCount > 0) {
-      const THRESHOLD = 5;
+    // 1. Boundary alert: predicted center µ within N tweets of the boundary of its range
+    //    (NOT based on current count C — C is a transient value passing through many ranges)
+    if (currentMarket && mu > 0) {
+      const THRESHOLD = 10; // wider than 5: µ carries inherent uncertainty
       const rangesWithBounds = currentMarket.ranges
         .map(r => ({ ...r, parsed: parseRange(r.range) }))
         .filter(r => r.parsed);
 
-      // Find the range that contains the current count
+      // Find the range that contains the predicted center µ
       const inRange = rangesWithBounds.find(
-        r => currentTweetCount >= r.parsed!.min && currentTweetCount <= r.parsed!.max
+        r => mu >= r.parsed!.min && mu <= r.parsed!.max
       );
 
       if (inRange?.parsed) {
-        const distUp   = inRange.parsed.max - currentTweetCount;
-        const distDown = currentTweetCount - inRange.parsed.min;
+        const muRounded = Math.round(mu);
+        const distUp   = inRange.parsed.max - mu;
+        const distDown = mu - inRange.parsed.min;
 
         if (distUp <= THRESHOLD) {
           const nextMin = inRange.parsed.max + 1;
@@ -906,22 +908,22 @@ export default function App() {
           list.push({
             id: `boundary-up-${inRange.range}`,
             type: 'boundary',
-            severity: distUp <= 2 ? 'critical' : 'warning',
-            title: `接近区间上边界 · 仅差 ${distUp} 条`,
-            body: `当前 ${currentTweetCount} 条，区间 ${inRange.range} 的上边界为 ${inRange.parsed.max} 条。再发 ${distUp} 条就进入 ${nextMin}–${nextMax}。`,
-            action: '建议立即评估是否执行边界分仓（同时持有两侧区间）',
+            severity: distUp <= 3 ? 'critical' : 'warning',
+            title: `预测落点接近区间上边界 · 差 ${Math.round(distUp)} 条`,
+            body: `预测中心落点 ~${muRounded} 条，${inRange.range} 上边界为 ${inRange.parsed.max} 条。若实际偏高 ${Math.round(distUp)} 条将进入 ${nextMin}–${nextMax}。`,
+            action: `建议评估是否在 ${inRange.range} 与 ${nextMin}–${nextMax} 同时建仓（边界分仓）`,
           });
         }
         if (distDown <= THRESHOLD) {
-          const prevMax = inRange.parsed.min - 1;
           const prevMin = inRange.parsed.min - 20;
+          const prevMax = inRange.parsed.min - 1;
           list.push({
             id: `boundary-down-${inRange.range}`,
             type: 'boundary',
-            severity: distDown <= 2 ? 'critical' : 'warning',
-            title: `接近区间下边界 · 仅差 ${distDown} 条`,
-            body: `当前 ${currentTweetCount} 条，区间 ${inRange.range} 的下边界为 ${inRange.parsed.min} 条。若减速 ${distDown} 条以内将跌入 ${prevMin}–${prevMax}。`,
-            action: '建议立即评估是否执行边界分仓（同时持有两侧区间）',
+            severity: distDown <= 3 ? 'critical' : 'warning',
+            title: `预测落点接近区间下边界 · 差 ${Math.round(distDown)} 条`,
+            body: `预测中心落点 ~${muRounded} 条，${inRange.range} 下边界为 ${inRange.parsed.min} 条。若实际偏低 ${Math.round(distDown)} 条将落入 ${prevMin}–${prevMax}。`,
+            action: `建议评估是否在 ${inRange.range} 与 ${prevMin}–${prevMax} 同时建仓（边界分仓）`,
           });
         }
       }
@@ -1001,7 +1003,7 @@ export default function App() {
     }
 
     return list;
-  }, [currentMarket, currentTweetCount, currentTracking, apiPace, positions, rangeOptions]);
+  }, [currentMarket, currentTweetCount, mu, currentTracking, apiPace, positions, rangeOptions]);
 
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id));
