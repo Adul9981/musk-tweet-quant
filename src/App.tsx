@@ -21,6 +21,7 @@ import { TweetHeatmap } from './components/TweetHeatmap';
 import { StrategyGuide } from './components/StrategyGuide';
 import { PositionManager } from './components/PositionManager';
 import type { Position } from './components/PositionManager';
+import { RecommendationPanel } from './components/RecommendationPanel';
 import type { PriceSnapshot } from './components/ProbabilityChart';
 // ProbabilityChart component kept for potential future use; tab removed
 
@@ -1391,6 +1392,18 @@ export default function App() {
             ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
+                <RecommendationPanel
+                  mu={mu}
+                  remainingDays={remainingDays + remainingHoursFromApi / 24}
+                  analysisData={analysisData.map(r => ({
+                    range: r.range,
+                    price: r.price,
+                    realProb: r.realProb,
+                    isCenter: r.isCenter,
+                    parsed: r.parsed ?? null,
+                  }))}
+                  positions={positions}
+                />
                 <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
