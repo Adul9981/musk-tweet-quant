@@ -1877,15 +1877,13 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const todayTotal   = currentTracking?.stats?.todayTotal ?? 0;
     const daysRem      = currentTracking?.stats?.daysRemaining ?? 0;
     const hoursRem     = currentTracking?.stats?.hoursRemaining ?? 0;
-    const currentSpeed = apiPace / 24; // tweets per hour
+    const totalHours   = daysRem * 24 + hoursRem;
+    const totalDays    = totalHours / 24;
+    const currentSpeed = apiPace / 24;
 
-    const remainingText = daysRem > 0
-      ? `${daysRem}天${hoursRem > 0 ? hoursRem + 'h' : ''}`
-      : `${hoursRem}h`;
-
-    const lastLine = daysRem > 0
-      ? `最后${daysRem}天，你押哪个？👇`
-      : `最后${hoursRem}小时，你押哪个？👇`;
+    const timeText = daysRem > 0
+      ? `还剩 ${daysRem}天${hoursRem > 0 ? hoursRem + '小时' : ''}`
+      : `还剩 ${hoursRem}小时`;
 
     // ── 区间列表：active 区间，中心区间排第一，其余按 trueProb 降序 ──
     const activeIntervals: any[] = (intervalAnalysis ?? []).filter((i: any) => i?.status === 'active');
@@ -1893,84 +1891,68 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const otherIntervals = activeIntervals
       .filter((i: any) => !i?.isCenter)
       .sort((a: any, b: any) => b.trueProb - a.trueProb);
-    const orderedIntervals = centerInterval
+    const displayIntervals = (centerInterval
       ? [centerInterval, ...otherIntervals]
-      : otherIntervals;
-    const displayIntervals = orderedIntervals.slice(0, 5);
+      : otherIntervals).slice(0, 4);
 
-    // ── 区间数据行 ──
+    // ── 区间数据行（无 emoji，纯文字）──
     const rangeLines = displayIntervals.map((i: any) => {
-      // 回报率 = 100 / marketPrice，e.g. 20% → 5.0x
-      const returnX = i.marketPrice > 0
-        ? (100 / i.marketPrice).toFixed(1) + 'x'
-        : '—';
+      const returnX      = i.marketPrice > 0 ? (100 / i.marketPrice).toFixed(1) : '—';
+      const minV         = i.minVelocity;
+      const maxV         = i.maxVelocity;
+      const covered      = isFinite(minV) && currentSpeed >= minV;
+      const needsSlow    = isFinite(maxV) && maxV < currentSpeed && maxV >= 0;
 
-      // 所需速率：需要多少条/h 才能落入该区间最低值
-      const minV = i.minVelocity;
-      const maxV = i.maxVelocity;
-      const alreadyCovered = isFinite(minV) && currentSpeed >= minV;
-      const needsSlowDown  = isFinite(maxV) && maxV < currentSpeed && maxV >= 0;
-      const gap            = isFinite(minV) ? minV - currentSpeed : Infinity;
-
-      // 颜色逻辑
-      let emoji: string;
-      if (alreadyCovered && i.edge > 0) {
-        emoji = '🟢';
-      } else if (!alreadyCovered && isFinite(gap) && gap <= 0.2) {
-        emoji = '🟡'; // 差距 ≤ 0.2条/h
-      } else if (!alreadyCovered && isFinite(gap) && gap / Math.max(minV, 0.01) <= 0.15) {
-        emoji = '🟡'; // 差距比例 ≤ 15%
-      } else {
-        emoji = '🔴';
+      let velocityNote = '';
+      if (covered) {
+        velocityNote = '当前速率可覆盖';
+      } else if (needsSlow) {
+        velocityNote = `需减速至 ${maxV.toFixed(1)} 条/h 以内`;
+      } else if (isFinite(minV)) {
+        velocityNote = `需加速至 ${minV.toFixed(1)} 条/h`;
       }
 
-      // 状态标注
-      let status = '';
-      if (alreadyCovered) {
-        status = ' ✅ 当前已覆盖';
-      } else if (needsSlowDown) {
-        status = ' 需要减速';
-      } else if (isFinite(gap) && gap > 0 && gap <= 0.2) {
-        status = ` 差${gap.toFixed(2)}条/h`;
-      }
-
-      // 所需速率文字
-      let velocityText = '';
-      if (alreadyCovered) {
-        velocityText = isFinite(minV) ? `需 ${minV.toFixed(1)}条/h` : '—';
-      } else if (needsSlowDown) {
-        velocityText = isFinite(maxV) ? `需 ≤${maxV.toFixed(1)}条/h` : '—';
-      } else {
-        velocityText = isFinite(minV) ? `需 ${minV.toFixed(1)}条/h` : '—';
-      }
-
-      return `${emoji} ${i.range} ｜ ${returnX}回报 ｜ ${velocityText}${status}`;
+      const prefix = i.isCenter ? '[落点]' : '      ';
+      return `${prefix} ${i.range}  赔率 ${i.marketPrice.toFixed(0)}%  中奖 ${returnX}x  ${velocityNote}`.trimEnd();
     }).join('\n');
 
-    // ── 关键判断一句话 ──
-    const keyInterval = centerInterval || displayIntervals[0];
-    let keyJudgement = '';
-    if (keyInterval) {
-      const edgeText = keyInterval.edge > 3
-        ? '市场低估，性价比高'
-        : keyInterval.edge < -3
-          ? '市场高估，需谨慎'
-          : '接近公允';
-      keyJudgement = `落点~${predictedCenter}条，${keyInterval.range}是最值得关注的区间，${edgeText}。`;
+    // ── 阶段策略建议 ──
+    let strategyLine = '';
+    let nextActionLine = '';
+
+    if (totalDays >= 2.5) {
+      strategyLine = '目前预测不确定性较大，建议观望，待落点收敛后再入场。';
+      nextActionLine = `下次关键节点：约 ${Math.round((totalDays - 2.25) * 24)} 小时后进入第一次建仓窗口`;
+    } else if (totalDays >= 2.0) {
+      strategyLine = `现处于第一次建仓窗口（距到期 2~2.5 天）。可分散布局：中心区间 ${centerInterval?.range ?? `~${predictedCenter}条附近`} 为主，两侧区间少量配置，建议合计使用总资金 25% 左右。`;
+      nextActionLine = '下次关键节点：约 0.5 天后，确认落点后集中加仓中心区间';
+    } else if (totalDays >= 1.5) {
+      strategyLine = `现处于加仓窗口（距到期 1.5~2 天），落点预测趋于稳定。建议集中加仓中心区间 ${centerInterval?.range ?? ''}，此阶段入场性价比较高。`;
+      nextActionLine = '下次关键节点：今晚或明早，开始分批减持翼仓（首批减 40%）';
+    } else if (totalDays >= 1.0) {
+      strategyLine = `已进入翼仓减仓阶段（距到期 1~1.5 天）。建议今晚将非中心区间仓位减持 40%，锁定部分收益，专注持有 ${centerInterval?.range ?? '中心区间'}。`;
+      nextActionLine = '下次关键节点：明天同一时间，翼仓再减 50%';
+    } else if (totalDays >= 0.5) {
+      strategyLine = '距到期不足 1 天，翼仓进入第二批减仓。建议今晚再卖出剩余翼仓的 50%，中心仓位继续持有等待结算。';
+      nextActionLine = '下次关键节点：到期前 12 小时，翼仓全部清仓';
+    } else {
+      strategyLine = '最终持仓阶段，翼仓应已清仓完毕，持有中心区间等待结算。';
+      nextActionLine = '临近到期，维持现有仓位，不再追加';
     }
 
-    return `🗓️ 马斯克推文预测 · 剩余${remainingText}
+    return `马斯克推文预测 · ${timeText}
 
-📊 ${currentTotal}条 ｜ 今日+${todayTotal} ｜ ${apiPace.toFixed(0)}条/天
-📍 模型落点预测：~${predictedCenter}条
+当前 ${currentTotal} 条，今日 +${todayTotal}，日均 ${apiPace.toFixed(0)} 条/天
+预测落点 ~${predictedCenter} 条
 
+Polymarket 实时赔率：
 ${rangeLines}
 
-${keyJudgement}
-${lastLine}
+${strategyLine}
+${nextActionLine}
 
 #Polymarket`.trim();
-  }, [currentTracking, currentMarket, predictedCenter, apiPace, intervalAnalysis]);
+  }, [currentTracking, predictedCenter, apiPace, intervalAnalysis]);
 
   const copyToClipboard = async () => {
     try {
