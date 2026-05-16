@@ -121,46 +121,50 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
     <div className="space-y-6">
       {/* ── Portfolio summary ── */}
       {merged.length > 0 && (
-        <div className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
-          <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2 mb-5">
-            <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
-              <Briefcase className="w-4 h-4 text-sky-400" />
+        <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-xl">
+          <div className={`h-1 bg-gradient-to-r ${totalPnl >= 0 ? 'from-emerald-500 to-teal-500' : 'from-rose-500 to-pink-500'}`} />
+          <div className="p-6">
+            <h2 className="text-base font-bold text-white flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Briefcase className="w-4 h-4 text-white" />
+              </div>
+              持仓汇总
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-slate-800/60 rounded-xl border border-slate-700/50">
+                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">总投入</p>
+                <p className="text-2xl font-bold text-slate-100 font-mono">${totalInvested.toFixed(0)}</p>
+              </div>
+              <div className="text-center p-4 bg-sky-950/60 rounded-xl border border-sky-500/30">
+                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">当前估值</p>
+                <p className="text-2xl font-bold text-sky-300 font-mono">${totalValue.toFixed(0)}</p>
+                <p className="text-[11px] text-slate-600 mt-1">按市价折算</p>
+              </div>
+              <div className={`text-center p-4 rounded-xl border ${
+                totalPnl >= 0 ? 'bg-emerald-950/60 border-emerald-500/30' : 'bg-rose-950/60 border-rose-500/30'
+              }`}>
+                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">浮动盈亏</p>
+                <p className={`text-2xl font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)}
+                </p>
+                <p className={`text-[11px] mt-1 font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {totalPnlPct >= 0 ? '+' : ''}{totalPnlPct.toFixed(1)}%
+                </p>
+              </div>
             </div>
-            持仓汇总
-          </h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-slate-800/50 rounded-xl border border-slate-700/40">
-              <p className="text-[11px] text-slate-500 mb-1.5 uppercase tracking-wide">总投入</p>
-              <p className="text-2xl font-bold text-slate-200 font-mono">${totalInvested.toFixed(0)}</p>
+            <div className="mt-4 p-3 bg-amber-950/30 rounded-lg text-xs text-slate-400 border border-amber-500/20">
+              ⚠️ 各区间互斥，最终只有一个区间结算为 YES。当前估值与浮盈均按市价折算，非中奖金额。
             </div>
-            <div className="text-center p-4 bg-slate-800/50 rounded-xl border border-sky-500/20">
-              <p className="text-[11px] text-slate-500 mb-1.5 uppercase tracking-wide">当前估值</p>
-              <p className="text-2xl font-bold text-sky-400 font-mono">${totalValue.toFixed(0)}</p>
-              <p className="text-[11px] text-slate-600 mt-1">按市价折算</p>
-            </div>
-            <div className={`text-center p-4 rounded-xl border ${
-              totalPnl >= 0 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'
-            }`}>
-              <p className="text-[11px] text-slate-500 mb-1.5 uppercase tracking-wide">浮动盈亏</p>
-              <p className={`text-2xl font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)}
-              </p>
-              <p className={`text-[11px] mt-1 font-mono ${totalPnl >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                {totalPnlPct >= 0 ? '+' : ''}{totalPnlPct.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 p-3 bg-slate-800/40 rounded-lg text-xs text-slate-500 border border-slate-700/40">
-            ⚠️ 各区间互斥，最终只有一个区间结算为 YES。当前估值与浮盈均按市价折算，非中奖金额。
           </div>
         </div>
       )}
 
       {/* ── Add position form ── */}
-      <div className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
+      <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-lg">
+        <div className="h-0.5 bg-gradient-to-r from-slate-700 to-slate-600" />
+        <div className="flex items-center justify-between mb-4 p-6 pb-0">
+          <h2 className="text-base font-bold text-white flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
               <DollarSign className="w-4 h-4 text-sky-400" />
             </div>
             记录持仓
@@ -177,7 +181,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
         </div>
 
         {isFormOpen && (
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 pb-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Range */}
               <div>
@@ -267,18 +271,18 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
         )}
 
         {!isFormOpen && merged.length === 0 && (
-          <div className="text-center py-10 text-slate-600">
-            <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <div className="text-center py-10 px-6 text-slate-600">
+            <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-20" />
             <p className="text-sm text-slate-500">暂无持仓记录</p>
-            <p className="text-xs mt-1">点击「添加仓位」记录你的下注</p>
+            <p className="text-xs mt-1 text-slate-600">点击「添加仓位」记录你的下注</p>
           </div>
         )}
       </div>
 
       {/* ── Positions list (merged by range) ── */}
       {merged.length > 0 && (
-        <div className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
-          <h2 className="text-base font-semibold text-slate-200 mb-5">持仓明细</h2>
+        <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-lg p-6">
+          <h2 className="text-base font-bold text-white mb-5">持仓明细</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
