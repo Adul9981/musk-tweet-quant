@@ -1190,26 +1190,26 @@ export default function App() {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <div className="bg-slate-800/50 border border-sky-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-500 mb-1 uppercase tracking-wide">当前总数</p>
+                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">当前总数</p>
                       <p className="text-3xl font-bold text-sky-400 font-mono">{currentTracking?.stats?.total || '—'}</p>
-                      <p className="text-[11px] text-slate-600 mt-1">条推文</p>
+                      <p className="text-[11px] text-slate-500 mt-1">条推文</p>
                     </div>
                     <div className="bg-slate-800/50 border border-emerald-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-500 mb-1 uppercase tracking-wide">今日新增</p>
+                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">今日新增</p>
                       <p className="text-3xl font-bold text-emerald-400 font-mono">{currentTracking?.stats?.todayTotal || '—'}</p>
-                      <p className="text-[11px] text-slate-600 mt-1">条</p>
+                      <p className="text-[11px] text-slate-500 mt-1">条</p>
                     </div>
                     <div className="bg-slate-800/50 border border-amber-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-500 mb-1 uppercase tracking-wide">日均时速</p>
+                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">日均时速</p>
                       <p className="text-3xl font-bold text-amber-400 font-mono">{currentTracking?.stats?.pace || '—'}</p>
-                      <p className="text-[11px] text-slate-600 mt-1">条/天</p>
+                      <p className="text-[11px] text-slate-500 mt-1">条/天</p>
                     </div>
                     <div className="bg-slate-800/50 border border-violet-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-500 mb-1 uppercase tracking-wide">剩余时间</p>
+                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">剩余时间</p>
                       <p className="text-3xl font-bold text-violet-400 font-mono">
                         {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}d` : '—'}
                       </p>
-                      <p className="text-[11px] text-slate-600 mt-1">
+                      <p className="text-[11px] text-slate-500 mt-1">
                         {currentTracking?.stats && currentTracking.stats.hoursRemaining > 0
                           ? `${currentTracking.stats.hoursRemaining}h`
                           : '结束'}
@@ -1242,7 +1242,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-[11px] text-slate-600 uppercase tracking-wide">交易量</p>
+                          <p className="text-[11px] text-slate-400 uppercase tracking-wide">交易量</p>
                           <p className="text-sm font-bold text-sky-400 font-mono">
                             ${(currentMarket.volume / 1000000).toFixed(1)}M
                           </p>
@@ -1259,7 +1259,7 @@ export default function App() {
                       </div>
                     </div>
                     {lastUpdated && (
-                      <div className="text-[11px] text-slate-600 mb-4 font-mono">
+                      <div className="text-[11px] text-slate-500 mb-4 font-mono">
                         数据更新: {new Date(lastUpdated).toLocaleString('zh-CN')}
                       </div>
                     )}
@@ -1271,9 +1271,9 @@ export default function App() {
                           ~{predictedCenter} 条
                         </span>
                       </div>
-                      <div className="text-xs text-slate-600 mt-1 font-mono">
+                      <div className="text-xs text-slate-500 mt-1 font-mono">
                         日均 <span className="text-amber-400">{apiPace.toFixed(1)}</span> 条/天
-                        <span className="ml-2 text-slate-700">· {(apiPace / 24).toFixed(2)} 条/h</span>
+                        <span className="ml-2 text-slate-500">· {(apiPace / 24).toFixed(2)} 条/h</span>
                       </div>
                     </div>
                     
@@ -1424,19 +1424,19 @@ export default function App() {
                   <div className="grid grid-cols-4 gap-4 mb-6">
                     <div className="text-center p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
                       <p className="text-2xl font-bold text-violet-400 font-mono">{currentTweetCount}</p>
-                      <p className="text-xs text-slate-500">当前推文</p>
+                      <p className="text-xs text-slate-400">当前推文</p>
                     </div>
                     <div className="text-center p-4 bg-sky-500/10 rounded-xl border border-sky-500/20">
                       <p className="text-2xl font-bold text-sky-400 font-mono">{apiPace.toFixed(1)}</p>
-                      <p className="text-xs text-slate-500">日均时速</p>
+                      <p className="text-xs text-slate-400">日均时速</p>
                     </div>
                     <div className="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
                       <p className="text-2xl font-bold text-amber-400 font-mono">{E_rem.toFixed(0)}</p>
-                      <p className="text-xs text-slate-500">预期剩余</p>
+                      <p className="text-xs text-slate-400">预期剩余</p>
                     </div>
                     <div className="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                       <p className="text-2xl font-bold text-emerald-400 font-mono">{remainingDays}d</p>
-                      <p className="text-xs text-slate-500">剩余时间</p>
+                      <p className="text-xs text-slate-400">剩余时间</p>
                     </div>
                   </div>
 
@@ -1444,12 +1444,12 @@ export default function App() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-slate-800">
-                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-500 uppercase">区间</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">赔率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">真实概率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">回报率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">盈亏</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-500 uppercase">状态</th>
+                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 uppercase">区间</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">赔率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">真实概率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">回报率</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">盈亏</th>
+                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">状态</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1511,7 +1511,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">目标区间时速倒推雷达</h2>
-                        <p className="text-xs text-slate-600 font-mono">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
+                        <p className="text-xs text-slate-500 font-mono">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
                       </div>
                     </div>
                   </div>
@@ -1554,7 +1554,7 @@ export default function App() {
                               <span className="text-slate-500 text-lg mx-1">~</span>
                               +{item.tweetsNeededMax}
                             </p>
-                            <p className="text-[10px] text-slate-600 mt-1">条</p>
+                            <p className="text-[10px] text-slate-500 mt-1">条</p>
                           </div>
 
                           {/* Secondary: velocity & probability */}
@@ -1563,7 +1563,7 @@ export default function App() {
                               <span className="text-slate-500">所需时速</span>
                               <span className="text-sky-400 font-mono">
                                 {item.minVelocity === Infinity ? '∞' : item.minVelocity.toFixed(2)}
-                                <span className="text-slate-600 mx-0.5">~</span>
+                                <span className="text-slate-500 mx-0.5">~</span>
                                 {item.maxVelocity === Infinity ? '∞' : item.maxVelocity.toFixed(2)}/h
                               </span>
                             </div>
@@ -1779,7 +1779,7 @@ export default function App() {
                         );
                       })}
                     </div>
-                    <p className="mt-3 text-[11px] text-slate-600 text-center">
+                    <p className="mt-3 text-[11px] text-slate-500 text-center">
                       正态分布偏宽（Δ正）→ 尾部风险更大；偏窄（Δ负）→ 中心更集中
                     </p>
                   </section>

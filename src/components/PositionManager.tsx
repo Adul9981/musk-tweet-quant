@@ -138,7 +138,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
               <div className="text-center p-4 bg-sky-950/60 rounded-xl border border-sky-500/30">
                 <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">当前估值</p>
                 <p className="text-2xl font-bold text-sky-300 font-mono">${totalValue.toFixed(0)}</p>
-                <p className="text-[11px] text-slate-600 mt-1">按市价折算</p>
+                <p className="text-[11px] text-slate-500 mt-1">按市价折算</p>
               </div>
               <div className={`text-center p-4 rounded-xl border ${
                 totalPnl >= 0 ? 'bg-emerald-950/60 border-emerald-500/30' : 'bg-rose-950/60 border-rose-500/30'
@@ -217,7 +217,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none">%</span>
                 </div>
                 {entryPrice && !isNaN(parseFloat(entryPrice)) && parseFloat(entryPrice) > 0 && (
-                  <p className="text-[11px] text-slate-500 mt-1 font-mono">
+                  <p className="text-[11px] text-slate-400 mt-1 font-mono">
                     每份 ${(parseFloat(entryPrice) / 100).toFixed(3)} · 赔率 {(100 / parseFloat(entryPrice)).toFixed(2)}x
                   </p>
                 )}
@@ -239,7 +239,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                   />
                 </div>
                 {entryPrice && amount && !isNaN(parseFloat(entryPrice)) && !isNaN(parseFloat(amount)) && parseFloat(entryPrice) > 0 && (
-                  <p className="text-[11px] text-slate-500 mt-1 font-mono">
+                  <p className="text-[11px] text-slate-400 mt-1 font-mono">
                     ≈ {(parseFloat(amount) / (parseFloat(entryPrice) / 100)).toFixed(0)} 份 YES token
                   </p>
                 )}
@@ -271,10 +271,10 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
         )}
 
         {!isFormOpen && merged.length === 0 && (
-          <div className="text-center py-10 px-6 text-slate-600">
+          <div className="text-center py-10 px-6 text-slate-500">
             <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-20" />
             <p className="text-sm text-slate-500">暂无持仓记录</p>
-            <p className="text-xs mt-1 text-slate-600">点击「添加仓位」记录你的下注</p>
+            <p className="text-xs mt-1 text-slate-500">点击「添加仓位」记录你的下注</p>
           </div>
         )}
       </div>
@@ -287,13 +287,13 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800">
-                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">区间</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">均价</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">当前价</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">份数</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">投入</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">当前估值</th>
-                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">浮盈</th>
+                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">区间</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">均价</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">当前价</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">份数</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">投入</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">当前估值</th>
+                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">浮盈</th>
                   <th className="py-2 px-3"></th>
                 </tr>
               </thead>
@@ -326,7 +326,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-400">
                         {g.avgEntry.toFixed(1)}%
-                        {g.tradeCount > 1 && <span className="text-[10px] text-slate-600 ml-1">均</span>}
+                        {g.tradeCount > 1 && <span className="text-[10px] text-slate-500 ml-1">均</span>}
                       </td>
                       <td className="py-3 px-3 text-right font-mono">
                         {g.currentPrice > 0 ? (
@@ -336,7 +336,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                               ? <TrendingUp className="w-3 h-3 inline ml-1 opacity-60" />
                               : <TrendingDown className="w-3 h-3 inline ml-1 opacity-60" />}
                           </span>
-                        ) : <span className="text-slate-600">—</span>}
+                        ) : <span className="text-slate-500">—</span>}
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-500">{g.totalShares.toFixed(0)}</td>
                       <td className="py-3 px-3 text-right font-mono text-slate-400">${g.totalAmount.toFixed(0)}</td>
@@ -353,13 +353,13 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                               {g.totalPnlPct >= 0 ? '+' : ''}{g.totalPnlPct.toFixed(1)}%
                             </p>
                           </div>
-                        ) : <span className="text-slate-600 font-mono">—</span>}
+                        ) : <span className="text-slate-500 font-mono">—</span>}
                       </td>
                       <td className="py-3 px-3">
                         <button
                           onClick={() => g.ids.forEach(id => onDelete(id))}
                           title={g.tradeCount > 1 ? `删除该区间全部 ${g.tradeCount} 笔` : '删除持仓'}
-                          className="p-1.5 rounded hover:bg-rose-500/20 text-slate-600 hover:text-rose-400 transition-colors"
+                          className="p-1.5 rounded hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -373,7 +373,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
 
           {/* Signal legend */}
           {hasSignal && (
-            <div className="mt-5 p-3 bg-slate-800/40 rounded-xl text-xs text-slate-500 border border-slate-800 flex flex-wrap gap-x-5 gap-y-2">
+            <div className="mt-5 p-3 bg-slate-800/40 rounded-xl text-xs text-slate-400 border border-slate-800 flex flex-wrap gap-x-5 gap-y-2">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                 止盈信号：当前价格 ≥ 70% · 建议锁定部分利润
@@ -400,11 +400,11 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                   <div key={g.range} className="flex items-center justify-between text-xs">
                     <span className="font-mono text-slate-400">{g.range}</span>
                     <div className="flex items-center gap-4 text-right">
-                      <span className="text-slate-600">
+                      <span className="text-slate-400">
                         中奖 → <span className="text-emerald-400 font-semibold font-mono">${winPayout.toFixed(0)}</span>
-                        <span className="text-slate-600"> (+${netGain.toFixed(0)})</span>
+                        <span className="text-slate-400"> (+${netGain.toFixed(0)})</span>
                       </span>
-                      <span className="text-slate-600">
+                      <span className="text-slate-400">
                         模型概率 <span className={`font-semibold font-mono ${g.modelProb >= 20 ? 'text-sky-400' : g.modelProb >= 5 ? 'text-amber-400' : 'text-rose-400'}`}>
                           {g.modelProb.toFixed(1)}%
                         </span>
