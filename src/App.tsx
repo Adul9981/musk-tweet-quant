@@ -1910,7 +1910,7 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const hoursRem     = currentTracking?.stats?.hoursRemaining ?? 0;
     const totalHours   = daysRem * 24 + hoursRem;
     const totalDays    = totalHours / 24;
-    const currentSpeed = apiPace / 24; // 条/h
+    // const currentSpeed = apiPace / 24; // 条/h (reserved)
 
     // ── 每日发推节奏（最近7天，从旧到新）──
     const dailyData = (currentTracking?.stats?.daily ?? []).slice(-7);

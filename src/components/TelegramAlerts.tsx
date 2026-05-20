@@ -250,7 +250,7 @@ interface Props {
   alertInput: AlertInput | null;
 }
 
-export function TelegramAlerts({ config, onSave, alertInput }: Props) {
+export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Props) {
   const [draft, setDraft]       = useState<AlertConfig>(config);
   const [testing, setTesting]   = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
