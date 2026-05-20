@@ -40,7 +40,7 @@ const DEFAULT_CONFIG: AlertConfig = {
   mode: 'ntfy',
   ntfyTopic: '',
   ntfyServer: 'https://ntfy.sh',
-  workerUrl: '', botToken: '', chatId: '',
+  workerUrl: '', botToken: '', chatId: '1899924436',
   enabled: false,
 };
 
@@ -186,15 +186,30 @@ async function sendNtfy(config: AlertConfig, title: string, message: string): Pr
 }
 
 async function sendTelegram(config: AlertConfig, message: string): Promise<{ ok: boolean; error?: string }> {
-  if (!config.workerUrl || !config.botToken || !config.chatId) return { ok: false, error: '配置不完整' };
+  if (!config.botToken || !config.chatId) return { ok: false, error: 'Bot Token 或 Chat ID 未填' };
   try {
-    const res = await fetch(config.workerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ botToken: config.botToken, chatId: config.chatId, message }),
-    });
-    const data = await res.json() as { ok?: boolean };
-    return data.ok === true ? { ok: true } : { ok: false, error: JSON.stringify(data) };
+    // 优先走 Cloudflare Worker（若填了），否则直接调 Telegram API
+    let res: Response;
+    if (config.workerUrl) {
+      res = await fetch(config.workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: config.botToken, chatId: config.chatId, message }),
+      });
+    } else {
+      res = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: config.chatId,
+          text: message,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      });
+    }
+    const data = await res.json() as { ok?: boolean; description?: string };
+    return data.ok === true ? { ok: true } : { ok: false, error: data.description ?? JSON.stringify(data) };
   } catch (e) {
     return { ok: false, error: String(e) };
   }
@@ -235,7 +250,7 @@ export function useTelegramAlerts(input: AlertInput | null) {
   useEffect(() => {
     const ready = config.enabled && (
       (config.mode === 'ntfy' && config.ntfyTopic) ||
-      (config.mode === 'telegram' && config.workerUrl && config.botToken && config.chatId)
+      (config.mode === 'telegram' && config.botToken && config.chatId)
     );
     if (!ready) return;
 
@@ -284,7 +299,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
   const handleSave = () => { onSave(draft); setTestResult(null); };
 
   const ntfyReady = draft.mode === 'ntfy' && !!draft.ntfyTopic;
-  const tgReady   = draft.mode === 'telegram' && !!draft.workerUrl && !!draft.botToken && !!draft.chatId;
+  const tgReady   = draft.mode === 'telegram' && !!draft.botToken && !!draft.chatId; // workerUrl 可选
   const isReady   = ntfyReady || tgReady;
 
   return (
@@ -415,25 +430,53 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
       {/* Telegram config */}
       {draft.mode === 'telegram' && (
         <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] p-6 space-y-4">
-          <p className="text-xs text-slate-400 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-            需要先部署 Cloudflare Worker（见项目 cloudflare-worker/worker.js）再填以下配置
+          <p className="text-xs text-slate-300 p-3 bg-sky-500/10 rounded-xl border border-sky-500/20">
+            💡 <b>不需要 Cloudflare</b>：只填 Bot Token + Chat ID 即可直接发送。Worker URL 可留空。
           </p>
-          {[
-            { label: 'Cloudflare Worker URL', key: 'workerUrl' as const, placeholder: 'https://xxx.workers.dev', type: 'url' },
-            { label: 'Telegram Bot Token',    key: 'botToken'  as const, placeholder: '123456789:ABCdef...', type: 'password' },
-            { label: '你的 Chat ID',           key: 'chatId'   as const, placeholder: '123456789', type: 'text' },
-          ].map(f => (
-            <div key={f.key}>
-              <label className="block text-xs text-slate-400 mb-1.5 font-medium">{f.label}</label>
+
+          {/* Bot Token */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">
+              Telegram Bot Token <span className="text-rose-400">*必填</span>
+            </label>
+            <input
+              type="password"
+              value={draft.botToken}
+              onChange={e => setDraft(d => ({ ...d, botToken: e.target.value.trim() }))}
+              placeholder="从 @BotFather 获取，格式：123456789:ABCdef..."
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
+            />
+          </div>
+
+          {/* Chat ID */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">
+              你的 Chat ID <span className="text-rose-400">*必填</span>
+            </label>
+            <input
+              type="text"
+              value={draft.chatId}
+              onChange={e => setDraft(d => ({ ...d, chatId: e.target.value.trim() }))}
+              placeholder="1899924436"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
+            />
+          </div>
+
+          {/* Worker URL (optional) */}
+          <details className="group">
+            <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400 transition-colors select-none">
+              ▸ Cloudflare Worker URL（可选，留空也能用）
+            </summary>
+            <div className="mt-2">
               <input
-                type={f.type}
-                value={draft[f.key]}
-                onChange={e => setDraft(d => ({ ...d, [f.key]: e.target.value.trim() }))}
-                placeholder={f.placeholder}
+                type="url"
+                value={draft.workerUrl}
+                onChange={e => setDraft(d => ({ ...d, workerUrl: e.target.value.trim() }))}
+                placeholder="https://xxx.workers.dev（不填也可以）"
                 className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
               />
             </div>
-          ))}
+          </details>
         </div>
       )}
 
