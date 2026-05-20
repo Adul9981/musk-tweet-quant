@@ -1879,80 +1879,111 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const hoursRem     = currentTracking?.stats?.hoursRemaining ?? 0;
     const totalHours   = daysRem * 24 + hoursRem;
     const totalDays    = totalHours / 24;
-    const currentSpeed = apiPace / 24;
+    const currentSpeed = apiPace / 24; // 条/h
 
-    const timeText = daysRem > 0
-      ? `还剩 ${daysRem}天${hoursRem > 0 ? hoursRem + '小时' : ''}`
-      : `还剩 ${hoursRem}小时`;
+    // ── 每日发推节奏（最近7天，从旧到新）──
+    const dailyData = (currentTracking?.stats?.daily ?? []).slice(-7);
+    const dailyLines = dailyData.map((d, i) => {
+      const label = `Day ${i + 1}`;
+      const isToday = i === dailyData.length - 1;
+      return `${label}  ${d.count} 条${isToday ? '  ← 今天' : ''}`;
+    }).join('\n');
 
-    // ── 区间列表：active 区间，中心区间排第一，其余按 trueProb 降序 ──
+    // ── 动态开头：根据今天节奏 vs 均值判断异常 ──
+    let hook = '';
+    const todayHoursPassed = 24 - (hoursRem % 24 || 24);
+    const todayProjected = todayHoursPassed > 0 ? (todayTotal / todayHoursPassed) * 24 : 0;
+    const avgPerDay = apiPace;
+
+    // 检查落点是否接近区间边界
     const activeIntervals: any[] = (intervalAnalysis ?? []).filter((i: any) => i?.status === 'active');
     const centerInterval = activeIntervals.find((i: any) => i?.isCenter);
+    const centerMax = centerInterval?.parsed?.max ?? 0;
+    const centerMin = centerInterval?.parsed?.min ?? 0;
+    const distToUpperBound = centerMax > 0 ? centerMax - predictedCenter : Infinity;
+    const distToLowerBound = predictedCenter > 0 ? predictedCenter - centerMin : Infinity;
+    const nearBoundary = Math.min(distToUpperBound, distToLowerBound) <= 8;
+
+    if (totalDays < 0.5) {
+      hook = `今晚 24:00 结算，答案快揭晓了。`;
+    } else if (nearBoundary) {
+      const side = distToUpperBound < distToLowerBound ? '上' : '下';
+      hook = `还差 ${Math.round(Math.min(distToUpperBound, distToLowerBound))} 条，落点就要往${side}跨区间了。`;
+    } else if (avgPerDay > 0 && todayProjected > 0 && todayProjected < avgPerDay * 0.5) {
+      hook = `马斯克今天突然安静了。`;
+    } else if (avgPerDay > 0 && todayProjected > avgPerDay * 1.8) {
+      hook = `马斯克今天猛发了一波。`;
+    } else if (totalDays >= 2.5) {
+      hook = `马斯克推文预测，还剩 ${daysRem} 天。`;
+    } else if (totalDays >= 1.5) {
+      hook = `落点慢慢收敛了，还剩 ${daysRem} 天。`;
+    } else {
+      hook = `最后 ${daysRem > 0 ? daysRem + '天' : hoursRem + '小时'}，节奏很关键。`;
+    }
+
+    // ── 区间赔率（中心排第一，其余按概率降序，最多3个）──
     const otherIntervals = activeIntervals
       .filter((i: any) => !i?.isCenter)
       .sort((a: any, b: any) => b.trueProb - a.trueProb);
     const displayIntervals = (centerInterval
       ? [centerInterval, ...otherIntervals]
-      : otherIntervals).slice(0, 4);
+      : otherIntervals).slice(0, 3);
 
-    // ── 区间数据行（无 emoji，纯文字）──
-    const rangeLines = displayIntervals.map((i: any) => {
-      const returnX      = i.marketPrice > 0 ? (100 / i.marketPrice).toFixed(1) : '—';
-      const minV         = i.minVelocity;
-      const maxV         = i.maxVelocity;
-      const covered      = isFinite(minV) && currentSpeed >= minV;
-      const needsSlow    = isFinite(maxV) && maxV < currentSpeed && maxV >= 0;
-
-      let velocityNote = '';
-      if (covered) {
-        velocityNote = '当前速率可覆盖';
-      } else if (needsSlow) {
-        velocityNote = `需减速至 ${maxV.toFixed(1)} 条/h 以内`;
-      } else if (isFinite(minV)) {
-        velocityNote = `需加速至 ${minV.toFixed(1)} 条/h`;
-      }
-
-      const prefix = i.isCenter ? '[落点]' : '      ';
-      return `${prefix} ${i.range}  赔率 ${i.marketPrice.toFixed(0)}%  中奖 ${returnX}x  ${velocityNote}`.trimEnd();
+    const oddsLines = displayIntervals.map((i: any) => {
+      const returnX = i.marketPrice > 0 ? (100 / i.marketPrice).toFixed(1) : '—';
+      const prefix  = i.isCenter ? '► ' : '  ';
+      return `${prefix}${i.range}  ${i.marketPrice.toFixed(0)}%（中奖 ${returnX}x）`;
     }).join('\n');
 
-    // ── 阶段策略建议 ──
-    let strategyLine = '';
-    let nextActionLine = '';
+    // ── 个人视角：根据阶段给真实感强的判断 ──
+    let take = '';
+    let nextStep = '';
 
     if (totalDays >= 2.5) {
-      strategyLine = '目前预测不确定性较大，建议观望，待落点收敛后再入场。';
-      nextActionLine = `下次关键节点：约 ${Math.round((totalDays - 2.25) * 24)} 小时后进入第一次建仓窗口`;
+      take = `这阶段不确定性还挺大，我打算观望，等落点再收敛一点再考虑入场。`;
+      nextStep = `大约 ${Math.round((totalDays - 2.5) * 24 + 24)} 小时后是比较合适的第一次入场窗口。`;
     } else if (totalDays >= 2.0) {
-      strategyLine = `现处于第一次建仓窗口（距到期 2~2.5 天）。可分散布局：中心区间 ${centerInterval?.range ?? `~${predictedCenter}条附近`} 为主，两侧区间少量配置，建议合计使用总资金 25% 左右。`;
-      nextActionLine = '下次关键节点：约 0.5 天后，确认落点后集中加仓中心区间';
+      take = `现在是第一次入场窗口。我打算在 ${centerInterval?.range ?? `落点区间`} 建主仓，两侧各配一点，合计用总资金的 25% 左右。`;
+      nextStep = `约半天后确认落点稳了，再集中加仓中心。`;
     } else if (totalDays >= 1.5) {
-      strategyLine = `现处于加仓窗口（距到期 1.5~2 天），落点预测趋于稳定。建议集中加仓中心区间 ${centerInterval?.range ?? ''}，此阶段入场性价比较高。`;
-      nextActionLine = '下次关键节点：今晚或明早，开始分批减持翼仓（首批减 40%）';
+      take = `落点已经比较明确了，这时候集中加仓 ${centerInterval?.range ?? '中心区间'} 性价比最高。`;
+      nextStep = `今晚或明早开始分批减持翼仓，先减 40%。`;
     } else if (totalDays >= 1.0) {
-      strategyLine = `已进入翼仓减仓阶段（距到期 1~1.5 天）。建议今晚将非中心区间仓位减持 40%，锁定部分收益，专注持有 ${centerInterval?.range ?? '中心区间'}。`;
-      nextActionLine = '下次关键节点：明天同一时间，翼仓再减 50%';
+      take = `翼仓该减了。我计划今晚先减 40%，锁住一部分，专注 ${centerInterval?.range ?? '中心区间'} 等结算。`;
+      nextStep = `明天同时段，翼仓再减 50%。`;
     } else if (totalDays >= 0.5) {
-      strategyLine = '距到期不足 1 天，翼仓进入第二批减仓。建议今晚再卖出剩余翼仓的 50%，中心仓位继续持有等待结算。';
-      nextActionLine = '下次关键节点：到期前 12 小时，翼仓全部清仓';
+      take = `距到期不足一天，翼仓再减一批，留中心仓位等结果。`;
+      nextStep = `到期前 12 小时，翼仓全部清仓。`;
     } else {
-      strategyLine = '最终持仓阶段，翼仓应已清仓完毕，持有中心区间等待结算。';
-      nextActionLine = '临近到期，维持现有仓位，不再追加';
+      take = `就看最后这段了，仓位定好，等结算。`;
+      nextStep = ``;
     }
 
-    return `马斯克推文预测 · ${timeText}
+    // ── 市场链接（带邀请码）──
+    const marketSlug = currentMarket?.slug ?? '';
+    const marketUrl = marketSlug
+      ? `https://polymarket.com/event/${marketSlug}${REFERRAL}`
+      : `https://polymarket.com${REFERRAL}`;
 
-当前 ${currentTotal} 条，今日 +${todayTotal}，日均 ${apiPace.toFixed(0)} 条/天
-预测落点 ~${predictedCenter} 条
+    return `${hook}
 
-Polymarket 实时赔率：
-${rangeLines}
+过去 ${dailyData.length} 天发推节奏：
+${dailyLines || `日均 ${apiPace.toFixed(0)} 条/天`}
 
-${strategyLine}
-${nextActionLine}
+本期累计 ${currentTotal} 条，预测落点 ~${predictedCenter} 条
+还剩 ${daysRem > 0 ? daysRem + '天' + (hoursRem > 0 ? hoursRem + '小时' : '') : hoursRem + '小时'}
 
-#Polymarket`.trim();
-  }, [currentTracking, predictedCenter, apiPace, intervalAnalysis]);
+——
+Polymarket 当前赔率：
+${oddsLines}
+
+${take}
+${nextStep}
+
+${marketUrl}
+
+#Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
+  }, [currentTracking, currentMarket, predictedCenter, apiPace, intervalAnalysis]);
 
   const copyToClipboard = async () => {
     try {
