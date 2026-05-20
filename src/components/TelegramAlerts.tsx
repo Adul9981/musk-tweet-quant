@@ -10,7 +10,8 @@ export interface AlertConfig {
   // telegram (高级模式)
   workerUrl: string;
   botToken: string;
-  chatId: string;
+  chatId: string;      // 私聊 Chat ID
+  groupChatId: string; // 群组 Chat ID（可选）
   enabled: boolean;
 }
 
@@ -40,7 +41,7 @@ const DEFAULT_CONFIG: AlertConfig = {
   mode: 'ntfy',
   ntfyTopic: '',
   ntfyServer: 'https://ntfy.sh',
-  workerUrl: '', botToken: '', chatId: '1899924436',
+  workerUrl: '', botToken: '', chatId: '1899924436', groupChatId: '',
   enabled: false,
 };
 
@@ -185,23 +186,23 @@ async function sendNtfy(config: AlertConfig, title: string, message: string): Pr
   }
 }
 
-async function sendTelegram(config: AlertConfig, message: string): Promise<{ ok: boolean; error?: string }> {
-  if (!config.botToken || !config.chatId) return { ok: false, error: 'Bot Token 或 Chat ID 未填' };
+async function sendToOneChatId(
+  config: AlertConfig, chatId: string, message: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    // 优先走 Cloudflare Worker（若填了），否则直接调 Telegram API
     let res: Response;
     if (config.workerUrl) {
       res = await fetch(config.workerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ botToken: config.botToken, chatId: config.chatId, message }),
+        body: JSON.stringify({ botToken: config.botToken, chatId, message }),
       });
     } else {
       res = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chat_id: config.chatId,
+          chat_id: chatId,
           text: message,
           parse_mode: 'HTML',
           disable_web_page_preview: true,
@@ -213,6 +214,19 @@ async function sendTelegram(config: AlertConfig, message: string): Promise<{ ok:
   } catch (e) {
     return { ok: false, error: String(e) };
   }
+}
+
+async function sendTelegram(config: AlertConfig, message: string): Promise<{ ok: boolean; error?: string }> {
+  if (!config.botToken || !config.chatId) return { ok: false, error: 'Bot Token 或 Chat ID 未填' };
+
+  // 收集所有目标 Chat ID（私聊 + 群组，去重过滤空值）
+  const targets = [...new Set([config.chatId, config.groupChatId].filter(Boolean))];
+  const results = await Promise.all(targets.map(id => sendToOneChatId(config, id, message)));
+
+  // 只要有一个成功就算成功；全部失败才返回失败
+  const anyOk = results.some(r => r.ok);
+  const errors = results.filter(r => !r.ok).map(r => r.error).join(' | ');
+  return anyOk ? { ok: true } : { ok: false, error: errors };
 }
 
 async function sendAlert(config: AlertConfig, title: string, message: string): Promise<{ ok: boolean; error?: string }> {
@@ -448,10 +462,11 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
             />
           </div>
 
-          {/* Chat ID */}
+          {/* Private Chat ID */}
           <div>
             <label className="block text-xs text-slate-400 mb-1.5 font-medium">
-              你的 Chat ID <span className="text-rose-400">*必填</span>
+              私聊 Chat ID <span className="text-rose-400">*必填</span>
+              <span className="ml-2 text-slate-500">（发给你自己）</span>
             </label>
             <input
               type="text"
@@ -460,6 +475,23 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               placeholder="1899924436"
               className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
             />
+          </div>
+
+          {/* Group Chat ID */}
+          <div>
+            <label className="block text-xs text-slate-400 mb-1.5 font-medium">
+              群组 Chat ID <span className="text-slate-500 font-normal">（可选，同时发到群里）</span>
+            </label>
+            <input
+              type="text"
+              value={draft.groupChatId}
+              onChange={e => setDraft(d => ({ ...d, groupChatId: e.target.value.trim() }))}
+              placeholder="负数，如 -1001234567890（发消息到群后从 getUpdates 获取）"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono placeholder:text-slate-600"
+            />
+            {draft.groupChatId && (
+              <p className="mt-1 text-xs text-emerald-400">✓ 预警将同时发到私聊 + 群组</p>
+            )}
           </div>
 
           {/* Worker URL (optional) */}
