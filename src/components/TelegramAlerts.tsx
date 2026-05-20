@@ -161,20 +161,32 @@ function buildAlerts(input: AlertInput) {
 }
 
 // ── Senders ────────────────────────────────────────────────────────────
-async function sendNtfy(config: AlertConfig, title: string, message: string): Promise<boolean> {
-  if (!config.ntfyTopic) return false;
+async function sendNtfy(config: AlertConfig, title: string, message: string): Promise<{ ok: boolean; error?: string }> {
+  if (!config.ntfyTopic) return { ok: false, error: '频道名为空' };
+  const server = config.ntfyServer || 'https://ntfy.sh';
   try {
-    const res = await fetch(`${config.ntfyServer}/${config.ntfyTopic}`, {
+    const res = await fetch(`${server}/${config.ntfyTopic}`, {
       method: 'POST',
-      headers: { 'Title': title, 'Priority': 'default', 'Tags': 'bell' },
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Title': title,
+        'Priority': 'default',
+        'Tags': 'bell',
+      },
       body: message,
     });
-    return res.ok;
-  } catch { return false; }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 80)}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
-async function sendTelegram(config: AlertConfig, message: string): Promise<boolean> {
-  if (!config.workerUrl || !config.botToken || !config.chatId) return false;
+async function sendTelegram(config: AlertConfig, message: string): Promise<{ ok: boolean; error?: string }> {
+  if (!config.workerUrl || !config.botToken || !config.chatId) return { ok: false, error: '配置不完整' };
   try {
     const res = await fetch(config.workerUrl, {
       method: 'POST',
@@ -182,11 +194,13 @@ async function sendTelegram(config: AlertConfig, message: string): Promise<boole
       body: JSON.stringify({ botToken: config.botToken, chatId: config.chatId, message }),
     });
     const data = await res.json() as { ok?: boolean };
-    return data.ok === true;
-  } catch { return false; }
+    return data.ok === true ? { ok: true } : { ok: false, error: JSON.stringify(data) };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
-async function sendAlert(config: AlertConfig, title: string, message: string): Promise<boolean> {
+async function sendAlert(config: AlertConfig, title: string, message: string): Promise<{ ok: boolean; error?: string }> {
   if (config.mode === 'ntfy') return sendNtfy(config, title, stripHtml(message));
   return sendTelegram(config, message);
 }
@@ -229,8 +243,8 @@ export function useTelegramAlerts(input: AlertInput | null) {
       if (!inputRef.current) return;
       for (const alert of buildAlerts(inputRef.current)) {
         if (!wasSent(alert.key)) {
-          const ok = await sendAlert(config, alert.title, alert.message);
-          if (ok) markSent(alert.key);
+          const result = await sendAlert(config, alert.title, alert.message);
+          if (result.ok) markSent(alert.key);
         }
       }
     };
@@ -254,14 +268,16 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
   const [draft, setDraft]       = useState<AlertConfig>(config);
   const [testing, setTesting]   = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
+  const [testError, setTestError]   = useState<string>('');
 
   const handleTest = async () => {
-    setTesting(true); setTestResult(null);
-    const ok = await sendAlert(draft,
+    setTesting(true); setTestResult(null); setTestError('');
+    const result = await sendAlert(draft,
       '✅ 马斯克推文预测市场',
       '预警连接成功！\n\n你将收到：\n⏰ 操作时机提醒\n🚨 落点边界预警\n📉📈 速率异常\n⭐ EV+ 超额机会\n💰 中心区间止盈信号'
     );
-    setTestResult(ok ? 'ok' : 'fail');
+    setTestResult(result.ok ? 'ok' : 'fail');
+    if (!result.ok) setTestError(result.error ?? '未知错误');
     setTesting(false);
   };
 
@@ -445,8 +461,13 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 text-sm font-medium rounded-lg transition-colors border border-slate-600">
             {testing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />测试中...</> : <><Send className="w-3.5 h-3.5" />发送测试消息</>}
           </button>
-          {testResult === 'ok'   && <span className="flex items-center gap-1 text-emerald-400 text-sm"><CheckCircle className="w-4 h-4" />发送成功！</span>}
-          {testResult === 'fail' && <span className="flex items-center gap-1 text-rose-400 text-sm"><XCircle className="w-4 h-4" />失败，检查配置</span>}
+          {testResult === 'ok'   && <span className="flex items-center gap-1 text-emerald-400 text-sm"><CheckCircle className="w-4 h-4" />发送成功！检查手机是否收到</span>}
+          {testResult === 'fail' && (
+            <span className="flex flex-col gap-1">
+              <span className="flex items-center gap-1 text-rose-400 text-sm"><XCircle className="w-4 h-4" />发送失败</span>
+              {testError && <span className="text-xs text-rose-300/80 font-mono break-all">{testError}</span>}
+            </span>
+          )}
         </div>
       </div>
 
