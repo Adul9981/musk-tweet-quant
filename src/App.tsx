@@ -519,75 +519,99 @@ export default function App() {
 
   const fetchTrackerData = async () => {
     try {
-      const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.data) {
-          const sevenDay = data.data.filter((t: any) => {
-            const days = (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24);
-            return days >= 5 && days <= 10;
-          });
+      // 优先从 Gist 读取（GitHub Actions 每 3 分钟抓一次，无梯子问题）
+      // 若 Gist 数据不存在或过期（>10分钟），fallback 直连 xtracker
+      const GIST_URL = 'https://gist.githubusercontent.com/Adul9981/d174b4498c408076ff218e164f24807e/raw/xtracker-data.json';
+      const STALE_MS = 10 * 60 * 1000; // 10分钟
 
-          const trackingsWithStats = await Promise.all(
-            sevenDay.slice(0, 5).map(async (t: any) => {
-              try {
-                const slug = t.marketLink?.split('/').pop() || t.title?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || '';
-                const statsRes = await fetch(`https://xtracker.polymarket.com/api/trackings/${t.id}?includeStats=true`);
-                if (statsRes.ok) {
-                  const statsData = await statsRes.json();
-                  const now = new Date();
-                  const todayBJ = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                  const todayTotal = (statsData.data?.stats?.daily || [])
-                    .filter((d: any) => {
-                      const dBJ = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                      return dBJ === todayBJ;
-                    })
-                    .reduce((sum: number, d: any) => sum + d.count, 0);
+      let data: any = null;
+      let fromGist = false;
 
-                  const stats = statsData.data?.stats;
-                  const daysTotal = stats?.daysTotal || 7;
-                  const endDate = new Date(t.endDate);
-                  const diffMs = endDate.getTime() - now.getTime();
-                  const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                  const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-                  const dailyData = stats?.daily || [];
-                  const dailyMap = new Map();
-                  for (const d of dailyData) {
-                    const dateStr = d.date.split('T')[0];
-                    dailyMap.set(dateStr, (dailyMap.get(dateStr) || 0) + d.count);
-                  }
-                  const dailyTotals = Array.from(dailyMap.entries())
-                    .map(([date, count]) => ({ date, count }))
-                    .sort((a, b) => a.date.localeCompare(b.date));
-
-                  return {
-                    id: t.id,
-                    title: t.title,
-                    startDate: t.startDate,
-                    endDate: t.endDate,
-                    marketLink: t.marketLink,
-                    slug,
-                    stats: {
-                      total: stats?.total || 0,
-                      pace: stats?.daysElapsed > 0 ? Math.round(stats.total / stats.daysElapsed) : 0,
-                      percentComplete: stats?.percentComplete || 0,
-                      daysRemaining,
-                      hoursRemaining,
-                      todayTotal,
-                      daysTotal,
-                      daily: dailyTotals,
-                    },
-                  };
-                }
-              } catch (e) {
-                console.error('Failed to fetch stats:', e);
-              }
-              return { id: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate, marketLink: t.marketLink, slug: '', stats: null };
-            })
-          );
-          setTrackings(trackingsWithStats);
+      try {
+        const gistRes = await fetch(GIST_URL + '?t=' + Date.now()); // 防缓存
+        if (gistRes.ok) {
+          const gistData = await gistRes.json();
+          if (gistData.success && gistData.data?.length > 0) {
+            const age = Date.now() - new Date(gistData.updatedAt).getTime();
+            if (age < STALE_MS) {
+              data = gistData;
+              fromGist = true;
+              console.log(`[xtracker] Gist 数据（${Math.round(age / 1000)}s 前更新）`);
+            } else {
+              console.log(`[xtracker] Gist 数据过旧（${Math.round(age / 60000)}min），尝试直连`);
+            }
+          }
         }
+      } catch (e) {
+        console.warn('[xtracker] Gist 读取失败，fallback 直连:', e);
+      }
+
+      // Fallback：直连 xtracker（梯子环境可能 403）
+      if (!data) {
+        const res = await fetch('https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true');
+        if (res.ok) {
+          const raw = await res.json();
+          if (raw.success && raw.data) {
+            const sevenDay = raw.data.filter((t: any) => {
+              const days = (new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24);
+              return days >= 5 && days <= 10;
+            });
+            const withStats = await Promise.all(
+              sevenDay.slice(0, 5).map(async (t: any) => {
+                try {
+                  const statsRes = await fetch(`https://xtracker.polymarket.com/api/trackings/${t.id}?includeStats=true`);
+                  if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    const now = new Date();
+                    const todayBJ = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    const todayTotal = (statsData.data?.stats?.daily || [])
+                      .filter((d: any) => {
+                        const dBJ = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+                        return dBJ === todayBJ;
+                      })
+                      .reduce((sum: number, d: any) => sum + d.count, 0);
+                    const stats = statsData.data?.stats;
+                    const endDate = new Date(t.endDate);
+                    const diffMs = endDate.getTime() - now.getTime();
+                    const dailyMap = new Map<string, number>();
+                    for (const d of (stats?.daily || [])) {
+                      const dateStr = d.date.split('T')[0];
+                      dailyMap.set(dateStr, (dailyMap.get(dateStr) || 0) + d.count);
+                    }
+                    const daily = Array.from(dailyMap.entries())
+                      .map(([date, count]) => ({ date, count }))
+                      .sort((a, b) => a.date.localeCompare(b.date));
+                    return {
+                      id: t.id, title: t.title, startDate: t.startDate,
+                      endDate: t.endDate, marketLink: t.marketLink,
+                      slug: t.marketLink?.split('/').pop() || '',
+                      stats: {
+                        total: stats?.total || 0,
+                        pace: stats?.daysElapsed > 0 ? Math.round(stats.total / stats.daysElapsed) : 0,
+                        percentComplete: stats?.percentComplete || 0,
+                        daysRemaining: Math.floor(diffMs / (1000 * 60 * 60 * 24)),
+                        hoursRemaining: Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                        todayTotal, daysTotal: stats?.daysTotal || 7, daily,
+                      },
+                    };
+                  }
+                } catch (e) { console.error('Failed to fetch stats:', e); }
+                return { id: t.id, title: t.title, startDate: t.startDate, endDate: t.endDate, marketLink: t.marketLink, slug: '', stats: null };
+              })
+            );
+            setTrackings(withStats);
+            return;
+          }
+        }
+      }
+
+      // 使用 Gist 数据（已包含处理好的 stats）
+      if (data && fromGist) {
+        const trackings = data.data.map((t: any) => ({
+          ...t,
+          slug: t.marketLink?.split('/').pop() || '',
+        }));
+        setTrackings(trackings);
       }
     } catch (err) {
       console.error('Failed to fetch tracker data:', err);
