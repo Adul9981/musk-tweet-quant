@@ -16,12 +16,14 @@ import {
   Gauge,
   BookOpen,
   Wallet,
+  Bell,
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
 import { StrategyGuide } from './components/StrategyGuide';
 import { PositionManager } from './components/PositionManager';
 import type { Position } from './components/PositionManager';
 import { RecommendationPanel } from './components/RecommendationPanel';
+import { TelegramAlerts, useTelegramAlerts } from './components/TelegramAlerts';
 import type { PriceSnapshot } from './components/ProbabilityChart';
 // ProbabilityChart component kept for potential future use; tab removed
 
@@ -361,7 +363,7 @@ async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> 
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'guide' | 'positions'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'guide' | 'positions' | 'telegram'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
@@ -809,6 +811,26 @@ export default function App() {
     })),
   [analysisData]);
 
+  // ── Telegram 预警 ──
+  const telegramAlertInput = useMemo(() => ({
+    mu,
+    remainingDays: remainingDays + remainingHoursFromApi / 24,
+    currentTweetCount,
+    todayTotal: currentTracking?.stats?.todayTotal ?? 0,
+    apiPace,
+    analysisData: analysisData.map(r => ({
+      range: r.range,
+      price: r.price,
+      realProb: r.realProb,
+      isCenter: r.isCenter,
+      parsed: r.parsed ?? null,
+    })),
+  }), [mu, remainingDays, remainingHoursFromApi, currentTweetCount, currentTracking, apiPace, analysisData]);
+
+  const { config: telegramConfig, saveConfig: saveTelegramConfig } = useTelegramAlerts(
+    telegramAlertInput
+  );
+
   const calculateIntervalAnalysis = (item: typeof analysisData[0]) => {
     if (!item?.parsed) return null;
     const marketPrice = item.price;
@@ -1106,6 +1128,7 @@ export default function App() {
               { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
               { id: 'tweet', label: '推文生成', icon: FileText },
               { id: 'guide', label: '策略指南', icon: BookOpen },
+              { id: 'telegram', label: 'Telegram 预警', icon: Bell },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1851,6 +1874,14 @@ export default function App() {
             centerRange={analysisData.find(d => d.isCenter)?.range || ''}
             intervalAnalysis={intervalAnalysis}
             priceHistory={priceHistory}
+          />
+        )}
+
+        {activeTab === 'telegram' && (
+          <TelegramAlerts
+            config={telegramConfig}
+            onSave={saveTelegramConfig}
+            alertInput={telegramAlertInput}
           />
         )}
       </main>
