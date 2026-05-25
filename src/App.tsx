@@ -74,6 +74,55 @@ const PRICE_HISTORY_KEY = 'musk_price_history_v1';
 const PRICE_HISTORY_MAX = 144; // 12 hours at 5-min intervals
 const POSITIONS_KEY = 'musk_positions_v1';
 
+// ── 马斯克发推时间权重（北京时间，基于206天/8942条推文历史数据）──────────────
+// 每小时权重 = 该小时历史推文量 / 总量，24小时之和 = 1.000
+// 数据来源: 2025-11-14 ~ 2026-05-25, xtracker.polymarket.com
+const HOURLY_WEIGHTS_BJ: Record<number, number> = {
+   0: 0.0495,  // CDT 11am  中等
+   1: 0.0500,  // CDT 12pm  中等
+   2: 0.0512,  // CDT 1pm   ⭐活跃
+   3: 0.0503,  // CDT 2pm   中等
+   4: 0.0415,  // CDT 3pm   中等
+   5: 0.0310,  // CDT 4pm   较低
+   6: 0.0263,  // CDT 5pm   较低
+   7: 0.0335,  // CDT 6pm   较低
+   8: 0.0350,  // CDT 7pm   较低
+   9: 0.0295,  // CDT 8pm   较低
+  10: 0.0240,  // CDT 9pm   较低
+  11: 0.0256,  // CDT 10pm  较低
+  12: 0.0280,  // CDT 11pm  较低 ← 爆发前洼地
+  13: 0.0699,  // CDT 12am  ⭐⭐超级活跃
+  14: 0.0785,  // CDT 1am   ⭐⭐全天最高峰
+  15: 0.0616,  // CDT 2am   ⭐活跃
+  16: 0.0530,  // CDT 3am   ⭐活跃
+  17: 0.0270,  // CDT 4am   较低
+  18: 0.0183,  // CDT 5am   💤全天最低
+  19: 0.0223,  // CDT 6am   较低
+  20: 0.0347,  // CDT 7am   较低
+  21: 0.0467,  // CDT 8am   中等
+  22: 0.0603,  // CDT 9am   ⭐活跃
+  23: 0.0522,  // CDT 10am  ⭐活跃
+};
+
+// 获取当前北京时间小时
+function getBJHourNow(): number {
+  return new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
+}
+
+// 从热力图 localStorage 缓存读取今日小时推文数
+function getHeatmapTodayHourly(): Record<number, number> {
+  try {
+    const cached = JSON.parse(localStorage.getItem('musk_tweet_heatmap_data') || '{}');
+    if (!cached.data || !Array.isArray(cached.data)) return {};
+    const todayBJ = new Date(Date.now() + 8 * 3600 * 1000).toISOString().split('T')[0];
+    const result: Record<number, number> = {};
+    for (const d of cached.data) {
+      if (d.date === todayBJ) result[d.hour] = d.count;
+    }
+    return result;
+  } catch { return {}; }
+}
+
 function parseRange(range: string): { min: number; max: number } | null {
   const match = range.match(/(\d+)-(\d+)/);
   if (match) return { min: parseInt(match[1]), max: parseInt(match[2]) };
@@ -628,6 +677,80 @@ export default function App() {
   const R = apiPace;
   const E_rem = R * (T / 24);
   const mu = C + E_rem;
+
+  // ── 时间加权 µ（比均匀分配更精准）──────────────────────────────────────────
+  const timeWeightedMu = useMemo(() => {
+    if (R <= 0 || T <= 0) return mu;
+    const nowBJ = new Date(Date.now() + 8 * 3600 * 1000);
+    const currentBJHour = nowBJ.getUTCHours();
+    const minuteFraction = (60 - nowBJ.getUTCMinutes()) / 60; // 当前小时剩余比例
+    let weightSum = HOURLY_WEIGHTS_BJ[currentBJHour] * minuteFraction;
+    const fullHoursLeft = Math.max(0, Math.floor(T) - 1);
+    for (let i = 1; i <= fullHoursLeft; i++) {
+      weightSum += HOURLY_WEIGHTS_BJ[(currentBJHour + i) % 24];
+    }
+    return Math.round((C + R * weightSum) * 10) / 10;
+  }, [C, R, T, mu]);
+
+  // ── 入场时机评估（基于当前北京时间）──────────────────────────────────────────
+  const entryTimingInfo = useMemo(() => {
+    const h = getBJHourNow();
+    const m = new Date(Date.now() + 8 * 3600 * 1000).getUTCMinutes();
+    if (h === 12 && m <= 35)
+      return { level: 'BEST',    badge: '⭐⭐ 最佳建仓时机', desc: '午夜爆发前，历史+150%跳跃即将发生（BJ 13:00）', color: 'emerald' };
+    if (h >= 13 && h <= 15)
+      return { level: 'ACTIVE',  badge: '📈 深夜爆发进行中', desc: `全天最高峰（CDT凌晨${h - 12}点），µ正在快速上移`, color: 'amber' };
+    if (h === 21 && m <= 35)
+      return { level: 'GOOD',    badge: '⭐ 良好建仓时机', desc: '美国上班前，上午活跃窗口（BJ 22:00）即将开始', color: 'sky' };
+    if (h === 22 || h === 23)
+      return { level: 'ACTIVE',  badge: '📈 上午活跃期', desc: 'CDT 9-10am，第二活跃峰，适合评估仓位', color: 'amber' };
+    if (h >= 17 && h <= 19)
+      return { level: 'DEAD',    badge: '💤 全天死区', desc: '全天最低点（CDT 4-6am），不要等信号，适合冷静剪仓', color: 'slate' };
+    if (h >= 8 && h <= 12)
+      return { level: 'LOW',     badge: '🔵 美国傍晚低谷', desc: 'CDT 7-11pm 反而是低谷，µ变化慢，耐心等BJ 12:00', color: 'slate' };
+    if (h === 16)
+      return { level: 'FADING',  badge: '📉 爆发尾声', desc: 'CDT 3am，深夜高峰快结束，不宜追高建仓', color: 'yellow' };
+    return { level: 'NEUTRAL',   badge: '🟡 中等时段', desc: '活跃度平均，等待下一个关键窗口', color: 'yellow' };
+  }, []);
+
+  // ── 今日关键窗口异常检测 ─────────────────────────────────────────────────────
+  const todayWindowAnomalies = useMemo(() => {
+    const h = getBJHourNow();
+    const todayHourly = getHeatmapTodayHourly();
+    if (Object.keys(todayHourly).length === 0 || R <= 0) return [];
+    const anomalies: { id: string; window: string; actual: number; expected: number; severity: 'high' | 'medium'; muImpact: string; suggestion: string }[] = [];
+    // 窗口A：BJ 12-16（深夜爆发，应贡献日均10.3/43.4 = 23.7%）
+    if (h > 16) {
+      const actual = [12, 13, 14, 15].reduce((s, x) => s + (todayHourly[x] || 0), 0);
+      const expected = Math.round(R * (0.0280 + 0.0699 + 0.0785 + 0.0616));
+      if (actual < expected * 0.45) {
+        anomalies.push({
+          id: 'window-a',
+          window: 'BJ 12–16（CDT 深夜）',
+          actual, expected,
+          severity: actual < expected * 0.2 ? 'high' : 'medium',
+          muImpact: `µ可能偏高 ~${Math.round((expected - actual) * 0.8)} 条`,
+          suggestion: '建议将µ估计下调 10–20%，观察今日整体是否偏慢',
+        });
+      }
+    }
+    // 窗口B：BJ 22-23（上午活跃，应贡献5.4%+5.2%=10.6%）
+    if (h >= 23) {
+      const actual = (todayHourly[22] || 0) + (todayHourly[23] || 0);
+      const expected = Math.round(R * (0.0603 + 0.0522));
+      if (actual < expected * 0.4) {
+        anomalies.push({
+          id: 'window-b',
+          window: 'BJ 22–23（CDT 9–10am）',
+          actual, expected,
+          severity: 'medium',
+          muImpact: `今日节奏偏慢 ~${Math.round((expected - actual))} 条`,
+          suggestion: '上午窗口沉默，观察深夜窗口是否补发',
+        });
+      }
+    }
+    return anomalies;
+  }, [R]);
 
   const getPoissonProb = (k: number, lambda: number): number => {
     if (k < 0) return 0;
@@ -1400,6 +1523,139 @@ export default function App() {
                   }))}
                   positions={positions}
                 />
+
+                {/* ── 时机 & 节奏分析面板 ── */}
+                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                      <span className="text-xl">⏰</span>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-200">时机 & 节奏分析</h2>
+                      <p className="text-xs text-slate-500">基于206天小时行为数据 · 北京时间</p>
+                    </div>
+                  </div>
+
+                  {/* 当前时机 + 时间加权µ */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* 入场时机 */}
+                    <div className={`rounded-xl p-4 border ${
+                      entryTimingInfo.level === 'BEST'   ? 'bg-emerald-500/10 border-emerald-500/30' :
+                      entryTimingInfo.level === 'GOOD'   ? 'bg-sky-500/10 border-sky-500/30' :
+                      entryTimingInfo.level === 'ACTIVE' ? 'bg-amber-500/10 border-amber-500/30' :
+                      entryTimingInfo.level === 'DEAD'   ? 'bg-slate-800/60 border-slate-700' :
+                                                           'bg-slate-800/40 border-slate-700/50'
+                    }`}>
+                      <p className="text-xs text-slate-400 mb-1">当前入场时机</p>
+                      <p className={`text-base font-bold mb-1 ${
+                        entryTimingInfo.level === 'BEST'   ? 'text-emerald-400' :
+                        entryTimingInfo.level === 'GOOD'   ? 'text-sky-400' :
+                        entryTimingInfo.level === 'ACTIVE' ? 'text-amber-400' :
+                                                             'text-slate-400'
+                      }`}>{entryTimingInfo.badge}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{entryTimingInfo.desc}</p>
+                    </div>
+
+                    {/* 时间加权 µ vs 简单 µ */}
+                    <div className="rounded-xl p-4 bg-violet-500/10 border border-violet-500/20">
+                      <p className="text-xs text-slate-400 mb-2">落点预测对比</p>
+                      <div className="flex items-end gap-3">
+                        <div>
+                          <p className="text-2xl font-bold text-violet-400 font-mono">{timeWeightedMu.toFixed(0)}</p>
+                          <p className="text-xs text-violet-300">时间加权 µ</p>
+                        </div>
+                        <div className="pb-1 text-slate-600">vs</div>
+                        <div>
+                          <p className="text-xl font-bold text-slate-400 font-mono">{mu.toFixed(0)}</p>
+                          <p className="text-xs text-slate-500">简单 µ</p>
+                        </div>
+                        {Math.abs(timeWeightedMu - mu) >= 3 && (
+                          <div className={`pb-1 text-xs font-medium ${timeWeightedMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {timeWeightedMu > mu ? '↑' : '↓'} {Math.abs(timeWeightedMu - mu).toFixed(0)} 条
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1">
+                        {Math.abs(timeWeightedMu - mu) < 3
+                          ? '两者接近，剩余时间活跃度分布均匀'
+                          : timeWeightedMu > mu
+                            ? '剩余时间含高活跃窗口，实际落点可能更高'
+                            : '剩余时间偏向低活跃段，实际落点可能更低'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 今日窗口异常 */}
+                  {todayWindowAnomalies.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-rose-400 flex items-center gap-1.5">
+                        <span>⚠️</span> 今日关键窗口异常
+                      </p>
+                      {todayWindowAnomalies.map(a => (
+                        <div key={a.id} className={`rounded-xl p-4 border ${
+                          a.severity === 'high'
+                            ? 'bg-rose-500/10 border-rose-500/30'
+                            : 'bg-amber-500/8 border-amber-500/25'
+                        }`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className={`text-sm font-semibold ${a.severity === 'high' ? 'text-rose-300' : 'text-amber-300'}`}>
+                                {a.window} 沉默
+                              </p>
+                              <p className="text-xs text-slate-400 mt-1">
+                                实际 {a.actual} 条 / 预期 {a.expected} 条
+                                <span className="mx-1 text-slate-600">·</span>
+                                {a.muImpact}
+                              </p>
+                              <p className="text-xs text-slate-500 mt-1">{a.suggestion}</p>
+                            </div>
+                            <div className={`shrink-0 text-xs px-2 py-1 rounded-lg ${
+                              a.severity === 'high'
+                                ? 'bg-rose-500/20 text-rose-300'
+                                : 'bg-amber-500/20 text-amber-300'
+                            }`}>
+                              {a.severity === 'high' ? '高风险' : '注意'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 今日时段活跃度小横条 */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-3">今日各时段预期发推权重（北京时间）</p>
+                    <div className="grid grid-cols-6 gap-1">
+                      {[
+                        { label: '00-04', hours: [0,1,2,3],   desc: 'CDT 11am-3pm' },
+                        { label: '04-08', hours: [4,5,6,7],   desc: 'CDT 3-7pm' },
+                        { label: '08-12', hours: [8,9,10,11], desc: 'CDT 7-11pm ⚠️低' },
+                        { label: '12-16', hours: [12,13,14,15],desc: 'CDT 11pm-3am ⭐' },
+                        { label: '16-20', hours: [16,17,18,19],desc: 'CDT 3-7am 💤' },
+                        { label: '20-24', hours: [20,21,22,23],desc: 'CDT 7-11am' },
+                      ].map(seg => {
+                        const w = seg.hours.reduce((s, h) => s + HOURLY_WEIGHTS_BJ[h], 0);
+                        const currentBJH = getBJHourNow();
+                        const isActive = seg.hours.includes(currentBJH);
+                        const pct = Math.round(w * 100);
+                        const barW = Math.round(w / 0.103 * 100); // 0.103 = max segment weight
+                        return (
+                          <div key={seg.label} className={`rounded-lg p-2 text-center ${isActive ? 'bg-sky-500/15 border border-sky-500/30' : 'bg-slate-800/50'}`}>
+                            <p className={`text-xs font-bold font-mono ${isActive ? 'text-sky-300' : 'text-slate-300'}`}>{seg.label}</p>
+                            <div className="my-1.5 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                              <div className={`h-full rounded-full ${
+                                pct >= 20 ? 'bg-violet-500' : pct >= 12 ? 'bg-sky-500' : 'bg-slate-600'
+                              }`} style={{ width: `${Math.min(100, barW)}%` }} />
+                            </div>
+                            <p className={`text-xs font-mono ${pct >= 20 ? 'text-violet-400' : pct >= 12 ? 'text-sky-400' : 'text-slate-500'}`}>{pct}%</p>
+                            <p className="text-[9px] text-slate-600 mt-0.5 leading-tight">{seg.desc}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+
                 <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
@@ -1408,7 +1664,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">盘口价值比分析</h2>
-                        <p className="text-xs text-slate-500">基于泊松分布 · 预测中心 μ = {mu.toFixed(1)}</p>
+                        <p className="text-xs text-slate-500">基于泊松分布 · 预测中心 μ = {mu.toFixed(1)} · 加权 μ = {timeWeightedMu.toFixed(1)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400">

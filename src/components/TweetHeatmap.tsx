@@ -519,6 +519,81 @@ export function TweetHeatmap() {
         </div>
       )}
 
+      {/* ── 今日节奏 vs 历史基线（24小时对比条）── */}
+      {data.length > 0 && (() => {
+        const todayDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        const todayData: Record<number, number> = {};
+        data.filter(d => d.date === todayDate).forEach(d => { todayData[d.hour] = d.count; });
+        const hasTodayData = Object.keys(todayData).length > 0;
+        if (!hasTodayData) return null;
+
+        // 206天历史日均（北京时间）
+        const BASELINE: Record<number, number> = {
+          0:2.15,1:2.17,2:2.22,3:2.18,4:1.80,5:1.34,6:1.14,7:1.46,
+          8:1.52,9:1.28,10:1.04,11:1.11,12:1.21,13:3.03,14:3.41,15:2.67,
+          16:2.30,17:1.17,18:0.80,19:0.97,20:1.50,21:2.03,22:2.62,23:2.27
+        };
+        const maxBaseline = 3.41;
+
+        return (
+          <div className="mt-8 pt-6 border-t border-slate-800">
+            <h4 className="text-sm font-semibold text-slate-300 mb-1 flex items-center gap-2">
+              <span>📊</span> 今日节奏 vs 历史基线（北京时间）
+            </h4>
+            <p className="text-xs text-slate-500 mb-4">蓝色=今日实际 · 灰色=206天历史均值 · 紫色=全天最高峰时段</p>
+            <div className="flex gap-0.5 items-end h-20">
+              {Array.from({length: 24}, (_, h) => {
+                const actual = todayData[h] || 0;
+                const base = BASELINE[h] || 0;
+                const maxVal = Math.max(maxBaseline, actual, 1);
+                const actualPct = (actual / maxVal) * 100;
+                const basePct = (base / maxVal) * 100;
+                const isPeak = h === 13 || h === 14;
+                const isDeadZone = h === 18;
+                const isPast = h < currentBJHour;
+                const isCurrent = h === currentBJHour;
+                return (
+                  <div key={h} className="flex-1 flex flex-col items-center gap-0.5 relative group" title={`BJ ${h}:00\n今日: ${actual}条\n历史均值: ${base.toFixed(1)}条/天`}>
+                    {/* baseline bar */}
+                    <div className="w-full relative" style={{height: '72px'}}>
+                      <div className="absolute bottom-0 w-full rounded-sm opacity-40"
+                        style={{
+                          height: `${basePct}%`,
+                          backgroundColor: isPeak ? '#7c3aed' : isDeadZone ? '#374151' : '#334155'
+                        }}
+                      />
+                      {/* actual bar */}
+                      {(isPast || isCurrent) && (
+                        <div className="absolute bottom-0 w-full rounded-sm transition-all"
+                          style={{
+                            height: `${actualPct}%`,
+                            backgroundColor: actual > base * 1.5 ? '#f59e0b' : actual < base * 0.4 ? '#ef4444' : '#3b82f6',
+                            opacity: isCurrent ? 0.85 : 0.9,
+                          }}
+                        />
+                      )}
+                      {isCurrent && (
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-400" />
+                      )}
+                    </div>
+                    <span className={`text-[8px] ${isCurrent ? 'text-sky-400 font-bold' : isPeak ? 'text-violet-400' : 'text-slate-600'}`}>
+                      {h}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-blue-500 inline-block opacity-90"/> 今日实际</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-slate-500 inline-block opacity-40"/> 历史均值</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-violet-500 inline-block opacity-40"/> 高峰时段</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-amber-500 inline-block"/> 超预期</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-red-500 inline-block"/> 低于预期40%</span>
+            </div>
+          </div>
+        );
+      })()}
+
       <LatestTweets />
     </div>
   );
