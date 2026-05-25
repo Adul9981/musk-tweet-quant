@@ -1630,177 +1630,162 @@ export default function App() {
                   positions={positions}
                 />
 
-                {/* ── 时机 & 节奏分析面板 ── */}
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
-                  <div className="flex items-center gap-3 mb-1">
-                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
-                      <span className="text-xl">⏰</span>
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-200">时机 & 节奏分析</h2>
-                      <p className="text-xs text-slate-500">基于206天 · 5会话模型 · 北京时间</p>
-                    </div>
-                  </div>
+                {/* ── 马斯克节奏面板 v3 ── */}
+                {(() => {
+                  const bjH     = getBJHourNow();
+                  const todayH  = getHeatmapTodayHourly();
+                  const hasTodayData = Object.keys(todayH).length > 0;
+                  const paceScale   = R > 0 ? R / 43.4 : 1;
+                  const t = sessionAnalysis.timing;
 
-                  {/* 当前时机 + µ三重对比 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* 入场时机 */}
-                    <div className={`rounded-xl p-4 border ${
-                      sessionAnalysis.timing.level === 'BEST'    ? 'bg-emerald-500/10 border-emerald-500/30' :
-                      sessionAnalysis.timing.level === 'GOOD'    ? 'bg-sky-500/10 border-sky-500/30' :
-                      sessionAnalysis.timing.level === 'ACTIVE'  ? 'bg-violet-500/10 border-violet-500/30' :
-                      sessionAnalysis.timing.level === 'DEAD'    ? 'bg-slate-800/60 border-slate-700' :
-                      sessionAnalysis.timing.level === 'WATCH'   ? 'bg-yellow-500/8 border-yellow-500/25' :
-                                                                    'bg-slate-800/40 border-slate-700/50'
-                    }`}>
-                      <p className="text-xs text-slate-400 mb-1">当前入场时机</p>
-                      <p className={`text-base font-bold mb-1 ${
-                        sessionAnalysis.timing.level === 'BEST'   ? 'text-emerald-400' :
-                        sessionAnalysis.timing.level === 'GOOD'   ? 'text-sky-400' :
-                        sessionAnalysis.timing.level === 'ACTIVE' ? 'text-violet-400' :
-                        sessionAnalysis.timing.level === 'WATCH'  ? 'text-yellow-400' :
-                        sessionAnalysis.timing.level === 'DEAD'   ? 'text-slate-500' :
-                                                                     'text-slate-400'
-                      }`}>{sessionAnalysis.timing.badge}</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">{sessionAnalysis.timing.desc}</p>
-                    </div>
+                  // 24h 时段定义 —— 每格告诉用户「这段时间马斯克在干嘛」
+                  const SEGS = [
+                    { label:'00–04', hours:[0,1,2,3],    level:'medium', zh:'美国下午\n稳定活跃' },
+                    { label:'04–08', hours:[4,5,6,7],    level:'low',    zh:'美国傍晚\n偏低' },
+                    { label:'08–12', hours:[8,9,10,11],  level:'low',    zh:'美国晚上\n低谷' },
+                    { label:'12–16', hours:[12,13,14,15],level:'peak',   zh:'美国深夜\n全天最强⭐' },
+                    { label:'16–20', hours:[16,17,18,19],level:'sleep',  zh:'Musk入睡\n全天最低💤' },
+                    { label:'20–24', hours:[20,21,22,23],level:'medium', zh:'美国上午\n回暖' },
+                  ] as const;
 
-                    {/* µ 三重对比：简单µ / 时间加权µ / 最佳µ */}
-                    <div className="rounded-xl p-4 bg-violet-500/10 border border-violet-500/20">
-                      <p className="text-xs text-slate-400 mb-2">落点预测对比</p>
-                      <div className="flex items-end gap-3 flex-wrap">
-                        <div>
-                          <p className="text-2xl font-bold text-emerald-400 font-mono">{bestMu}</p>
-                          <p className="text-xs text-emerald-300">最佳µ</p>
+                  // 白话落点影响条目
+                  const impactLines: { icon:string; text:string; color:string }[] = [];
+                  for (const s of sessionAnalysis.states) {
+                    if (s.status === 'absent' && s.def.freq >= 0.6) {
+                      impactLines.push({ icon:'⚠️', color:'text-rose-300',
+                        text:`${s.def.name}今日缺席（历史${Math.round(s.def.freq*100)}%天出现），落点预计下移约 ${Math.round(s.def.expectedContrib * paceScale)} 条` });
+                    } else if (s.status === 'weak' && s.isAnomaly) {
+                      impactLines.push({ icon:'🔻', color:'text-amber-300',
+                        text:`${s.def.name}偏弱（今日${s.actual}条，历史均值${s.def.avgTweets}条），落点可能小幅偏低` });
+                    } else if ((s.status === 'strong') && s.muAdjust > 2) {
+                      impactLines.push({ icon:'📈', color:'text-emerald-300',
+                        text:`${s.def.name}强势（今日${s.actual}条），落点预计上移约 ${s.muAdjust} 条` });
+                    }
+                  }
+                  const upcomingNight = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && s.status==='upcoming');
+                  const ongoingNight  = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && (s.status==='ongoing'||s.status==='strong'||s.status==='pending'));
+                  if (upcomingNight) {
+                    const hoursLeft = Math.max(0, 13 - bjH);
+                    impactLines.push({ icon:'⏳', color:'text-violet-300',
+                      text:`深夜爆发时段（BJ 13–16）约 ${hoursLeft} 小时后开始，是今日落点的最大变量（历史均值 +14 条）` });
+                  } else if (ongoingNight) {
+                    impactLines.push({ icon:'🌙', color:'text-violet-300',
+                      text:'深夜爆发时段正在进行中，µ正在上移，注意评估止盈时机' });
+                  }
+                  if (impactLines.length === 0) {
+                    impactLines.push({ icon:'✅', color:'text-slate-400',
+                      text:`今日节奏正常，各时段无异常，落点预测约 ${bestMu} 条` });
+                  }
+
+                  const timingBg =
+                    t.level==='BEST'   ? 'bg-emerald-500/10 border-emerald-500/35' :
+                    t.level==='GOOD'   ? 'bg-sky-500/10 border-sky-500/35' :
+                    t.level==='ACTIVE' ? 'bg-violet-500/10 border-violet-500/35' :
+                    t.level==='DEAD'   ? 'bg-slate-900/60 border-slate-600/50' :
+                    t.level==='WATCH'  ? 'bg-yellow-500/8 border-yellow-500/25' :
+                                         'bg-slate-800/40 border-slate-700/40';
+                  const timingText =
+                    t.level==='BEST'   ? 'text-emerald-300' :
+                    t.level==='GOOD'   ? 'text-sky-300' :
+                    t.level==='ACTIVE' ? 'text-violet-300' :
+                    t.level==='DEAD'   ? 'text-slate-500' :
+                    t.level==='WATCH'  ? 'text-yellow-300' :
+                                         'text-slate-300';
+
+                  return (
+                    <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
+                      {/* 标题 */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                          <span className="text-xl">🕐</span>
                         </div>
-                        <div className="pb-1 text-slate-600 text-xs">←</div>
                         <div>
-                          <p className="text-lg font-bold text-violet-400 font-mono">{timeWeightedMu.toFixed(0)}</p>
-                          <p className="text-xs text-violet-300">时间加权</p>
+                          <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
+                          <p className="text-xs text-slate-500">北京时间 {bjH}:00 · 基于206天历史数据</p>
                         </div>
-                        <div className="pb-1 text-slate-600 text-xs">/</div>
-                        <div>
-                          <p className="text-lg font-bold text-slate-400 font-mono">{mu.toFixed(0)}</p>
-                          <p className="text-xs text-slate-500">简单µ</p>
-                        </div>
-                        {sessionAnalysis.totalMuAdjust !== 0 && (
-                          <div className={`pb-1 text-xs font-medium ${sessionAnalysis.totalMuAdjust > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            会话 {sessionAnalysis.totalMuAdjust > 0 ? '+' : ''}{sessionAnalysis.totalMuAdjust}
-                          </div>
-                        )}
                       </div>
-                      <p className="text-xs text-slate-600 mt-1.5">
-                        最佳µ = 时间加权 & 会话修正均值，用于盘口分析
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* 5大会话状态卡片 */}
-                  <div>
-                    <p className="text-xs text-slate-500 mb-2">今日5大会话状态</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                      {sessionAnalysis.states.map(s => {
-                        const statusColor =
-                          s.status === 'strong'    ? 'border-emerald-500/40 bg-emerald-500/8' :
-                          s.status === 'confirmed' ? 'border-sky-500/30 bg-sky-500/8' :
-                          s.status === 'ongoing'   ? 'border-violet-500/40 bg-violet-500/10' :
-                          s.status === 'weak'      ? 'border-rose-500/35 bg-rose-500/8' :
-                          s.status === 'absent'    ? 'border-rose-500/50 bg-rose-500/12' :
-                          s.status === 'pending'   ? 'border-amber-500/30 bg-amber-500/8' :
-                          s.status === 'upcoming'  ? 'border-slate-600/50 bg-slate-800/40' :
-                                                     'border-slate-700/40 bg-slate-800/30';
-                        const statusText =
-                          s.status === 'strong'    ? 'text-emerald-400' :
-                          s.status === 'confirmed' ? 'text-sky-400' :
-                          s.status === 'ongoing'   ? 'text-violet-400' :
-                          s.status === 'weak'      ? 'text-rose-400' :
-                          s.status === 'absent'    ? 'text-rose-500' :
-                          s.status === 'pending'   ? 'text-amber-400' :
-                                                     'text-slate-500';
-                        return (
-                          <div key={s.def.name} className={`rounded-xl p-3 border ${statusColor}`}>
-                            <div className="flex items-center gap-1 mb-1">
-                              <span className="text-base">{s.def.emoji}</span>
-                              <p className="text-xs font-semibold text-slate-300 leading-tight">{s.def.name}</p>
-                            </div>
-                            <p className="text-[10px] text-slate-500 mb-1">{s.def.cdt}</p>
-                            <p className={`text-xs font-medium ${statusText} leading-tight`}>{s.label}</p>
-                            {s.muAdjust !== 0 && (
-                              <p className={`text-[10px] mt-1 font-mono ${s.muAdjust > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                µ {s.muAdjust > 0 ? '+' : ''}{s.muAdjust}
-                              </p>
-                            )}
-                            {s.entrySignal === 'buy' && (
-                              <p className="text-[10px] mt-1 text-emerald-400 font-bold">→ 建仓信号</p>
-                            )}
+                      {/* ① 当前状态 + 落点预测 */}
+                      <div className={`rounded-xl p-4 border ${timingBg}`}>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-slate-500 mb-1">当前马斯克状态</p>
+                            <p className={`text-lg font-bold leading-snug ${timingText}`}>{t.badge}</p>
+                            <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{t.desc}</p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 会话异常警告 */}
-                  {sessionAnalysis.anomalies.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-rose-400 flex items-center gap-1.5">
-                        <span>⚠️</span> 今日会话异常
-                      </p>
-                      {sessionAnalysis.anomalies.map(a => (
-                        <div key={a.def.name} className="rounded-xl p-3 border bg-rose-500/8 border-rose-500/30">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-semibold text-rose-300">
-                                {a.def.emoji} {a.def.name} 异常
+                          <div className="text-right shrink-0">
+                            <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">本期落点预测（条）</p>
+                            {Math.abs(bestMu - Math.round(mu)) >= 3 && (
+                              <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-500' : 'text-rose-400'}`}>
+                                {bestMu > mu ? '↑' : '↓'} 比简单预测{bestMu > mu ? '高' : '低'} {Math.abs(bestMu - Math.round(mu))} 条
                               </p>
-                              <p className="text-xs text-slate-400 mt-0.5">{a.anomalyDesc}</p>
-                              {a.muAdjust !== 0 && (
-                                <p className={`text-xs mt-0.5 font-mono ${a.muAdjust > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                  µ修正 {a.muAdjust > 0 ? '+' : ''}{a.muAdjust} 条
-                                </p>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-xs px-2 py-1 rounded-lg bg-rose-500/20 text-rose-300">
-                              {a.status === 'absent' ? '缺席' : '偏弱'}
-                            </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
 
-                  {/* 今日时段活跃度小横条 */}
-                  <div>
-                    <p className="text-xs text-slate-500 mb-3">今日各时段预期发推权重（北京时间）</p>
-                    <div className="grid grid-cols-6 gap-1">
-                      {[
-                        { label: '00-04', hours: [0,1,2,3],    desc: 'CDT 11am-3pm' },
-                        { label: '04-08', hours: [4,5,6,7],    desc: 'CDT 3-7pm' },
-                        { label: '08-12', hours: [8,9,10,11],  desc: 'CDT 7-11pm ⚠️低' },
-                        { label: '12-16', hours: [12,13,14,15],desc: 'CDT 11pm-3am ⭐' },
-                        { label: '16-20', hours: [16,17,18,19],desc: 'CDT 3-7am 💤' },
-                        { label: '20-24', hours: [20,21,22,23],desc: 'CDT 7-11am' },
-                      ].map(seg => {
-                        const w = seg.hours.reduce((s, hh) => s + HOURLY_WEIGHTS_BJ[hh], 0);
-                        const currentBJH = getBJHourNow();
-                        const isActive = seg.hours.includes(currentBJH);
-                        const pct = Math.round(w * 100);
-                        const barW = Math.round(w / 0.103 * 100); // 0.103 = max segment weight
-                        return (
-                          <div key={seg.label} className={`rounded-lg p-2 text-center ${isActive ? 'bg-sky-500/15 border border-sky-500/30' : 'bg-slate-800/50'}`}>
-                            <p className={`text-xs font-bold font-mono ${isActive ? 'text-sky-300' : 'text-slate-300'}`}>{seg.label}</p>
-                            <div className="my-1.5 bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                              <div className={`h-full rounded-full ${
-                                pct >= 20 ? 'bg-violet-500' : pct >= 12 ? 'bg-sky-500' : 'bg-slate-600'
-                              }`} style={{ width: `${Math.min(100, barW)}%` }} />
-                            </div>
-                            <p className={`text-xs font-mono ${pct >= 20 ? 'text-violet-400' : pct >= 12 ? 'text-sky-400' : 'text-slate-500'}`}>{pct}%</p>
-                            <p className="text-[9px] text-slate-600 mt-0.5 leading-tight">{seg.desc}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </section>
+                      {/* ② 24h 时间轴 */}
+                      <div>
+                        <p className="text-xs text-slate-500 mb-2.5">今日24小时活跃规律（北京时间）</p>
+                        <div className="grid grid-cols-6 gap-1.5">
+                          {SEGS.map(seg => {
+                            const hours     = seg.hours as readonly number[];
+                            const isCurrent = hours.includes(bjH);
+                            const isPast    = hours[hours.length - 1] < bjH;
+                            const actual    = hours.reduce((s, hh) => s + (todayH[hh] || 0), 0);
+
+                            const actEmoji =
+                              seg.level === 'peak'   ? '🔥' :
+                              seg.level === 'sleep'  ? '💤' :
+                              seg.level === 'medium' ? '📢' : '🔵';
+
+                            const cardBg =
+                              isCurrent
+                                ? 'bg-sky-500/15 border-sky-500/40'
+                                : seg.level === 'peak'
+                                ? 'bg-violet-500/10 border-violet-500/25'
+                                : seg.level === 'sleep'
+                                ? 'bg-slate-900/50 border-slate-700/20'
+                                : 'bg-slate-800/40 border-slate-700/20';
+
+                            const zhLines = seg.zh.split('\n');
+
+                            return (
+                              <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
+                                <p className={`text-[11px] font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level === 'peak' ? 'text-violet-300' : 'text-slate-400'}`}>
+                                  {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
+                                </p>
+                                <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
+                                {/* 今日数据行 */}
+                                {isPast && hasTodayData ? (
+                                  <p className="text-sm font-mono font-bold text-slate-200">{actual}条</p>
+                                ) : isCurrent ? (
+                                  <p className="text-xs font-semibold text-sky-400">进行中</p>
+                                ) : (
+                                  <p className={`text-xs ${seg.level==='peak' ? 'text-violet-400 font-semibold' : seg.level==='sleep' ? 'text-slate-600' : 'text-slate-500'}`}>
+                                    {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
+                                  </p>
+                                )}
+                                <p className="text-[9px] text-slate-600 mt-1.5 leading-tight">{zhLines[0]}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* ③ 落点影响白话文 */}
+                      <div className="rounded-xl p-4 border border-slate-700/40 bg-slate-800/30 space-y-2.5">
+                        <p className="text-xs font-semibold text-slate-400">📌 对本期落点的影响</p>
+                        {impactLines.map((l, i) => (
+                          <p key={i} className={`text-sm leading-relaxed ${l.color}`}>
+                            {l.icon}  {l.text}
+                          </p>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
 
                 <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
                   <div className="flex items-center justify-between mb-6">
