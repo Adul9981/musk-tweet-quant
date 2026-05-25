@@ -50,24 +50,30 @@ export default async function handler(req, res) {
                 if (statsResponse.ok) {
                   const statsData = await statsResponse.json();
                   if (statsData.success && statsData.data.stats) {
-                    const daily = statsData.data.stats.daily || [];
+                    const rawDaily = statsData.data.stats.daily || [];
                     const now = new Date();
                     const endDate = new Date(tracking.endDate);
                     const diffMs = endDate.getTime() - now.getTime();
                     const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                     const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    
+
+                    // 按北京时间日期聚合（xtracker 原始数据可能每小时一条）
+                    const dailyMap = new Map();
+                    for (const d of rawDaily) {
+                      const bjDate = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000)
+                        .toISOString().split('T')[0];
+                      dailyMap.set(bjDate, (dailyMap.get(bjDate) || 0) + (d.count || 0));
+                    }
+                    const daily = Array.from(dailyMap.entries())
+                      .map(([date, count]) => ({ date, count }))
+                      .sort((a, b) => a.date.localeCompare(b.date));
+
                     const todayBeijing = new Date(now.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                    const todayData = daily.filter(d => {
-                      const dDate = new Date(d.date);
-                      const dBeijing = new Date(dDate.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
-                      return dBeijing === todayBeijing;
-                    });
-                    const todayTotal = todayData.reduce((sum, d) => sum + d.count, 0);
-                    
+                    const todayTotal = dailyMap.get(todayBeijing) || 0;
+
                     const elapsed = statsData.data.stats.daysElapsed;
                     const actualPace = elapsed > 0 ? Math.round(statsData.data.stats.total / elapsed) : 0;
-                    
+
                     return {
                       ...tracking,
                       stats: {
@@ -78,8 +84,8 @@ export default async function handler(req, res) {
                         daysRemaining: daysRemaining,
                         hoursRemaining: hoursRemaining,
                         daysTotal: statsData.data.stats.daysTotal,
-                        daily: daily,
-                        todayTotal: todayTotal,
+                        daily,
+                        todayTotal,
                       },
                     };
                   }

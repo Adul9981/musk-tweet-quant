@@ -1885,12 +1885,19 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
     const totalDays    = totalHours / 24;
     // const currentSpeed = apiPace / 24; // 条/h (reserved)
 
-    // ── 每日发推节奏（最近7天，从旧到新）──
-    const dailyData = (currentTracking?.stats?.daily ?? []).slice(-7);
+    // ── 每日发推节奏（最近7天，从旧到新，显示真实日期）──
+    const allDaily = currentTracking?.stats?.daily ?? [];
+    const startDate = currentTracking?.startDate ?? '';
+    const dailyData = allDaily.slice(-7);
     const dailyLines = dailyData.map((d, i) => {
-      const label = `Day ${i + 1}`;
+      // 显示 M/D 格式日期（北京时间）
+      const dt = new Date(d.date + 'T00:00:00+08:00');
+      const label = `${dt.getMonth() + 1}/${dt.getDate()}`;
       const isToday = i === dailyData.length - 1;
-      return `${label}  ${d.count} 条${isToday ? '  ← 今天' : ''}`;
+      // 计算这是市场第几天
+      const startMs = startDate ? new Date(startDate).getTime() : 0;
+      const dayNum = startMs ? Math.round((dt.getTime() - startMs) / 86400000) + 1 : i + 1;
+      return `D${dayNum} (${label})  ${d.count} 条${isToday ? '  ← 今天' : ''}`;
     }).join('\n');
 
     // ── 动态开头：根据今天节奏 vs 均值判断异常 ──
@@ -1939,28 +1946,27 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
       return `${prefix}${i.range}  ${i.marketPrice.toFixed(0)}%（中奖 ${returnX}x）`;
     }).join('\n');
 
-    // ── 个人视角：根据阶段给真实感强的判断 ──
+    // ── 个人视角：根据阶段 + 真实数据给有价值的判断 ──
     let take = '';
-    let nextStep = '';
+    const centerRange = centerInterval?.range ?? '';
+    const centerPrice = centerInterval?.marketPrice ?? 0;
+    const centerReturn = centerPrice > 0 ? (100 / centerPrice).toFixed(1) : '—';
+    // 预测落点距结算还需要发多少条
+    const tweetsLeft = predictedCenter > currentTotal ? Math.round(predictedCenter - currentTotal) : 0;
+    const daysLabel = daysRem > 0 ? `${daysRem}天${hoursRem > 0 ? hoursRem + '小时' : ''}` : `${hoursRem}小时`;
 
     if (totalDays >= 2.5) {
-      take = `这阶段不确定性还挺大，我打算观望，等落点再收敛一点再考虑入场。`;
-      nextStep = `大约 ${Math.round((totalDays - 2.5) * 24 + 24)} 小时后是比较合适的第一次入场窗口。`;
+      take = `落点还在跑，现在进太早。预测还剩 ~${tweetsLeft} 条要发，等节奏再稳一天看看。`;
     } else if (totalDays >= 2.0) {
-      take = `现在是第一次入场窗口。我打算在 ${centerInterval?.range ?? `落点区间`} 建主仓，两侧各配一点，合计用总资金的 25% 左右。`;
-      nextStep = `约半天后确认落点稳了，再集中加仓中心。`;
+      take = `第一次入场窗口。我主仓打 ${centerRange || '中心区间'}（现在 ${centerPrice.toFixed(0)}%，约 ${centerReturn}x），两翼各配一点，总资金 25%。`;
     } else if (totalDays >= 1.5) {
-      take = `落点已经比较明确了，这时候集中加仓 ${centerInterval?.range ?? '中心区间'} 性价比最高。`;
-      nextStep = `今晚或明早开始分批减持翼仓，先减 40%。`;
+      take = `落点基本定了。${centerRange} 是核心，${centerPrice.toFixed(0)}% 赔率意味着赢了拿 ${centerReturn}x。现在集中加仓，两翼开始减持。`;
     } else if (totalDays >= 1.0) {
-      take = `翼仓该减了。我计划今晚先减 40%，锁住一部分，专注 ${centerInterval?.range ?? '中心区间'} 等结算。`;
-      nextStep = `明天同时段，翼仓再减 50%。`;
+      take = `翼仓该动了——先减 40%，锁住收益。剩 ${daysLabel}，专注等 ${centerRange || '中心区间'} 结算。`;
     } else if (totalDays >= 0.5) {
-      take = `距到期不足一天，翼仓再减一批，留中心仓位等结果。`;
-      nextStep = `到期前 12 小时，翼仓全部清仓。`;
+      take = `最后不到一天。翼仓全清，${centerRange} 留仓等结果。现在进 ${centerRange} 的人赌的是 ${centerReturn}x。`;
     } else {
-      take = `就看最后这段了，仓位定好，等结算。`;
-      nextStep = ``;
+      take = `结算进入倒计时。仓位已定，等结果。`;
     }
 
     // ── 市场链接（带邀请码）──
@@ -1969,24 +1975,24 @@ function TweetGenerator({ currentTracking, currentMarket, predictedCenter, apiPa
       ? `https://polymarket.com/event/${marketSlug}${REFERRAL}`
       : `https://polymarket.com${REFERRAL}`;
 
+    const totalLabel = daysRem > 0
+      ? `${daysRem}天${hoursRem > 0 ? hoursRem + '小时' : ''}`
+      : `${hoursRem}小时`;
+
     return `${hook}
 
-过去 ${dailyData.length} 天发推节奏：
+发推节奏（近 ${dailyData.length} 天）：
 ${dailyLines || `日均 ${apiPace.toFixed(0)} 条/天`}
 
-本期累计 ${currentTotal} 条，预测落点 ~${predictedCenter} 条
-还剩 ${daysRem > 0 ? daysRem + '天' + (hoursRem > 0 ? hoursRem + '小时' : '') : hoursRem + '小时'}
+累计 ${currentTotal} 条 · 预测落点 ~${predictedCenter} 条 · 还剩 ${totalLabel}
 
-——
-Polymarket 当前赔率：
+Polymarket 赔率：
 ${oddsLines}
 
+——
 ${take}
-${nextStep}
 
-${marketUrl}
-
-#Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
+${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
   }, [currentTracking, currentMarket, predictedCenter, apiPace, intervalAnalysis]);
 
   const copyToClipboard = async () => {
