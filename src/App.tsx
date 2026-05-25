@@ -1605,6 +1605,215 @@ export default function App() {
                 )}
               </div>
             </div>
+
+            {/* ── 马斯克节奏摘要（市场概况页复用） ── */}
+            {(() => {
+              const bjH     = getBJHourNow();
+              const todayH  = getHeatmapTodayHourly();
+              const hasTodayData = Object.keys(todayH).length > 0;
+              const paceScale   = R > 0 ? R / 43.4 : 1;
+              const t = sessionAnalysis.timing;
+
+              const SEGS = [
+                { label:'00–04', hours:[0,1,2,3],    level:'medium', zh:'美国下午' },
+                { label:'04–08', hours:[4,5,6,7],    level:'low',    zh:'美国傍晚' },
+                { label:'08–12', hours:[8,9,10,11],  level:'low',    zh:'美国晚上' },
+                { label:'12–16', hours:[12,13,14,15],level:'peak',   zh:'深夜⭐' },
+                { label:'16–20', hours:[16,17,18,19],level:'sleep',  zh:'入睡💤' },
+                { label:'20–24', hours:[20,21,22,23],level:'medium', zh:'美国上午' },
+              ] as const;
+
+              const impactLines: { icon:string; text:string; color:string }[] = [];
+              for (const s of sessionAnalysis.states) {
+                if (s.status === 'absent' && s.def.freq >= 0.6) {
+                  impactLines.push({ icon:'⚠️', color:'text-rose-300',
+                    text:`${s.def.name}今日缺席，落点预计下移约 ${Math.round(s.def.expectedContrib * paceScale)} 条` });
+                } else if (s.status === 'weak' && s.isAnomaly) {
+                  impactLines.push({ icon:'🔻', color:'text-amber-300',
+                    text:`${s.def.name}偏弱（今日${s.actual}条），落点可能小幅偏低` });
+                } else if (s.status === 'strong' && s.muAdjust > 2) {
+                  impactLines.push({ icon:'📈', color:'text-emerald-300',
+                    text:`${s.def.name}强势（今日${s.actual}条），落点预计上移约 ${s.muAdjust} 条` });
+                }
+              }
+              const upcomingNight = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && s.status==='upcoming');
+              const ongoingNight  = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && (s.status==='ongoing'||s.status==='strong'||s.status==='pending'));
+              if (upcomingNight) {
+                const hoursLeft = Math.max(0, 13 - bjH);
+                impactLines.push({ icon:'⏳', color:'text-violet-300',
+                  text:`深夜爆发时段（BJ 13–16）约 ${hoursLeft} 小时后开始，是落点最大变量（历史均值 +14 条）` });
+              } else if (ongoingNight) {
+                impactLines.push({ icon:'🌙', color:'text-violet-300',
+                  text:'深夜时段进行中（全天最高），µ正在上移，注意评估止盈' });
+              }
+              if (impactLines.length === 0) {
+                impactLines.push({ icon:'✅', color:'text-slate-400',
+                  text:`今日节奏正常，落点预测约 ${bestMu} 条` });
+              }
+
+              const timingBg =
+                t.level==='BEST'   ? 'bg-emerald-500/10 border-emerald-500/35' :
+                t.level==='GOOD'   ? 'bg-sky-500/10 border-sky-500/35' :
+                t.level==='ACTIVE' ? 'bg-violet-500/10 border-violet-500/35' :
+                t.level==='DEAD'   ? 'bg-slate-900/60 border-slate-600/50' :
+                t.level==='WATCH'  ? 'bg-yellow-500/8 border-yellow-500/25' :
+                                     'bg-slate-800/40 border-slate-700/40';
+              const timingText =
+                t.level==='BEST'   ? 'text-emerald-300' :
+                t.level==='GOOD'   ? 'text-sky-300' :
+                t.level==='ACTIVE' ? 'text-violet-300' :
+                t.level==='DEAD'   ? 'text-slate-500' :
+                t.level==='WATCH'  ? 'text-yellow-300' :
+                                     'text-slate-300';
+
+              return (
+                <div className="space-y-5">
+                  {/* 节奏面板 */}
+                  <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                        <span className="text-xl">🕐</span>
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
+                        <p className="text-xs text-slate-500">北京时间 {bjH}:00 · 基于206天历史数据</p>
+                      </div>
+                    </div>
+
+                    {/* 当前状态 + 落点 */}
+                    <div className={`rounded-xl p-4 border ${timingBg}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-500 mb-1">当前马斯克状态</p>
+                          <p className={`text-lg font-bold leading-snug ${timingText}`}>{t.badge}</p>
+                          <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{t.desc}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">本期落点预测（条）</p>
+                          {Math.abs(bestMu - Math.round(mu)) >= 3 && (
+                            <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-500' : 'text-rose-400'}`}>
+                              {bestMu > mu ? '↑' : '↓'} 比简单预测{bestMu > mu ? '高' : '低'} {Math.abs(bestMu - Math.round(mu))} 条
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 24h 时间轴 */}
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2.5">今日24小时活跃规律（北京时间）</p>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {SEGS.map(seg => {
+                          const hours     = seg.hours as readonly number[];
+                          const isCurrent = hours.includes(bjH);
+                          const isPast    = hours[hours.length - 1] < bjH;
+                          const actual    = hours.reduce((s, hh) => s + (todayH[hh] || 0), 0);
+                          const actEmoji =
+                            seg.level==='peak'  ? '🔥' :
+                            seg.level==='sleep' ? '💤' :
+                            seg.level==='medium'? '📢' : '🔵';
+                          const cardBg =
+                            isCurrent
+                              ? 'bg-sky-500/15 border-sky-500/40'
+                              : seg.level==='peak'
+                              ? 'bg-violet-500/10 border-violet-500/25'
+                              : seg.level==='sleep'
+                              ? 'bg-slate-900/50 border-slate-700/20'
+                              : 'bg-slate-800/40 border-slate-700/20';
+                          return (
+                            <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
+                              <p className={`text-[11px] font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level==='peak' ? 'text-violet-300' : 'text-slate-400'}`}>
+                                {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
+                              </p>
+                              <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
+                              {isPast && hasTodayData ? (
+                                <p className="text-sm font-mono font-bold text-slate-200">{actual}条</p>
+                              ) : isCurrent ? (
+                                <p className="text-xs font-semibold text-sky-400">进行中</p>
+                              ) : (
+                                <p className={`text-xs ${seg.level==='peak' ? 'text-violet-400 font-semibold' : seg.level==='sleep' ? 'text-slate-600' : 'text-slate-500'}`}>
+                                  {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
+                                </p>
+                              )}
+                              <p className="text-[9px] text-slate-600 mt-1.5 leading-tight">{seg.zh}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 落点影响白话 */}
+                    <div className="rounded-xl p-4 border border-slate-700/40 bg-slate-800/30 space-y-2.5">
+                      <p className="text-xs font-semibold text-slate-400">📌 对本期落点的影响</p>
+                      {impactLines.map((l, i) => (
+                        <p key={i} className={`text-sm leading-relaxed ${l.color}`}>
+                          {l.icon}  {l.text}
+                        </p>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* 热力图（今日发推 24h）*/}
+                  {hasTodayData && (
+                    <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
+                          <span className="text-xl">📊</span>
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-200">今日发推热力图</h2>
+                          <p className="text-xs text-slate-500">北京时间 · 每小时实际条数 vs 历史基线</p>
+                        </div>
+                      </div>
+                      <div className="flex items-end gap-1 h-28">
+                        {Array.from({ length: 24 }, (_, h) => {
+                          const actual   = todayH[h] || 0;
+                          const baseline = Math.round(HOURLY_WEIGHTS_BJ[h] * 43.4 * 10) / 10;
+                          const maxVal   = 6;
+                          const actH     = Math.round((actual / maxVal) * 100);
+                          const baseH    = Math.round((baseline / maxVal) * 100);
+                          const isCurr   = h === bjH;
+                          const isPastH  = h < bjH;
+                          return (
+                            <div key={h} className="flex-1 flex flex-col items-center gap-0.5" title={`BJ ${h}:00 · 实际${actual}条 · 基线${baseline}条`}>
+                              <div className="w-full flex flex-col justify-end gap-px" style={{ height: '96px' }}>
+                                {/* 基线条（灰色，底部） */}
+                                <div className="relative w-full flex flex-col justify-end" style={{ height: '96px' }}>
+                                  <div
+                                    className={`w-full rounded-t-sm ${isCurr ? 'bg-sky-500/40' : 'bg-slate-700/50'}`}
+                                    style={{ height: `${Math.min(100, baseH)}%` }}
+                                  />
+                                  {/* 实际条（叠加） */}
+                                  {isPastH && actual > 0 && (
+                                    <div
+                                      className={`absolute bottom-0 w-full rounded-t-sm ${
+                                        actual >= baseline * 1.4 ? 'bg-violet-500' :
+                                        actual >= baseline * 0.6 ? 'bg-sky-500' : 'bg-rose-500/70'
+                                      }`}
+                                      style={{ height: `${Math.min(100, actH)}%` }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                              <p className={`text-[8px] font-mono ${isCurr ? 'text-sky-400' : 'text-slate-600'}`}>
+                                {h === 0 || h % 4 === 0 ? h : ''}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-500 inline-block"/>实际（正常）</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-violet-500 inline-block"/>实际（偏高）</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500/70 inline-block"/>实际（偏低）</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-slate-700/50 inline-block"/>历史基线</span>
+                      </div>
+                    </section>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
