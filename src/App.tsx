@@ -123,6 +123,48 @@ function getHeatmapTodayHourly(): Record<number, number> {
   } catch { return {}; }
 }
 
+// ── 会话类型定义（205天/673会话统计）────────────────────────────────────────
+// freq: 出现频率; avgTweets: 出现时均推文数; medTweets: 中位数
+// strongThreshold: 超过此值为"强会话"（>1.5x中位）
+// weakThreshold:   低于此值为"弱会话"（<0.5x中位）
+interface SessionDef {
+  name: string; emoji: string; bjHours: number[]; cdt: string;
+  freq: number; avgTweets: number; medTweets: number;
+  strongThreshold: number; weakThreshold: number;
+  expectedContrib: number; // 期望日贡献 = freq × avgTweets
+  muDropIfAbsent: number;  // 缺席时µ预期下修量
+}
+const SESSION_DEFS: SessionDef[] = [
+  { name: '下午会话', emoji: '☀️', bjHours: [0,1,2,3,4,5],   cdt: 'CDT 11am–5pm',
+    freq: 0.97, avgTweets: 14.4, medTweets: 10, strongThreshold: 15, weakThreshold: 5,
+    expectedContrib: 13.9, muDropIfAbsent: 14 },
+  { name: '傍晚会话', emoji: '🌆', bjHours: [6,7,8,9,10],    cdt: 'CDT 5–10pm',
+    freq: 0.51, avgTweets: 11.4, medTweets: 6,  strongThreshold: 9,  weakThreshold: 3,
+    expectedContrib: 5.8,  muDropIfAbsent: 11 },
+  { name: '深夜会话', emoji: '🌙', bjHours: [11,12,13,14,15,16], cdt: 'CDT 10pm–3am',
+    freq: 0.71, avgTweets: 14.3, medTweets: 11, strongThreshold: 16, weakThreshold: 5,
+    expectedContrib: 10.1, muDropIfAbsent: 14 },
+  { name: '清晨过渡', emoji: '🌅', bjHours: [17,18,19],       cdt: 'CDT 4–7am',
+    freq: 0.16, avgTweets: 16.4, medTweets: 13, strongThreshold: 19, weakThreshold: 6,
+    expectedContrib: 2.6,  muDropIfAbsent: 16 },
+  { name: '上午会话', emoji: '🏙️', bjHours: [20,21,22,23],   cdt: 'CDT 7–11am',
+    freq: 0.64, avgTweets: 10.9, medTweets: 8,  strongThreshold: 12, weakThreshold: 4,
+    expectedContrib: 7.0,  muDropIfAbsent: 11 },
+];
+
+type SessionStatus = 'confirmed' | 'strong' | 'weak' | 'absent' | 'ongoing' | 'pending' | 'upcoming';
+
+interface SessionState {
+  def: SessionDef;
+  status: SessionStatus;
+  actual: number;       // 今日该会话实际推文数
+  label: string;        // 状态描述
+  muAdjust: number;     // 对µ的修正量（正=上修，负=下修）
+  isAnomaly: boolean;
+  anomalyDesc: string;
+  entrySignal: 'buy' | 'sell' | 'hold' | 'wait' | null;
+}
+
 function parseRange(range: string): { min: number; max: number } | null {
   const match = range.match(/(\d+)-(\d+)/);
   if (match) return { min: parseInt(match[1]), max: parseInt(match[2]) };
@@ -678,79 +720,143 @@ export default function App() {
   const E_rem = R * (T / 24);
   const mu = C + E_rem;
 
-  // ── 时间加权 µ（比均匀分配更精准）──────────────────────────────────────────
+  // ── 时间加权 µ（按剩余小时活跃权重加权）─────────────────────────────────────
   const timeWeightedMu = useMemo(() => {
     if (R <= 0 || T <= 0) return mu;
     const nowBJ = new Date(Date.now() + 8 * 3600 * 1000);
-    const currentBJHour = nowBJ.getUTCHours();
-    const minuteFraction = (60 - nowBJ.getUTCMinutes()) / 60; // 当前小时剩余比例
-    let weightSum = HOURLY_WEIGHTS_BJ[currentBJHour] * minuteFraction;
-    const fullHoursLeft = Math.max(0, Math.floor(T) - 1);
-    for (let i = 1; i <= fullHoursLeft; i++) {
-      weightSum += HOURLY_WEIGHTS_BJ[(currentBJHour + i) % 24];
-    }
-    return Math.round((C + R * weightSum) * 10) / 10;
+    const bjHour = nowBJ.getUTCHours();
+    const minFrac = (60 - nowBJ.getUTCMinutes()) / 60;
+    let w = HOURLY_WEIGHTS_BJ[bjHour] * minFrac;
+    const fullLeft = Math.max(0, Math.floor(T) - 1);
+    for (let i = 1; i <= fullLeft; i++) w += HOURLY_WEIGHTS_BJ[(bjHour + i) % 24];
+    return Math.round((C + R * w) * 10) / 10;
   }, [C, R, T, mu]);
 
-  // ── 入场时机评估（基于当前北京时间）──────────────────────────────────────────
-  const entryTimingInfo = useMemo(() => {
-    const h = getBJHourNow();
-    const m = new Date(Date.now() + 8 * 3600 * 1000).getUTCMinutes();
-    if (h === 12 && m <= 35)
-      return { level: 'BEST',    badge: '⭐⭐ 最佳建仓时机', desc: '午夜爆发前，历史+150%跳跃即将发生（BJ 13:00）', color: 'emerald' };
-    if (h >= 13 && h <= 15)
-      return { level: 'ACTIVE',  badge: '📈 深夜爆发进行中', desc: `全天最高峰（CDT凌晨${h - 12}点），µ正在快速上移`, color: 'amber' };
-    if (h === 21 && m <= 35)
-      return { level: 'GOOD',    badge: '⭐ 良好建仓时机', desc: '美国上班前，上午活跃窗口（BJ 22:00）即将开始', color: 'sky' };
-    if (h === 22 || h === 23)
-      return { level: 'ACTIVE',  badge: '📈 上午活跃期', desc: 'CDT 9-10am，第二活跃峰，适合评估仓位', color: 'amber' };
-    if (h >= 17 && h <= 19)
-      return { level: 'DEAD',    badge: '💤 全天死区', desc: '全天最低点（CDT 4-6am），不要等信号，适合冷静剪仓', color: 'slate' };
-    if (h >= 8 && h <= 12)
-      return { level: 'LOW',     badge: '🔵 美国傍晚低谷', desc: 'CDT 7-11pm 反而是低谷，µ变化慢，耐心等BJ 12:00', color: 'slate' };
-    if (h === 16)
-      return { level: 'FADING',  badge: '📉 爆发尾声', desc: 'CDT 3am，深夜高峰快结束，不宜追高建仓', color: 'yellow' };
-    return { level: 'NEUTRAL',   badge: '🟡 中等时段', desc: '活跃度平均，等待下一个关键窗口', color: 'yellow' };
-  }, []);
-
-  // ── 今日关键窗口异常检测 ─────────────────────────────────────────────────────
-  const todayWindowAnomalies = useMemo(() => {
+  // ── 会话状态分析（核心：识别今日各会话现状，驱动µ修正和入场信号）────────────
+  const sessionAnalysis = useMemo(() => {
     const h = getBJHourNow();
     const todayHourly = getHeatmapTodayHourly();
-    if (Object.keys(todayHourly).length === 0 || R <= 0) return [];
-    const anomalies: { id: string; window: string; actual: number; expected: number; severity: 'high' | 'medium'; muImpact: string; suggestion: string }[] = [];
-    // 窗口A：BJ 12-16（深夜爆发，应贡献日均10.3/43.4 = 23.7%）
-    if (h > 16) {
-      const actual = [12, 13, 14, 15].reduce((s, x) => s + (todayHourly[x] || 0), 0);
-      const expected = Math.round(R * (0.0280 + 0.0699 + 0.0785 + 0.0616));
-      if (actual < expected * 0.45) {
-        anomalies.push({
-          id: 'window-a',
-          window: 'BJ 12–16（CDT 深夜）',
-          actual, expected,
-          severity: actual < expected * 0.2 ? 'high' : 'medium',
-          muImpact: `µ可能偏高 ~${Math.round((expected - actual) * 0.8)} 条`,
-          suggestion: '建议将µ估计下调 10–20%，观察今日整体是否偏慢',
-        });
+    const hasHeatmapData = Object.keys(todayHourly).length > 0;
+    const states: SessionState[] = [];
+    let totalMuAdjust = 0;
+
+    for (const def of SESSION_DEFS) {
+      const windowStart = def.bjHours[0];
+      const windowEnd   = def.bjHours[def.bjHours.length - 1];
+      const actual      = def.bjHours.reduce((s, x) => s + (todayHourly[x] || 0), 0);
+      // 期望推文量 = 按当前pace缩放（pace / 历史日均 * 历史期望贡献）
+      const paceScale   = R > 0 ? R / 43.4 : 1;
+      const expected    = Math.round(def.expectedContrib * paceScale);
+
+      let status: SessionStatus;
+      let label = '';
+      let muAdjust = 0;
+      let isAnomaly = false;
+      let anomalyDesc = '';
+      let entrySignal: SessionState['entrySignal'] = null;
+
+      if (h < windowStart) {
+        // 窗口尚未开始
+        status = 'upcoming';
+        label  = `待开始（BJ ${windowStart}:00后）`;
+        // 未来窗口按期望贡献计入（已含在base µ中，不修正）
+        if (def.name === '深夜会话' && h >= 11 && h <= 12) {
+          entrySignal = 'buy'; // 深夜窗口即将开始，买入信号
+        }
+        if (def.name === '上午会话' && h >= 20 && h <= 21) {
+          entrySignal = 'buy';
+        }
+
+      } else if (h <= windowEnd) {
+        // 窗口当前开放
+        if (!hasHeatmapData || actual === 0) {
+          status = 'pending'; // 窗口已开但还没数据/推文
+          label  = `窗口已开 · 等待首推`;
+          // 不确定，不修正
+        } else if (actual >= def.strongThreshold) {
+          status = 'strong';
+          label  = `强势进行中 · 已发 ${actual} 条`;
+          muAdjust = Math.round(def.avgTweets * 0.3); // 超强，上修
+          entrySignal = 'hold'; // 高峰期，持仓为主
+        } else if (actual <= def.weakThreshold) {
+          status = 'weak';
+          label  = `较弱 · 已发 ${actual} 条`;
+          isAnomaly = true;
+          anomalyDesc = `当前${actual}条，预期${expected}条，偏低 ${Math.round((1-actual/Math.max(expected,1))*100)}%`;
+          muAdjust = -Math.round(def.avgTweets * 0.25);
+        } else {
+          status = 'ongoing';
+          label  = `进行中 · 已发 ${actual} 条`;
+          entrySignal = def.name === '深夜会话' ? 'hold' : null;
+        }
+
+      } else {
+        // 窗口已过
+        if (!hasHeatmapData) {
+          status = 'upcoming'; label = '无今日数据';
+        } else if (actual === 0) {
+          // 完全缺席
+          status = 'absent';
+          label  = `缺席（0条）`;
+          isAnomaly = def.freq >= 0.6; // 高频会话缺席才算异常
+          if (isAnomaly) {
+            anomalyDesc = `历史${Math.round(def.freq*100)}%的天会出现，今日缺席`;
+            muAdjust = -Math.round(def.expectedContrib * paceScale);
+          }
+          entrySignal = def.name === '深夜会话' && actual === 0 ? 'wait' : null;
+        } else if (actual >= def.strongThreshold) {
+          status = 'strong';
+          label  = `✓ 强势 · ${actual}条`;
+          muAdjust = Math.round((actual - def.avgTweets) * 0.5);
+        } else if (actual <= def.weakThreshold) {
+          status = 'weak';
+          label  = `✓ 偏弱 · ${actual}条`;
+          isAnomaly = true;
+          anomalyDesc = `实际${actual}条，历史中位${def.medTweets}条，偏低明显`;
+          muAdjust = -Math.round((def.medTweets - actual) * 0.6);
+        } else {
+          status = 'confirmed';
+          label  = `✓ 正常 · ${actual}条`;
+          muAdjust = Math.round((actual - def.avgTweets) * 0.3);
+        }
       }
+
+      totalMuAdjust += muAdjust;
+      states.push({ def, status, actual, label, muAdjust, isAnomaly, anomalyDesc, entrySignal });
     }
-    // 窗口B：BJ 22-23（上午活跃，应贡献5.4%+5.2%=10.6%）
-    if (h >= 23) {
-      const actual = (todayHourly[22] || 0) + (todayHourly[23] || 0);
-      const expected = Math.round(R * (0.0603 + 0.0522));
-      if (actual < expected * 0.4) {
-        anomalies.push({
-          id: 'window-b',
-          window: 'BJ 22–23（CDT 9–10am）',
-          actual, expected,
-          severity: 'medium',
-          muImpact: `今日节奏偏慢 ~${Math.round((expected - actual))} 条`,
-          suggestion: '上午窗口沉默，观察深夜窗口是否补发',
-        });
-      }
-    }
-    return anomalies;
-  }, [R]);
+
+    // 综合入场信号：找最高优先级信号
+    const buySignals  = states.filter(s => s.entrySignal === 'buy');
+    const sellSignals = states.filter(s => s.entrySignal === 'sell');
+    const anomalies   = states.filter(s => s.isAnomaly);
+
+    // 主时机判断（覆盖会话状态）
+    const m = new Date(Date.now() + 8 * 3600 * 1000).getUTCMinutes();
+    let timing: { badge: string; desc: string; level: string; color: string };
+    if (h === 12 && m <= 35)
+      timing = { level:'BEST',   badge:'⭐⭐ 最佳建仓时机', color:'emerald', desc:'深夜会话窗口将在25min内开启，历史+150%跳跃即将发生' };
+    else if (states.find(s => s.def.name==='深夜会话' && (s.status==='ongoing'||s.status==='strong')))
+      timing = { level:'ACTIVE', badge:'🌙 深夜会话进行中', color:'violet',  desc:`全天最强会话（均值14条），µ正在上移，评估止盈时机` };
+    else if (h === 21 && m <= 35)
+      timing = { level:'GOOD',   badge:'⭐ 上午会话前建仓', color:'sky',    desc:'上午会话（64%频率）即将在BJ 22:00开启' };
+    else if (states.find(s => s.def.name==='上午会话' && (s.status==='ongoing'||s.status==='strong')))
+      timing = { level:'ACTIVE', badge:'🏙️ 上午会话进行中', color:'amber',  desc:'CDT 9-11am活跃期，第二强信号，注意是否接近结束' };
+    else if (h >= 17 && h <= 19)
+      timing = { level:'DEAD',   badge:'💤 睡眠沉默期',    color:'slate',   desc:'深夜会话已结束，Musk入睡，µ冻结，适合冷静评估/剪仓' };
+    else if (h >= 8 && h <= 11)
+      timing = { level:'LOW',    badge:'🔵 深夜前过渡期',  color:'slate',   desc:'傍晚结束→等待深夜，CDT 7-10pm低谷，等BJ 12:00' };
+    else if (states.find(s => s.def.name==='傍晚会话' && (s.status==='ongoing'||s.status==='strong')))
+      timing = { level:'WATCH',  badge:'🌆 傍晚会话进行中', color:'yellow', desc:'傍晚会话（51%频率），若出现则65%概率今晚有深夜会话' };
+    else
+      timing = { level:'NEUTRAL',badge:'🟡 过渡时段',      color:'yellow',  desc:'活跃度中等，等待下一个会话窗口' };
+
+    return { states, totalMuAdjust, timing, buySignals, sellSignals, anomalies };
+  }, [R, mu]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 会话修正后的µ
+  const sessionAdjustedMu = Math.round(timeWeightedMu + sessionAnalysis.totalMuAdjust);
+  // 向用户展示的「最佳µ估计」= 取时间加权µ与会话修正µ的中间值（避免过度修正）
+  const bestMu = Math.round((timeWeightedMu + sessionAdjustedMu) / 2);
 
   const getPoissonProb = (k: number, lambda: number): number => {
     if (k < 0) return 0;
@@ -1532,89 +1638,129 @@ export default function App() {
                     </div>
                     <div>
                       <h2 className="text-lg font-semibold text-slate-200">时机 & 节奏分析</h2>
-                      <p className="text-xs text-slate-500">基于206天小时行为数据 · 北京时间</p>
+                      <p className="text-xs text-slate-500">基于206天 · 5会话模型 · 北京时间</p>
                     </div>
                   </div>
 
-                  {/* 当前时机 + 时间加权µ */}
+                  {/* 当前时机 + µ三重对比 */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* 入场时机 */}
                     <div className={`rounded-xl p-4 border ${
-                      entryTimingInfo.level === 'BEST'   ? 'bg-emerald-500/10 border-emerald-500/30' :
-                      entryTimingInfo.level === 'GOOD'   ? 'bg-sky-500/10 border-sky-500/30' :
-                      entryTimingInfo.level === 'ACTIVE' ? 'bg-amber-500/10 border-amber-500/30' :
-                      entryTimingInfo.level === 'DEAD'   ? 'bg-slate-800/60 border-slate-700' :
-                                                           'bg-slate-800/40 border-slate-700/50'
+                      sessionAnalysis.timing.level === 'BEST'    ? 'bg-emerald-500/10 border-emerald-500/30' :
+                      sessionAnalysis.timing.level === 'GOOD'    ? 'bg-sky-500/10 border-sky-500/30' :
+                      sessionAnalysis.timing.level === 'ACTIVE'  ? 'bg-violet-500/10 border-violet-500/30' :
+                      sessionAnalysis.timing.level === 'DEAD'    ? 'bg-slate-800/60 border-slate-700' :
+                      sessionAnalysis.timing.level === 'WATCH'   ? 'bg-yellow-500/8 border-yellow-500/25' :
+                                                                    'bg-slate-800/40 border-slate-700/50'
                     }`}>
                       <p className="text-xs text-slate-400 mb-1">当前入场时机</p>
                       <p className={`text-base font-bold mb-1 ${
-                        entryTimingInfo.level === 'BEST'   ? 'text-emerald-400' :
-                        entryTimingInfo.level === 'GOOD'   ? 'text-sky-400' :
-                        entryTimingInfo.level === 'ACTIVE' ? 'text-amber-400' :
-                                                             'text-slate-400'
-                      }`}>{entryTimingInfo.badge}</p>
-                      <p className="text-xs text-slate-500 leading-relaxed">{entryTimingInfo.desc}</p>
+                        sessionAnalysis.timing.level === 'BEST'   ? 'text-emerald-400' :
+                        sessionAnalysis.timing.level === 'GOOD'   ? 'text-sky-400' :
+                        sessionAnalysis.timing.level === 'ACTIVE' ? 'text-violet-400' :
+                        sessionAnalysis.timing.level === 'WATCH'  ? 'text-yellow-400' :
+                        sessionAnalysis.timing.level === 'DEAD'   ? 'text-slate-500' :
+                                                                     'text-slate-400'
+                      }`}>{sessionAnalysis.timing.badge}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed">{sessionAnalysis.timing.desc}</p>
                     </div>
 
-                    {/* 时间加权 µ vs 简单 µ */}
+                    {/* µ 三重对比：简单µ / 时间加权µ / 最佳µ */}
                     <div className="rounded-xl p-4 bg-violet-500/10 border border-violet-500/20">
                       <p className="text-xs text-slate-400 mb-2">落点预测对比</p>
-                      <div className="flex items-end gap-3">
+                      <div className="flex items-end gap-3 flex-wrap">
                         <div>
-                          <p className="text-2xl font-bold text-violet-400 font-mono">{timeWeightedMu.toFixed(0)}</p>
-                          <p className="text-xs text-violet-300">时间加权 µ</p>
+                          <p className="text-2xl font-bold text-emerald-400 font-mono">{bestMu}</p>
+                          <p className="text-xs text-emerald-300">最佳µ</p>
                         </div>
-                        <div className="pb-1 text-slate-600">vs</div>
+                        <div className="pb-1 text-slate-600 text-xs">←</div>
                         <div>
-                          <p className="text-xl font-bold text-slate-400 font-mono">{mu.toFixed(0)}</p>
-                          <p className="text-xs text-slate-500">简单 µ</p>
+                          <p className="text-lg font-bold text-violet-400 font-mono">{timeWeightedMu.toFixed(0)}</p>
+                          <p className="text-xs text-violet-300">时间加权</p>
                         </div>
-                        {Math.abs(timeWeightedMu - mu) >= 3 && (
-                          <div className={`pb-1 text-xs font-medium ${timeWeightedMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {timeWeightedMu > mu ? '↑' : '↓'} {Math.abs(timeWeightedMu - mu).toFixed(0)} 条
+                        <div className="pb-1 text-slate-600 text-xs">/</div>
+                        <div>
+                          <p className="text-lg font-bold text-slate-400 font-mono">{mu.toFixed(0)}</p>
+                          <p className="text-xs text-slate-500">简单µ</p>
+                        </div>
+                        {sessionAnalysis.totalMuAdjust !== 0 && (
+                          <div className={`pb-1 text-xs font-medium ${sessionAnalysis.totalMuAdjust > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            会话 {sessionAnalysis.totalMuAdjust > 0 ? '+' : ''}{sessionAnalysis.totalMuAdjust}
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-slate-600 mt-1">
-                        {Math.abs(timeWeightedMu - mu) < 3
-                          ? '两者接近，剩余时间活跃度分布均匀'
-                          : timeWeightedMu > mu
-                            ? '剩余时间含高活跃窗口，实际落点可能更高'
-                            : '剩余时间偏向低活跃段，实际落点可能更低'}
+                      <p className="text-xs text-slate-600 mt-1.5">
+                        最佳µ = 时间加权 & 会话修正均值，用于盘口分析
                       </p>
                     </div>
                   </div>
 
-                  {/* 今日窗口异常 */}
-                  {todayWindowAnomalies.length > 0 && (
-                    <div className="space-y-3">
+                  {/* 5大会话状态卡片 */}
+                  <div>
+                    <p className="text-xs text-slate-500 mb-2">今日5大会话状态</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                      {sessionAnalysis.states.map(s => {
+                        const statusColor =
+                          s.status === 'strong'    ? 'border-emerald-500/40 bg-emerald-500/8' :
+                          s.status === 'confirmed' ? 'border-sky-500/30 bg-sky-500/8' :
+                          s.status === 'ongoing'   ? 'border-violet-500/40 bg-violet-500/10' :
+                          s.status === 'weak'      ? 'border-rose-500/35 bg-rose-500/8' :
+                          s.status === 'absent'    ? 'border-rose-500/50 bg-rose-500/12' :
+                          s.status === 'pending'   ? 'border-amber-500/30 bg-amber-500/8' :
+                          s.status === 'upcoming'  ? 'border-slate-600/50 bg-slate-800/40' :
+                                                     'border-slate-700/40 bg-slate-800/30';
+                        const statusText =
+                          s.status === 'strong'    ? 'text-emerald-400' :
+                          s.status === 'confirmed' ? 'text-sky-400' :
+                          s.status === 'ongoing'   ? 'text-violet-400' :
+                          s.status === 'weak'      ? 'text-rose-400' :
+                          s.status === 'absent'    ? 'text-rose-500' :
+                          s.status === 'pending'   ? 'text-amber-400' :
+                                                     'text-slate-500';
+                        return (
+                          <div key={s.def.name} className={`rounded-xl p-3 border ${statusColor}`}>
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-base">{s.def.emoji}</span>
+                              <p className="text-xs font-semibold text-slate-300 leading-tight">{s.def.name}</p>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mb-1">{s.def.cdt}</p>
+                            <p className={`text-xs font-medium ${statusText} leading-tight`}>{s.label}</p>
+                            {s.muAdjust !== 0 && (
+                              <p className={`text-[10px] mt-1 font-mono ${s.muAdjust > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                µ {s.muAdjust > 0 ? '+' : ''}{s.muAdjust}
+                              </p>
+                            )}
+                            {s.entrySignal === 'buy' && (
+                              <p className="text-[10px] mt-1 text-emerald-400 font-bold">→ 建仓信号</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 会话异常警告 */}
+                  {sessionAnalysis.anomalies.length > 0 && (
+                    <div className="space-y-2">
                       <p className="text-xs font-medium text-rose-400 flex items-center gap-1.5">
-                        <span>⚠️</span> 今日关键窗口异常
+                        <span>⚠️</span> 今日会话异常
                       </p>
-                      {todayWindowAnomalies.map(a => (
-                        <div key={a.id} className={`rounded-xl p-4 border ${
-                          a.severity === 'high'
-                            ? 'bg-rose-500/10 border-rose-500/30'
-                            : 'bg-amber-500/8 border-amber-500/25'
-                        }`}>
+                      {sessionAnalysis.anomalies.map(a => (
+                        <div key={a.def.name} className="rounded-xl p-3 border bg-rose-500/8 border-rose-500/30">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className={`text-sm font-semibold ${a.severity === 'high' ? 'text-rose-300' : 'text-amber-300'}`}>
-                                {a.window} 沉默
+                              <p className="text-sm font-semibold text-rose-300">
+                                {a.def.emoji} {a.def.name} 异常
                               </p>
-                              <p className="text-xs text-slate-400 mt-1">
-                                实际 {a.actual} 条 / 预期 {a.expected} 条
-                                <span className="mx-1 text-slate-600">·</span>
-                                {a.muImpact}
-                              </p>
-                              <p className="text-xs text-slate-500 mt-1">{a.suggestion}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{a.anomalyDesc}</p>
+                              {a.muAdjust !== 0 && (
+                                <p className={`text-xs mt-0.5 font-mono ${a.muAdjust > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  µ修正 {a.muAdjust > 0 ? '+' : ''}{a.muAdjust} 条
+                                </p>
+                              )}
                             </div>
-                            <div className={`shrink-0 text-xs px-2 py-1 rounded-lg ${
-                              a.severity === 'high'
-                                ? 'bg-rose-500/20 text-rose-300'
-                                : 'bg-amber-500/20 text-amber-300'
-                            }`}>
-                              {a.severity === 'high' ? '高风险' : '注意'}
+                            <div className="shrink-0 text-xs px-2 py-1 rounded-lg bg-rose-500/20 text-rose-300">
+                              {a.status === 'absent' ? '缺席' : '偏弱'}
                             </div>
                           </div>
                         </div>
@@ -1627,14 +1773,14 @@ export default function App() {
                     <p className="text-xs text-slate-500 mb-3">今日各时段预期发推权重（北京时间）</p>
                     <div className="grid grid-cols-6 gap-1">
                       {[
-                        { label: '00-04', hours: [0,1,2,3],   desc: 'CDT 11am-3pm' },
-                        { label: '04-08', hours: [4,5,6,7],   desc: 'CDT 3-7pm' },
-                        { label: '08-12', hours: [8,9,10,11], desc: 'CDT 7-11pm ⚠️低' },
+                        { label: '00-04', hours: [0,1,2,3],    desc: 'CDT 11am-3pm' },
+                        { label: '04-08', hours: [4,5,6,7],    desc: 'CDT 3-7pm' },
+                        { label: '08-12', hours: [8,9,10,11],  desc: 'CDT 7-11pm ⚠️低' },
                         { label: '12-16', hours: [12,13,14,15],desc: 'CDT 11pm-3am ⭐' },
                         { label: '16-20', hours: [16,17,18,19],desc: 'CDT 3-7am 💤' },
                         { label: '20-24', hours: [20,21,22,23],desc: 'CDT 7-11am' },
                       ].map(seg => {
-                        const w = seg.hours.reduce((s, h) => s + HOURLY_WEIGHTS_BJ[h], 0);
+                        const w = seg.hours.reduce((s, hh) => s + HOURLY_WEIGHTS_BJ[hh], 0);
                         const currentBJH = getBJHourNow();
                         const isActive = seg.hours.includes(currentBJH);
                         const pct = Math.round(w * 100);
@@ -1664,7 +1810,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">盘口价值比分析</h2>
-                        <p className="text-xs text-slate-500">基于泊松分布 · 预测中心 μ = {mu.toFixed(1)} · 加权 μ = {timeWeightedMu.toFixed(1)}</p>
+                        <p className="text-xs text-slate-500">基于泊松分布 · 简单 μ = {mu.toFixed(1)} · 最佳 μ = {bestMu}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400">
