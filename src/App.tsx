@@ -18,6 +18,7 @@ import {
   Wallet,
   Bell,
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 import { TweetHeatmap } from './components/TweetHeatmap';
 import { StrategyGuide } from './components/StrategyGuide';
 import { PositionManager } from './components/PositionManager';
@@ -2663,6 +2664,7 @@ ${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
             </>
           )}
         </button>
+      <Analytics />
       </section>
     </div>
   );
