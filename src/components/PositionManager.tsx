@@ -132,22 +132,22 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
             </h2>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-slate-800/60 rounded-xl border border-slate-700/50">
-                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">总投入</p>
+                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-medium">总投入</p>
                 <p className="text-2xl font-bold text-slate-100 font-mono">${totalInvested.toFixed(0)}</p>
               </div>
               <div className="text-center p-4 bg-sky-950/60 rounded-xl border border-sky-500/30">
-                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">当前估值</p>
+                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-medium">当前估值</p>
                 <p className="text-2xl font-bold text-sky-300 font-mono">${totalValue.toFixed(0)}</p>
-                <p className="text-[11px] text-slate-500 mt-1">按市价折算</p>
+                <p className="text-xs text-slate-400 mt-1">按市价折算</p>
               </div>
               <div className={`text-center p-4 rounded-xl border ${
                 totalPnl >= 0 ? 'bg-emerald-950/60 border-emerald-500/30' : 'bg-rose-950/60 border-rose-500/30'
               }`}>
-                <p className="text-[11px] text-slate-500 mb-2 uppercase tracking-wider font-medium">浮动盈亏</p>
+                <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-medium">浮动盈亏</p>
                 <p className={`text-2xl font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
                   {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(0)}
                 </p>
-                <p className={`text-[11px] mt-1 font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <p className={`text-xs mt-1 font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {totalPnlPct >= 0 ? '+' : ''}{totalPnlPct.toFixed(1)}%
                 </p>
               </div>
@@ -217,7 +217,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none">%</span>
                 </div>
                 {entryPrice && !isNaN(parseFloat(entryPrice)) && parseFloat(entryPrice) > 0 && (
-                  <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                  <p className="text-xs text-slate-400 mt-1 font-mono">
                     每份 ${(parseFloat(entryPrice) / 100).toFixed(3)} · 赔率 {(100 / parseFloat(entryPrice)).toFixed(2)}x
                   </p>
                 )}
@@ -239,7 +239,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                   />
                 </div>
                 {entryPrice && amount && !isNaN(parseFloat(entryPrice)) && !isNaN(parseFloat(amount)) && parseFloat(entryPrice) > 0 && (
-                  <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                  <p className="text-xs text-slate-400 mt-1 font-mono">
                     ≈ {(parseFloat(amount) / (parseFloat(entryPrice) / 100)).toFixed(0)} 份 YES token
                   </p>
                 )}
@@ -309,7 +309,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                         <div>
                           <span className="font-mono font-semibold text-slate-200">{g.range}</span>
                           {g.signal && (
-                            <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded font-semibold ${
                               g.signal === 'takeprofit' ? 'bg-emerald-500/20 text-emerald-300' :
                               g.signal === 'stoploss'   ? 'bg-rose-500/20 text-rose-300' :
                                                          'bg-amber-500/20 text-amber-300'
@@ -318,7 +318,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                             </span>
                           )}
                           {g.tradeCount > 1 && (
-                            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 font-mono">
+                            <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 font-mono">
                               {g.tradeCount} 笔合并
                             </span>
                           )}
@@ -326,7 +326,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-400">
                         {g.avgEntry.toFixed(1)}%
-                        {g.tradeCount > 1 && <span className="text-[10px] text-slate-500 ml-1">均</span>}
+                        {g.tradeCount > 1 && <span className="text-xs text-slate-400 ml-1">均</span>}
                       </td>
                       <td className="py-3 px-3 text-right font-mono">
                         {g.currentPrice > 0 ? (
@@ -349,7 +349,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                             <p className={`font-mono font-semibold ${g.totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                               {g.totalPnl >= 0 ? '+' : ''}${g.totalPnl.toFixed(1)}
                             </p>
-                            <p className={`text-[10px] font-mono ${g.totalPnlPct >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <p className={`text-xs font-mono ${g.totalPnlPct >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                               {g.totalPnlPct >= 0 ? '+' : ''}{g.totalPnlPct.toFixed(1)}%
                             </p>
                           </div>

@@ -1258,7 +1258,7 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-base font-semibold text-slate-100 tracking-wide">马斯克推文预测市场</h1>
-                <p className="text-[11px] text-slate-500 tracking-wider uppercase">Musk Tweet Prediction Markets</p>
+                <p className="text-xs text-slate-400 tracking-wider uppercase">Musk Tweet Prediction Markets</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -1739,7 +1739,7 @@ export default function App() {
                                   {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                 </p>
                               )}
-                              <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">{seg.zh}</p>
+                              <p className="text-xs text-slate-400 mt-1.5 leading-tight">{seg.zh}</p>
                             </div>
                           );
                         })}
@@ -1799,7 +1799,7 @@ export default function App() {
                                   )}
                                 </div>
                               </div>
-                              <p className={`text-[10px] font-mono ${isCurr ? 'text-sky-400' : 'text-slate-500'}`}>
+                              <p className={`text-xs font-mono ${isCurr ? 'text-sky-400' : 'text-slate-400'}`}>
                                 {h === 0 || h % 4 === 0 ? h : ''}
                               </p>
                             </div>
@@ -1979,7 +1979,7 @@ export default function App() {
                                     {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                   </p>
                                 )}
-                                <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">{zhLines[0]}</p>
+                                <p className="text-xs text-slate-400 mt-1.5 leading-tight">{zhLines[0]}</p>
                               </div>
                             );
                           })}
@@ -2355,7 +2355,7 @@ export default function App() {
                               <span className={`font-bold font-mono ${item.isCenter ? 'text-sky-300' : 'text-slate-200'}`}>
                                 {item.range}
                               </span>
-                              <span className="text-slate-500 text-[11px] font-mono">
+                              <span className="text-slate-400 text-xs font-mono">
                                 市场 {item.price.toFixed(1)}%
                               </span>
                             </div>
@@ -2374,7 +2374,7 @@ export default function App() {
                         );
                       })}
                     </div>
-                    <p className="mt-3 text-[11px] text-slate-500 text-center">
+                    <p className="mt-3 text-xs text-slate-400 text-center">
                       正态分布偏宽（Δ正）→ 尾部风险更大；偏窄（Δ负）→ 中心更集中
                     </p>
                   </section>

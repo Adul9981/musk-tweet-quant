@@ -463,7 +463,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               <span className={`font-bold text-sm ${draft.mode === 'ntfy' ? 'text-emerald-300' : 'text-slate-300'}`}>
                 ntfy（推荐）
               </span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-semibold">简单</span>
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-semibold">简单</span>
             </div>
             <p className="text-xs text-slate-400">无需注册，装个 App 就能用，1 分钟搞定</p>
           </button>
@@ -482,7 +482,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               <span className={`font-bold text-sm ${draft.mode === 'telegram' ? 'text-sky-300' : 'text-slate-300'}`}>
                 Telegram Bot
               </span>
-              <span className="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-semibold">高级</span>
+              <span className="text-xs bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-semibold">高级</span>
             </div>
             <p className="text-xs text-slate-400">需要 Cloudflare Worker + Bot Token，配置较多</p>
           </button>

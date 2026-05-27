@@ -50,7 +50,7 @@ export function StrategyGuide() {
                 <tr className="border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors">
                   <td className="py-3 px-3">
                     <p className="font-bold text-sky-300">倒数第三天上午</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">（距到期 2.5–3天）</p>
+                    <p className="text-xs text-slate-400 mt-0.5">（距到期 2.5–3天）</p>
                   </td>
                   <td className="py-3 px-3 text-slate-300">中心区间 60% + 上翼 28% + 下翼 12%</td>
                   <td className="py-3 px-3 text-right font-mono font-bold text-emerald-400">$1250</td>
@@ -59,7 +59,7 @@ export function StrategyGuide() {
                 <tr className="border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors">
                   <td className="py-3 px-3">
                     <p className="font-bold text-emerald-300">倒数第二天</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">（距到期 1.5–2.5天）</p>
+                    <p className="text-xs text-slate-400 mt-0.5">（距到期 1.5–2.5天）</p>
                   </td>
                   <td className="py-3 px-3 text-slate-300">集中加仓中心区间（主力仓）</td>
                   <td className="py-3 px-3 text-right font-mono font-bold text-emerald-400">$2000</td>
@@ -70,7 +70,7 @@ export function StrategyGuide() {
                     <p className="font-bold text-yellow-300 flex items-center gap-1.5">
                       <Star className="w-3.5 h-3.5" />最后一天上午
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">（距到期 1–1.5天）</p>
+                    <p className="text-xs text-slate-400 mt-0.5">（距到期 1–1.5天）</p>
                   </td>
                   <td className="py-3 px-3 text-slate-300">
                     <p>卖翼仓 40% 同时——</p>
@@ -251,13 +251,13 @@ export function StrategyGuide() {
             ].map((step, i) => (
               <div key={i} className={`p-3 rounded-xl border ${step.bg}`}>
                 <div className={`w-2 h-2 rounded-full ${step.dot} mx-auto mb-2`} />
-                <p className="text-slate-500 text-[10px] leading-tight">{step.label}</p>
-                <p className="text-slate-600 text-[10px] mb-1">{step.sublabel}</p>
+                <p className="text-slate-400 text-xs leading-tight">{step.label}</p>
+                <p className="text-slate-500 text-xs mb-1">{step.sublabel}</p>
                 <p className={`font-bold text-xs ${step.color}`}>{step.value}</p>
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-slate-600 text-center mt-4">
+          <p className="text-xs text-slate-500 text-center mt-4">
             中心区间是稳定收益来源 · 超额机会是锦上添花 · 翼仓按时减仓，不靠临场判断
           </p>
         </div>

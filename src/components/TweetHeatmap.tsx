@@ -344,7 +344,7 @@ export function TweetHeatmap() {
               {hours.map(hour => (
                 <div key={hour} className="flex flex-col items-center" style={{ width: cellSize }}>
                   <span className="text-xs text-slate-400 font-medium">{hour}点</span>
-                  <span className="text-[9px] text-slate-600">
+                  <span className="text-[10px] text-slate-500">
                     ({getETFromBeijing(hour).replace(' ET', '')})
                   </span>
                   {hour === currentBJHour && (
@@ -406,7 +406,7 @@ export function TweetHeatmap() {
                             className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full flex items-center justify-center"
                             title="数据异常"
                           >
-                            <span className="text-[8px] font-bold text-white">!</span>
+                            <span className="text-[10px] font-bold text-white">!</span>
                           </div>
                         )}
                         {isCurrentHour && (
@@ -461,7 +461,7 @@ export function TweetHeatmap() {
                   {block.start}:00-{block.start + 3}:59
                 </span>
               ))}
-              <span className="text-slate-600 text-[10px]">(4小时区间)</span>
+              <span className="text-slate-500 text-xs">(4小时区间)</span>
             </div>
           </div>
         </div>
@@ -576,7 +576,7 @@ export function TweetHeatmap() {
                         <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-400" />
                       )}
                     </div>
-                    <span className={`text-[8px] ${isCurrent ? 'text-sky-400 font-bold' : isPeak ? 'text-violet-400' : 'text-slate-600'}`}>
+                    <span className={`text-[10px] ${isCurrent ? 'text-sky-400 font-bold' : isPeak ? 'text-violet-400' : 'text-slate-500'}`}>
                       {h}
                     </span>
                   </div>
