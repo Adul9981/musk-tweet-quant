@@ -55,106 +55,212 @@ function buildAlerts(input: AlertInput) {
   const alerts: Array<{ key: string; title: string; message: string; priority: string }> = [];
   const { mu, remainingDays, currentTweetCount, todayTotal, apiPace, analysisData } = input;
 
-  const center    = analysisData.find(r => r.isCenter);
-  const centerMax = center?.parsed?.max ?? 0;
-  const centerMin = center?.parsed?.min ?? 0;
+  // ── 价值比预计算（核心框架：VR = 模型概率 / 市场价格）────────
+  // VR > 1.0 → 正期望（市场低估）；VR < 1.0 → 负期望（市场高估）
+  const withVR = analysisData
+    .filter(r => r.price > 0 && r.realProb > 0)
+    .map(r => ({ ...r, vr: r.realProb / r.price }))
+    .sort((a, b) => b.vr - a.vr);
+
+  const center         = withVR.find(r => r.isCenter);
+  const centerVR       = center ? center.vr : 0;
+  const centerMax      = center?.parsed?.max ?? 0;
+  const centerMin      = center?.parsed?.min ?? 0;
+  // 中心区间高估：价格>35¢ 且 VR<1.0（RULES §1.1.2）
+  const centerOverpriced = !!center && center.price > 35 && centerVR < 1.0;
+
+  // 主仓候选：model_prob≥10% 中VR最高的区间
+  const mainCandidate  = withVR.filter(r => r.realProb >= 10)[0];
+  // 保护仓：中心落点下方1档（+0.3档系统偏高对冲，RULES §4.1）
+  const sortedByMin    = [...analysisData].sort((a, b) => (a.parsed?.min ?? 0) - (b.parsed?.min ?? 0));
+  const centerIdx      = sortedByMin.findIndex(r => r.isCenter);
+  const protectRaw     = centerIdx > 0 ? sortedByMin[centerIdx - 1] : null;
+  const protectCandidate = protectRaw
+    ? { ...protectRaw, vr: protectRaw.price > 0 ? protectRaw.realProb / protectRaw.price : 0 }
+    : null;
+  // 高赔率仓：price≤5¢ && VR≥2.0（RULES §4.2）
+  const lotteryCandidate = withVR.find(r =>
+    r.price <= 5 && r.vr >= 2.0
+    && r.range !== mainCandidate?.range
+    && r.range !== protectCandidate?.range
+  );
+
+  const vrLabel = (vr: number) => {
+    if (vr >= 2.5) return '⭐高赔率低估';
+    if (vr >= 1.5) return '✅明显低估';
+    if (vr >= 1.2) return '✅低估';
+    if (vr >= 1.0) return '🟡合理';
+    if (vr >= 0.8) return '🟠略高估';
+    return '❌高估';
+  };
+
   const daysLabel = remainingDays < 1
     ? `${Math.round(remainingDays * 24)} 小时`
     : `${remainingDays.toFixed(1)} 天`;
 
-  // 1. 操作阶段变更
-  const phases = [
-    { key: 'phase_entry1',  range: [2.5, 3.0] as [number,number], title: '⏰ 第一次建仓窗口开启',   body: `距到期 ${daysLabel}，可分散布局中心+两翼，使用总资金 25%` },
-    { key: 'phase_entry2',  range: [1.5, 2.5] as [number,number], title: '⏰ 加仓窗口',            body: `落点趋稳，集中加码中心区间，部署总资金 40%` },
-    { key: 'phase_wing1',   range: [1.0, 1.5] as [number,number], title: '⏰ 翼仓开始减仓',        body: `今晚减持翼仓 40%，寻找超额收益机会` },
-    { key: 'phase_wing2',   range: [0.5, 1.0] as [number,number], title: '⏰ 翼仓继续减仓',        body: `再减 50%，专注等待中心区间结算` },
-    { key: 'phase_final',   range: [0.0, 0.5] as [number,number], title: '⏰ 临近结算！最终阶段',  body: `翼仓全部清仓，中心 >65% 可止盈 20%` },
+  // 格式化三层入场结构（RULES §4.1）
+  const fmtEntryStructure = (): string => {
+    if (!mainCandidate) return '（暂无有效入场点）';
+    const lines: string[] = [];
+    lines.push(`🟦 主仓 50-70% → ${mainCandidate.range}  ${mainCandidate.price.toFixed(1)}¢  VR${mainCandidate.vr.toFixed(2)}x  ${vrLabel(mainCandidate.vr)}`);
+    if (protectCandidate) {
+      lines.push(`🟨 保护仓 20-30% → ${protectCandidate.range}  ${protectCandidate.price.toFixed(1)}¢  VR${protectCandidate.vr.toFixed(2)}x  (+0.3档偏高对冲)`);
+    } else {
+      lines.push('🟨 保护仓 — 中心已在最低档，无下方区间');
+    }
+    if (lotteryCandidate) {
+      lines.push(`⭐ 高赔率仓 ≤5% → ${lotteryCandidate.range}  ${lotteryCandidate.price.toFixed(1)}¢  VR${lotteryCandidate.vr.toFixed(2)}x`);
+    }
+    const overallVR = mainCandidate.vr;
+    lines.push(
+      overallVR >= 1.2 ? '总体：✅ 有入场价值，可执行建仓'
+      : overallVR >= 1.0 ? '总体：🟡 勉强可入，等更好时机'
+      : '总体：❌ 无正期望入场点，等待价格回调'
+    );
+    return lines.join('\n');
+  };
+
+  // ── 1. 操作阶段变更（整合价值比判断）──────────────────────────
+  type Phase = { key: string; range: [number, number]; title: string };
+  const phases: Phase[] = [
+    { key: 'phase_entry1', range: [2.5, 3.0], title: '⏰ 建仓窗口开启（早期）' },
+    { key: 'phase_entry2', range: [1.5, 2.5], title: '⏰ 主力建仓窗口' },
+    { key: 'phase_hold1',  range: [1.0, 1.5], title: '⏰ 持仓评估阶段' },
+    { key: 'phase_hold2',  range: [0.5, 1.0], title: '⏰ 止盈评估阶段' },
+    { key: 'phase_final',  range: [0.0, 0.5], title: '⏰ 最终阶段 · 临近结算' },
   ];
   for (const p of phases) {
     if (remainingDays >= p.range[0] && remainingDays < p.range[1]) {
-      alerts.push({
-        key: p.key, priority: 'high', title: p.title,
-        message: `${p.title}\n\n${p.body}\n\n预测落点 ~${Math.round(mu)} 条${center ? `，落点区间 ${center.range}（赔率 ${center.price.toFixed(0)}%）` : ''}\n距到期 ${daysLabel}`,
-      });
+      let body = '';
+      if (p.key === 'phase_entry1') {
+        // 早期：µ不确定性大（±50条），轻仓试探
+        const noEntry = !mainCandidate || mainCandidate.vr < 1.0;
+        body = noEntry
+          ? `µ不确定性大（±50条），且当前无正期望入场点（最优VR=${mainCandidate?.vr.toFixed(2) ?? '?'}x）\n建议观望，等价格回调或µ更新后再决策`
+          : `µ不确定性大（±50条），只宜轻仓≤25%试探\n${centerOverpriced ? `⚠️ 中心区间 ${center!.range} 定价偏高（${center!.price.toFixed(0)}¢，VR${centerVR.toFixed(2)}x）\n主仓看两侧区间，不买中心\n\n` : ''}最高VR区间：${mainCandidate!.range}  ${mainCandidate!.price.toFixed(1)}¢  VR${mainCandidate!.vr.toFixed(2)}x  ${vrLabel(mainCandidate!.vr)}\n\n建议：轻仓试探，等 1.5-2天 µ稳定后再加主仓`;
+      } else if (p.key === 'phase_entry2') {
+        // 主力建仓：最佳窗口，输出完整三层结构
+        const noEntry = !mainCandidate || mainCandidate.vr < 1.0;
+        body = noEntry
+          ? `主力建仓窗口开启，但当前最优区间价值比偏低（VR=${mainCandidate?.vr.toFixed(2) ?? '?'}x）\n⚠️ 不要为了「入场而入场」，等价格回调后再操作\n\n距到期 ${daysLabel}`
+          : `µ精度提升（±20条），最佳入场时机\n${centerOverpriced ? `⚠️ 中心区间 ${center!.range} 已高估（${center!.price.toFixed(0)}¢  VR${centerVR.toFixed(2)}x），主仓移至价值比更高区间\n\n` : '\n'}${fmtEntryStructure()}\n\n距到期 ${daysLabel}`;
+      } else if (p.key === 'phase_hold1') {
+        body = `µ精度较高（±12条），持仓评估期\n\n检查持仓：\n• 持仓区间 VR 是否仍 ≥1.0？µ是否仍在区间内？\n• 有更高VR相邻区间？→ 评估换仓（死区BJ 17:30执行）\n• µ偏移 >1.5σ（约25-30条）时才考虑换仓\n\n距到期 ${daysLabel}`;
+      } else if (p.key === 'phase_hold2') {
+        const centerInfo = center ? `\n中心区间 ${center.range} 当前 ${center.price.toFixed(0)}¢` : '';
+        body = `µ非常稳定，止盈评估期${centerInfo}\n\n• >75¢ → 卖出50%锁利，剩余博到期$1\n• >85¢ → 大部分止盈\n• 亏损仓位且VR<0.8 → 死区出场，不拖延\n\n距到期 ${daysLabel}`;
+      } else if (p.key === 'phase_final') {
+        const centerInfo = center ? `\n落点 ${center.range} 当前 ${center.price.toFixed(0)}¢` : '';
+        body = `µ高度确定（±8条），最后操作窗口${centerInfo}\n\n• 亏损仓位：现在出，不再等（死亡陷阱：「再等等看」）\n• 盈利仓位：持有到期 或 已止盈50%→不动\n• >85¢：可全部止盈\n\n距到期 ${daysLabel}`;
+      }
+      alerts.push({ key: p.key, priority: 'high', title: p.title, message: `${p.title}\n\n${body}` });
       break;
     }
   }
 
-  // 2. 落点接近区间边界
+  // ── 2. 中心区间定价偏高（核心新增告警，RULES §1.1.2、§10.2）──
+  if (centerOverpriced && center) {
+    const top3 = withVR.filter(r => r.range !== center.range && r.realProb >= 3).slice(0, 3);
+    const altLines = top3.map(r => `  ${r.range}  ${r.price.toFixed(1)}¢  VR${r.vr.toFixed(2)}x  ${vrLabel(r.vr)}`).join('\n');
+    alerts.push({
+      key: `center_overpriced_${center.range}_${Math.floor(center.price)}`,
+      priority: 'urgent',
+      title: '⚠️ 中心区间定价偏高，负EV！',
+      message: `预测最可能区间已被高估（预测正确≠下注正确）\n\n中心 ${center.range}：价格 ${center.price.toFixed(0)}¢，模型概率 ${center.realProb.toFixed(0)}%\n价值比 ${centerVR.toFixed(2)}x ❌ 买入是负EV操作\n\n更划算的区间：\n${altLines || '（暂无正期望区间）'}\n\n建议：主仓放弃中心区间，移至价值比最高的相邻区间`,
+    });
+  }
+
+  // ── 3. 落点接近区间边界（RULES §3.4 边界分仓规则）──────────
   if (centerMax > 0 && center) {
     const distUp   = centerMax - mu;
     const distDown = mu - centerMin;
     const dist     = Math.min(distUp, distDown);
     if (dist <= 10 && dist >= 0) {
-      const side = distUp < distDown ? '上' : '下';
+      const side       = distUp < distDown ? '上' : '下';
+      const adjRange   = distUp < distDown
+        ? withVR.find(r => (r.parsed?.min ?? 0) >= centerMax)
+        : withVR.find(r => (r.parsed?.max ?? 0) <= centerMin);
+      const adjNote    = adjRange
+        ? `\n相邻${side}方：${adjRange.range}  ${adjRange.price.toFixed(1)}¢  VR${adjRange.vr.toFixed(2)}x  ${vrLabel(adjRange.vr)}`
+        : '';
       alerts.push({
         key: `boundary_${center.range}_${Math.floor(mu / 5)}`,
         priority: 'urgent',
         title: `🚨 落点接近区间${side}边界`,
-        message: `落点接近区间${side}边界\n\n预测落点 ~${Math.round(mu)} 条，距${side}边界仅 ${Math.round(dist)} 条\n建议评估是否在两侧区间分仓\n\n距到期 ${daysLabel}`,
+        message: `落点接近区间${side}边界\n\n预测落点 ~${Math.round(mu)} 条，距${side}边界仅 ${Math.round(dist)} 条${adjNote}\n\n建议：在${side}方相邻区间补建保护仓（RULES §3.4）\nµ误差约±10条，边界两侧都有实质概率\n\n距到期 ${daysLabel}`,
       });
     }
   }
 
-  // 3. 发推速率异常
+  // ── 4. 发推速率异常 ─────────────────────────────────────────
   if (apiPace > 0 && todayTotal > 0) {
-    const todayHours   = Math.max(1, 24 - (remainingDays % 1) * 24);
-    const todayProj    = (todayTotal / todayHours) * 24;
-    const ratio        = todayProj / apiPace;
-    const dateKey      = new Date().toISOString().slice(0, 10);
+    const todayHours = Math.max(1, 24 - (remainingDays % 1) * 24);
+    const todayProj  = (todayTotal / todayHours) * 24;
+    const ratio      = todayProj / apiPace;
+    const dateKey    = new Date().toISOString().slice(0, 10);
     if (ratio < 0.45) {
       alerts.push({
         key: `pace_slow_${dateKey}`, priority: 'default',
         title: '📉 马斯克今天发推异常少',
-        message: `马斯克今天突然安静了\n\n今日已发 ${todayTotal} 条，预估全天 ${Math.round(todayProj)} 条\n本期日均 ${Math.round(apiPace)} 条/天，今天不到一半\n\n预测落点可能下调，注意区间是否需要调整`,
+        message: `马斯克今天突然安静了\n\n今日已发 ${todayTotal} 条，预估全天 ${Math.round(todayProj)} 条\n本期日均 ${Math.round(apiPace)} 条/天，今天不到一半\n\n⚠️ µ可能虚高约14条（RULES §2.3）\n单日沉默不要立刻换仓，等今日死区（BJ 17:30）重新评估µ后再决策`,
       });
     } else if (ratio > 1.9) {
       alerts.push({
         key: `pace_fast_${dateKey}`, priority: 'default',
         title: '📈 马斯克今天发推异常多',
-        message: `马斯克今天猛发了一波\n\n今日已发 ${todayTotal} 条，预估全天 ${Math.round(todayProj)} 条\n本期日均 ${Math.round(apiPace)} 条/天，今天近两倍\n\n预测落点可能上调，检查当前区间是否仍准确`,
+        message: `马斯克今天猛发了一波\n\n今日已发 ${todayTotal} 条，预估全天 ${Math.round(todayProj)} 条\n本期日均 ${Math.round(apiPace)} 条/天，今天近两倍\n\n⚠️ 价格正在上涨，不追仓（RULES §6.1）\n有仓位：BJ 14:00 是全天止盈最佳时机，+30%可考虑减仓 30-50%`,
       });
     }
   }
 
-  // 4. EV 超额机会
-  const best = analysisData
-    .filter(r => !r.isCenter && r.realProb >= 5 && r.price > 0 && r.price < 35)
-    .map(r => ({ ...r, ev: r.realProb / r.price }))
-    .filter(r => r.ev >= 1.4)
-    .sort((a, b) => b.ev - a.ev)[0];
-  if (best) {
-    alerts.push({
-      key: `ev_${best.range}_${Math.floor(best.price)}`,
-      priority: 'default',
-      title: `⭐ EV+ 超额机会：${best.range}`,
-      message: `发现超额机会\n\n区间 ${best.range}\n市场赔率 ${best.price.toFixed(1)}% vs 模型 ${best.realProb.toFixed(1)}%\nEV指数 ${best.ev.toFixed(2)}，中奖 ${(100/best.price).toFixed(1)}x\n\n建议用中心仓位收益的一部分小仓博弈`,
-    });
+  // ── 5. 价值比机会（替代旧版EV+告警）────────────────────────
+  // 找到VR最高且模型有实质概率的区间，输出三层结构建议
+  const topVR = withVR.filter(r => r.vr >= 1.2 && r.realProb >= 3);
+  if (topVR.length > 0 && mainCandidate && mainCandidate.vr >= 1.2) {
+    const needAlert = mainCandidate.vr >= 1.5           // 有高价值区间
+      || (centerOverpriced && mainCandidate.vr >= 1.2); // 或者中心高估时有替代
+    if (needAlert) {
+      const vrLines = topVR.slice(0, 4)
+        .map(r => `  ${r.isCenter ? '★' : ' '} ${r.range}  ${r.price.toFixed(1)}¢  VR${r.vr.toFixed(2)}x  ${vrLabel(r.vr)}`)
+        .join('\n');
+      alerts.push({
+        key: `vr_opp_${mainCandidate.range}_${Math.floor(mainCandidate.price)}`,
+        priority: mainCandidate.vr >= 1.5 ? 'high' : 'default',
+        title: `💡 入场结构建议（价值比分析）`,
+        message: `各区间价值比排名：\n${vrLines}\n\n推荐入场结构：\n${fmtEntryStructure()}\n\n提醒：预测正确≠下注正确\n只有VR≥1.0的区间才有正期望（RULES §1.1.1）`,
+      });
+    }
   }
 
-  // 5. 中心止盈信号
+  // ── 6. 止盈信号 ─────────────────────────────────────────────
   if (center && remainingDays < 1.5) {
     if (center.price >= 75) {
       alerts.push({
         key: `tp_high_${center.range}`, priority: 'high',
-        title: `💰 中心区间止盈信号（高位）`,
-        message: `中心区间止盈信号\n\n${center.range} 当前价格 ${center.price.toFixed(0)}%\n建议减仓 30% 锁定收益，主仓继续持有\n\n距到期 ${daysLabel}`,
+        title: `💰 止盈信号（高位）`,
+        message: `落点区间已进入高位止盈区间（RULES §5.3）\n\n${center.range} 当前价格 ${center.price.toFixed(0)}¢\n建议：卖出 50% 锁利，剩余博到期 $1\n>85¢ 时可大部分止盈\n\n距到期 ${daysLabel}`,
       });
     } else if (center.price >= 65) {
       alerts.push({
         key: `tp_mid_${center.range}`, priority: 'default',
-        title: `💰 中心区间可轻度止盈`,
-        message: `中心区间止盈信号\n\n${center.range} 当前价格 ${center.price.toFixed(0)}%\n可轻度减仓 20%，主仓继续持有等待结算\n\n距到期 ${daysLabel}`,
+        title: `💰 可轻度止盈`,
+        message: `落点区间进入可轻度止盈区间\n\n${center.range} 当前价格 ${center.price.toFixed(0)}¢\n可减仓 20-30% 锁定部分收益，主仓继续持有等结算\n\n距到期 ${daysLabel}`,
       });
     }
   }
 
-  // 6. 落点跑偏
+  // ── 7. 落点跑偏 ─────────────────────────────────────────────
   if (centerMax > 0 && currentTweetCount > centerMax && remainingDays < 3) {
+    const newCenter = withVR.find(r =>
+      (r.parsed?.min ?? 0) <= currentTweetCount && currentTweetCount <= (r.parsed?.max ?? 0)
+    );
+    const newCenterNote = newCenter
+      ? `新落点可能是：${newCenter.range}（${newCenter.price.toFixed(1)}¢  VR${newCenter.vr.toFixed(2)}x  ${vrLabel(newCenter.vr)}）`
+      : '落点可能需要上调，等模型更新';
     alerts.push({
       key: `overshot_${Math.floor(currentTweetCount / 20)}`, priority: 'urgent',
       title: `⚠️ 当前发推数已超出落点区间`,
-      message: `注意：当前发推数已超出落点区间上限\n\n当前已发 ${currentTweetCount} 条，超过上限 ${centerMax} 条\n落点区间可能需要上调，检查模型是否已更新\n\n距到期 ${daysLabel}`,
+      message: `当前发推数已超出落点区间上限\n\n已发 ${currentTweetCount} 条，超过上限 ${centerMax} 条\n${newCenterNote}\n\n建议：检查模型是否已更新，有仓位评估是否换仓\n距到期 ${daysLabel}`,
     });
   }
 
@@ -551,12 +657,13 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
         <p className="text-sm font-bold text-white mb-3">会推送哪些提醒</p>
         <div className="space-y-2">
           {[
-            { e: '⏰', l: '操作时机',      d: '建仓窗口开启、翼仓减仓、临近结算，关键节点不错过' },
-            { e: '🚨', l: '落点边界预警',  d: '预测落点距区间边界 ≤10 条时提醒，评估是否分仓' },
-            { e: '📉📈', l: '速率异常',   d: '马斯克今天发推异常少或多，可能影响落点预测' },
-            { e: '⭐', l: 'EV+ 超额机会', d: '某区间价格低于模型估值 40%+，值得小仓博弈' },
-            { e: '💰', l: '中心止盈信号', d: '中心区间价格涨至 65% / 75% 时提醒止盈' },
-            { e: '⚠️', l: '落点跑偏',    d: '当前发推数超过落点区间上限，模型可能需要更新' },
+            { e: '⏰', l: '操作阶段提醒',    d: '建仓/持仓/止盈各阶段提醒，含价值比判断和三层入场结构建议' },
+            { e: '⚠️', l: '中心区间高估警告', d: '中心区间价格 >35¢ 且价值比<1.0 时告警，避免负EV操作' },
+            { e: '🚨', l: '落点边界预警',    d: '预测落点距区间边界 ≤10 条，提醒补建相邻保护仓' },
+            { e: '📉📈', l: '速率异常',      d: '今日节奏异常少（µ可能虚高）或异常多（不追仓，评估止盈）' },
+            { e: '💡', l: '价值比机会',      d: '有区间VR≥1.5或中心高估时，输出完整三层入场结构建议' },
+            { e: '💰', l: '止盈信号',        d: '落点区间价格涨至 65%/75% 时提醒分批止盈' },
+            { e: '⚠️', l: '落点跑偏',        d: '当前发推数超出落点区间上限，提示新落点和价值比' },
           ].map(item => (
             <div key={item.l} className="flex items-start gap-3 p-3 bg-slate-800/40 rounded-xl">
               <span className="text-base shrink-0">{item.e}</span>

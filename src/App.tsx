@@ -697,8 +697,11 @@ export default function App() {
     }
   }, [activeMarkets]);
 
-  const currentTracking = activeTrackings[selectedMarketIndex] || activeTrackings[0];
   const currentMarket = activeMarkets[selectedMarketIndex] || activeMarkets[0];
+  // Match tracking by slug so switching markets always shows correct stats
+  const currentTracking = activeTrackings.find(t => t.slug === currentMarket?.slug)
+    || activeTrackings[selectedMarketIndex]
+    || activeTrackings[0];
 
   useEffect(() => {
     if (currentTracking?.stats) {
@@ -1338,7 +1341,7 @@ export default function App() {
                 className={`flex items-center gap-2 px-5 py-3.5 text-xs font-medium border-b-2 transition-all tracking-wide ${
                   activeTab === tab.id
                     ? 'border-sky-500 text-sky-400 bg-sky-500/5'
-                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
@@ -1415,26 +1418,26 @@ export default function App() {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <div className="bg-slate-800/50 border border-sky-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">当前总数</p>
+                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">当前总数</p>
                       <p className="text-3xl font-bold text-sky-400 font-mono">{currentTracking?.stats?.total || '—'}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">条推文</p>
+                      <p className="text-xs text-slate-400 mt-1">条推文</p>
                     </div>
                     <div className="bg-slate-800/50 border border-emerald-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">今日新增</p>
+                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">今日新增</p>
                       <p className="text-3xl font-bold text-emerald-400 font-mono">{currentTracking?.stats?.todayTotal || '—'}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">条</p>
+                      <p className="text-xs text-slate-400 mt-1">条</p>
                     </div>
                     <div className="bg-slate-800/50 border border-amber-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">日均时速</p>
+                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">日均时速</p>
                       <p className="text-3xl font-bold text-amber-400 font-mono">{currentTracking?.stats?.pace || '—'}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">条/天</p>
+                      <p className="text-xs text-slate-400 mt-1">条/天</p>
                     </div>
                     <div className="bg-slate-800/50 border border-violet-500/15 rounded-xl p-4 text-center">
-                      <p className="text-[11px] text-slate-400 mb-1 uppercase tracking-wide">剩余时间</p>
+                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">剩余时间</p>
                       <p className="text-3xl font-bold text-violet-400 font-mono">
                         {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}d` : '—'}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         {currentTracking?.stats && currentTracking.stats.hoursRemaining > 0
                           ? `${currentTracking.stats.hoursRemaining}h`
                           : '结束'}
@@ -1444,8 +1447,8 @@ export default function App() {
 
                   <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-800">
                     <div className="flex justify-between text-xs mb-2">
-                      <span className="text-slate-500">完成进度</span>
-                      <span className="text-slate-300 font-mono font-medium">{currentTracking?.stats?.percentComplete || 0}%</span>
+                      <span className="text-slate-400">完成进度</span>
+                      <span className="text-slate-200 font-mono font-medium">{currentTracking?.stats?.percentComplete || 0}%</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                       <div
@@ -1467,7 +1470,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
-                          <p className="text-[11px] text-slate-400 uppercase tracking-wide">交易量</p>
+                          <p className="text-xs text-slate-300 uppercase tracking-wide font-medium">交易量</p>
                           <p className="text-sm font-bold text-sky-400 font-mono">
                             ${(currentMarket.volume / 1000000).toFixed(1)}M
                           </p>
@@ -1484,21 +1487,21 @@ export default function App() {
                       </div>
                     </div>
                     {lastUpdated && (
-                      <div className="text-[11px] text-slate-500 mb-4 font-mono">
+                      <div className="text-xs text-slate-400 mb-4 font-mono">
                         数据更新: {new Date(lastUpdated).toLocaleString('zh-CN')}
                       </div>
                     )}
 
                     <div className="mb-5 p-4 bg-sky-500/5 rounded-xl border border-sky-500/15">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-400">预测中心落点</span>
+                        <span className="text-sm text-slate-300">预测中心落点</span>
                         <span className="text-2xl font-bold text-sky-400 font-mono">
                           ~{predictedCenter} 条
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 mt-1 font-mono">
+                      <div className="text-xs text-slate-400 mt-1 font-mono">
                         日均 <span className="text-amber-400">{apiPace.toFixed(1)}</span> 条/天
-                        <span className="ml-2 text-slate-500">· {(apiPace / 24).toFixed(2)} 条/h</span>
+                        <span className="ml-2 text-slate-400">· {(apiPace / 24).toFixed(2)} 条/h</span>
                       </div>
                     </div>
                     
@@ -1513,21 +1516,21 @@ export default function App() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span className={`font-mono text-sm font-medium ${r.isCenter ? 'text-sky-300' : 'text-slate-300'}`}>
+                            <span className={`font-mono text-sm font-semibold ${r.isCenter ? 'text-sky-300' : 'text-slate-200'}`}>
                               {r.range}
                             </span>
                             {r.isCenter && (
-                              <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 text-[10px] rounded font-medium tracking-wide">CENTER</span>
+                              <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-300 text-xs rounded font-semibold tracking-wide">CENTER</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-20 bg-slate-800 rounded-full h-1 overflow-hidden">
+                            <div className="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${r.isCenter ? 'bg-sky-500' : 'bg-slate-600'}`}
+                                className={`h-full rounded-full ${r.isCenter ? 'bg-sky-500' : 'bg-slate-500'}`}
                                 style={{ width: `${Math.min(r.price || 0, 25) * 4}%` }}
                               />
                             </div>
-                            <span className={`text-sm font-bold font-mono w-12 text-right ${r.isCenter ? 'text-sky-400' : 'text-slate-400'}`}>
+                            <span className={`text-sm font-bold font-mono w-12 text-right ${r.isCenter ? 'text-sky-400' : 'text-slate-300'}`}>
                               {r.price.toFixed(1)}%
                             </span>
                           </div>
@@ -1540,7 +1543,7 @@ export default function App() {
 
               <div className="space-y-4">
                 <section className="bg-[#162538] rounded-2xl p-5 border border-slate-800/80">
-                  <h3 className="text-xs font-medium text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
                     市场列表
                   </h3>
@@ -1562,10 +1565,10 @@ export default function App() {
                           <button onClick={() => handleSelectMarket(i)} className="w-full text-left mb-2.5">
                             <div className="flex items-start justify-between">
                               <div>
-                                <span className={`text-xs font-medium block ${isActive ? 'text-sky-300' : 'text-slate-300'}`}>
+                                <span className={`text-sm font-semibold block ${isActive ? 'text-sky-300' : 'text-slate-200'}`}>
                                   {parseMarketTitle(market.title)}
                                 </span>
-                                <span className="text-[11px] text-slate-600 mt-0.5 block font-mono">
+                                <span className="text-xs text-slate-400 mt-0.5 block font-mono">
                                   剩余 {daysLeft}d · ${(market.volume / 1000000).toFixed(1)}M
                                 </span>
                               </div>
@@ -1590,14 +1593,14 @@ export default function App() {
                 {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
                   <section className="bg-[#162538] rounded-2xl p-5 border border-slate-800/80">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider">每日发推</h3>
-                      <span className="text-[10px] text-slate-600 bg-slate-800 px-1.5 py-0.5 rounded font-mono">UTC</span>
+                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">每日发推</h3>
+                      <span className="text-xs text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">UTC</span>
                     </div>
                     <div className="space-y-0">
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
-                        <div key={day.date || i} className="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
-                          <span className="text-xs text-slate-500">{formatDate(day.date)}</span>
-                          <span className="text-xs font-bold text-sky-400 font-mono">{day.count}</span>
+                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+                          <span className="text-sm text-slate-300">{formatDate(day.date)}</span>
+                          <span className="text-sm font-bold text-sky-400 font-mono">{day.count}</span>
                         </div>
                       ))}
                     </div>
@@ -1676,7 +1679,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
-                        <p className="text-xs text-slate-500">北京时间 {bjH}:00 · 基于206天历史数据</p>
+                        <p className="text-xs text-slate-400">北京时间 {bjH}:00 · 基于206天历史数据</p>
                       </div>
                     </div>
 
@@ -1684,15 +1687,15 @@ export default function App() {
                     <div className={`rounded-xl p-4 border ${timingBg}`}>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-slate-500 mb-1">当前马斯克状态</p>
+                          <p className="text-xs text-slate-400 mb-1">当前马斯克状态</p>
                           <p className={`text-lg font-bold leading-snug ${timingText}`}>{t.badge}</p>
-                          <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{t.desc}</p>
+                          <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{t.desc}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">本期落点预测（条）</p>
+                          <p className="text-xs text-slate-400 mt-0.5">本期落点预测（条）</p>
                           {Math.abs(bestMu - Math.round(mu)) >= 3 && (
-                            <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-500' : 'text-rose-400'}`}>
+                            <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
                               {bestMu > mu ? '↑' : '↓'} 比简单预测{bestMu > mu ? '高' : '低'} {Math.abs(bestMu - Math.round(mu))} 条
                             </p>
                           )}
@@ -1702,7 +1705,7 @@ export default function App() {
 
                     {/* 24h 时间轴 */}
                     <div>
-                      <p className="text-xs text-slate-500 mb-2.5">今日24小时活跃规律（北京时间）</p>
+                      <p className="text-xs text-slate-400 mb-2.5">今日24小时活跃规律（北京时间）</p>
                       <div className="grid grid-cols-6 gap-1.5">
                         {SEGS.map(seg => {
                           const hours     = seg.hours as readonly number[];
@@ -1723,20 +1726,20 @@ export default function App() {
                               : 'bg-slate-800/40 border-slate-700/20';
                           return (
                             <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
-                              <p className={`text-[11px] font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level==='peak' ? 'text-violet-300' : 'text-slate-400'}`}>
+                              <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level==='peak' ? 'text-violet-300' : 'text-slate-300'}`}>
                                 {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
                               </p>
                               <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
                               {isPast && hasTodayData ? (
-                                <p className="text-sm font-mono font-bold text-slate-200">{actual}条</p>
+                                <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
                               ) : isCurrent ? (
                                 <p className="text-xs font-semibold text-sky-400">进行中</p>
                               ) : (
-                                <p className={`text-xs ${seg.level==='peak' ? 'text-violet-400 font-semibold' : seg.level==='sleep' ? 'text-slate-600' : 'text-slate-500'}`}>
+                                <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-violet-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
                                   {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                 </p>
                               )}
-                              <p className="text-[9px] text-slate-600 mt-1.5 leading-tight">{seg.zh}</p>
+                              <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">{seg.zh}</p>
                             </div>
                           );
                         })}
@@ -1745,7 +1748,7 @@ export default function App() {
 
                     {/* 落点影响白话 */}
                     <div className="rounded-xl p-4 border border-slate-700/40 bg-slate-800/30 space-y-2.5">
-                      <p className="text-xs font-semibold text-slate-400">📌 对本期落点的影响</p>
+                      <p className="text-xs font-semibold text-slate-300">📌 对本期落点的影响</p>
                       {impactLines.map((l, i) => (
                         <p key={i} className={`text-sm leading-relaxed ${l.color}`}>
                           {l.icon}  {l.text}
@@ -1763,7 +1766,7 @@ export default function App() {
                         </div>
                         <div>
                           <h2 className="text-lg font-semibold text-slate-200">今日发推热力图</h2>
-                          <p className="text-xs text-slate-500">北京时间 · 每小时实际条数 vs 历史基线</p>
+                          <p className="text-xs text-slate-400">北京时间 · 每小时实际条数 vs 历史基线</p>
                         </div>
                       </div>
                       <div className="flex items-end gap-1 h-28">
@@ -1796,14 +1799,14 @@ export default function App() {
                                   )}
                                 </div>
                               </div>
-                              <p className={`text-[8px] font-mono ${isCurr ? 'text-sky-400' : 'text-slate-600'}`}>
+                              <p className={`text-[10px] font-mono ${isCurr ? 'text-sky-400' : 'text-slate-500'}`}>
                                 {h === 0 || h % 4 === 0 ? h : ''}
                               </p>
                             </div>
                           );
                         })}
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500">
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-500 inline-block"/>实际（正常）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-violet-500 inline-block"/>实际（偏高）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500/70 inline-block"/>实际（偏低）</span>
@@ -1910,7 +1913,7 @@ export default function App() {
                         </div>
                         <div>
                           <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
-                          <p className="text-xs text-slate-500">北京时间 {bjH}:00 · 基于206天历史数据</p>
+                          <p className="text-xs text-slate-400">北京时间 {bjH}:00 · 基于206天历史数据</p>
                         </div>
                       </div>
 
@@ -1918,15 +1921,15 @@ export default function App() {
                       <div className={`rounded-xl p-4 border ${timingBg}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-slate-500 mb-1">当前马斯克状态</p>
+                            <p className="text-xs text-slate-400 mb-1">当前马斯克状态</p>
                             <p className={`text-lg font-bold leading-snug ${timingText}`}>{t.badge}</p>
-                            <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{t.desc}</p>
+                            <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{t.desc}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">本期落点预测（条）</p>
+                            <p className="text-xs text-slate-400 mt-0.5">本期落点预测（条）</p>
                             {Math.abs(bestMu - Math.round(mu)) >= 3 && (
-                              <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-500' : 'text-rose-400'}`}>
+                              <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {bestMu > mu ? '↑' : '↓'} 比简单预测{bestMu > mu ? '高' : '低'} {Math.abs(bestMu - Math.round(mu))} 条
                               </p>
                             )}
@@ -1936,7 +1939,7 @@ export default function App() {
 
                       {/* ② 24h 时间轴 */}
                       <div>
-                        <p className="text-xs text-slate-500 mb-2.5">今日24小时活跃规律（北京时间）</p>
+                        <p className="text-xs text-slate-400 mb-2.5">今日24小时活跃规律（北京时间）</p>
                         <div className="grid grid-cols-6 gap-1.5">
                           {SEGS.map(seg => {
                             const hours     = seg.hours as readonly number[];
@@ -1962,21 +1965,21 @@ export default function App() {
 
                             return (
                               <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
-                                <p className={`text-[11px] font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level === 'peak' ? 'text-violet-300' : 'text-slate-400'}`}>
+                                <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-sky-300' : seg.level === 'peak' ? 'text-violet-300' : 'text-slate-300'}`}>
                                   {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
                                 </p>
                                 <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
                                 {/* 今日数据行 */}
                                 {isPast && hasTodayData ? (
-                                  <p className="text-sm font-mono font-bold text-slate-200">{actual}条</p>
+                                  <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
                                 ) : isCurrent ? (
                                   <p className="text-xs font-semibold text-sky-400">进行中</p>
                                 ) : (
-                                  <p className={`text-xs ${seg.level==='peak' ? 'text-violet-400 font-semibold' : seg.level==='sleep' ? 'text-slate-600' : 'text-slate-500'}`}>
+                                  <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-violet-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                   </p>
                                 )}
-                                <p className="text-[9px] text-slate-600 mt-1.5 leading-tight">{zhLines[0]}</p>
+                                <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">{zhLines[0]}</p>
                               </div>
                             );
                           })}
@@ -1985,7 +1988,7 @@ export default function App() {
 
                       {/* ③ 落点影响白话文 */}
                       <div className="rounded-xl p-4 border border-slate-700/40 bg-slate-800/30 space-y-2.5">
-                        <p className="text-xs font-semibold text-slate-400">📌 对本期落点的影响</p>
+                        <p className="text-xs font-semibold text-slate-300">📌 对本期落点的影响</p>
                         {impactLines.map((l, i) => (
                           <p key={i} className={`text-sm leading-relaxed ${l.color}`}>
                             {l.icon}  {l.text}
@@ -2004,7 +2007,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">盘口价值比分析</h2>
-                        <p className="text-xs text-slate-500">基于泊松分布 · 简单 μ = {mu.toFixed(1)} · 最佳 μ = {bestMu}</p>
+                        <p className="text-xs text-slate-400">基于泊松分布 · 简单 μ = {mu.toFixed(1)} · 最佳 μ = {bestMu}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -2050,12 +2053,12 @@ export default function App() {
                           const statusClass = item.isCenter ? 'bg-sky-500/20 text-sky-300' :
                                              item.status === 'busted' ? 'bg-rose-500/15 text-rose-400' :
                                              item.status === 'passed' ? 'bg-emerald-500/15 text-emerald-400' :
-                                             'bg-slate-800 text-slate-500';
+                                             'bg-slate-800 text-slate-300';
                           const statusText = item.isCenter ? '中心' :
                                            item.status === 'busted' ? '已破' :
                                            item.status === 'passed' ? '已过' : '活跃';
                           const payout = item.marketPrice > 0 ? (100 / item.marketPrice * 100 - 100) : 0;
-                          const payoutClass = payout > 100 ? 'text-emerald-400' : payout > 50 ? 'text-sky-400' : 'text-slate-500';
+                          const payoutClass = payout > 100 ? 'text-emerald-400' : payout > 50 ? 'text-sky-400' : 'text-slate-300';
                           const isPositive = item.trueProb > item.marketPrice;
                           const trueProbClass = isPositive ? 'text-emerald-400' : 'text-rose-400';
                           const profitLoss = item.trueProb - item.marketPrice;
@@ -2066,7 +2069,7 @@ export default function App() {
                               <td className={`py-3 px-3 font-semibold font-mono ${item.isCenter ? 'text-sky-300' : 'text-slate-300'}`}>
                                 {item.range}
                               </td>
-                              <td className="py-3 px-3 text-right text-slate-500 font-mono">{item.marketPrice.toFixed(1)}%</td>
+                              <td className="py-3 px-3 text-right text-slate-300 font-mono">{item.marketPrice.toFixed(1)}%</td>
                               <td className={`py-3 px-3 text-right font-semibold font-mono ${trueProbClass}`}>{item.trueProb.toFixed(1)}%</td>
                               <td className={`py-3 px-3 text-right font-semibold font-mono ${payoutClass}`}>
                                 {payout > 0 ? '+' : ''}{payout.toFixed(0)}%
@@ -2086,7 +2089,7 @@ export default function App() {
                     </table>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-500 p-3 bg-slate-800/40 rounded-lg">
+                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400 p-3 bg-slate-800/40 rounded-lg">
                     <div className="flex items-center gap-4">
                       <span>真实概率 &gt; 赔率 = <span className="text-emerald-400 font-medium">盈利</span></span>
                       <span>真实概率 &lt; 赔率 = <span className="text-rose-400 font-medium">亏损</span></span>
@@ -2103,7 +2106,7 @@ export default function App() {
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-slate-200">目标区间时速倒推雷达</h2>
-                        <p className="text-xs text-slate-500 font-mono">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
+                        <p className="text-xs text-slate-400 font-mono">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
                       </div>
                     </div>
                   </div>
@@ -2132,35 +2135,35 @@ export default function App() {
                             </span>
                             <div className="flex gap-1">
                               {item.isCenter && (
-                                <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-400 text-[10px] rounded font-medium">中心</span>
+                                <span className="px-1.5 py-0.5 bg-sky-500/20 text-sky-300 text-xs rounded font-semibold">中心</span>
                               )}
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded font-medium ${badgeColor}`}>{label}</span>
+                              <span className={`px-1.5 py-0.5 text-xs rounded font-semibold ${badgeColor}`}>{label}</span>
                             </div>
                           </div>
 
                           {/* Primary: tweets needed — most prominent */}
                           <div className="bg-slate-900/50 rounded-lg p-3 mb-3 text-center">
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">还需发推</p>
+                            <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">还需发推</p>
                             <p className="text-2xl font-bold text-white font-mono leading-none">
                               +{item.tweetsNeededMin}
-                              <span className="text-slate-500 text-lg mx-1">~</span>
+                              <span className="text-slate-400 text-lg mx-1">~</span>
                               +{item.tweetsNeededMax}
                             </p>
-                            <p className="text-[10px] text-slate-500 mt-1">条</p>
+                            <p className="text-xs text-slate-400 mt-1">条</p>
                           </div>
 
                           {/* Secondary: velocity & probability */}
-                          <div className="space-y-1 text-xs">
+                          <div className="space-y-1.5 text-xs">
                             <div className="flex justify-between">
-                              <span className="text-slate-500">所需时速</span>
+                              <span className="text-slate-400">所需时速</span>
                               <span className="text-sky-400 font-mono">
                                 {item.minVelocity === Infinity ? '∞' : item.minVelocity.toFixed(2)}
-                                <span className="text-slate-500 mx-0.5">~</span>
+                                <span className="text-slate-400 mx-0.5">~</span>
                                 {item.maxVelocity === Infinity ? '∞' : item.maxVelocity.toFixed(2)}/h
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-500">真实概率</span>
+                              <span className="text-slate-400">真实概率</span>
                               <span className="text-sky-400 font-bold font-mono">{item.trueProb.toFixed(1)}%</span>
                             </div>
                           </div>
@@ -2222,28 +2225,28 @@ export default function App() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
                                 <p className="text-2xl font-bold text-sky-300 font-mono">{centerRatio.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-500">仓位比例</p>
+                                <p className="text-xs text-slate-400">仓位比例</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
                                 <p className="text-2xl font-bold text-sky-400 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
-                                <p className="text-xs text-slate-500">真实概率</p>
+                                <p className="text-xs text-slate-400">真实概率</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
                                 <p className="text-2xl font-bold text-rose-400 font-mono">{maxLoss.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-500">潜在亏损</p>
+                                <p className="text-xs text-slate-400">潜在亏损</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
                                 <p className="text-2xl font-bold text-emerald-400 font-mono">{maxGain.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-500">潜在收益</p>
+                                <p className="text-xs text-slate-400">潜在收益</p>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/40 p-3 rounded-lg">
                               <span className="font-medium">风险收益比:</span>
                               <span className="text-rose-400 font-semibold">-{maxLoss.toFixed(0)}%</span>
-                              <span className="text-slate-500">vs</span>
+                              <span className="text-slate-400">vs</span>
                               <span className="text-emerald-400 font-semibold">+{maxGain.toFixed(0)}%</span>
-                              <span className="text-slate-500 ml-2">(赔率 {centerItem.marketPrice.toFixed(1)}%)</span>
+                              <span className="text-slate-400 ml-2">(赔率 {centerItem.marketPrice.toFixed(1)}%)</span>
                             </div>
                           </div>
                         )}
@@ -2258,8 +2261,8 @@ export default function App() {
                                   {item.isCenter && <span className="ml-2 text-xs bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded">推荐</span>}
                                 </span>
                                 <div className="flex items-center gap-4 text-sm">
-                                  <span className="text-slate-500 font-mono">赔率: {item.marketPrice.toFixed(1)}%</span>
-                                  <span className={`font-medium font-mono ${item.alpha > 1 ? 'text-emerald-400' : item.alpha < 1 ? 'text-rose-400' : 'text-slate-500'}`}>
+                                  <span className="text-slate-300 font-mono">赔率: {item.marketPrice.toFixed(1)}%</span>
+                                  <span className={`font-medium font-mono ${item.alpha > 1 ? 'text-emerald-400' : item.alpha < 1 ? 'text-rose-400' : 'text-slate-300'}`}>
                                     α: {item.alpha.toFixed(2)}
                                   </span>
                                 </div>
@@ -2271,7 +2274,7 @@ export default function App() {
                         {undervaluedItems.length > 0 && (
                           <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                             <h3 className="text-sm font-semibold text-emerald-400 mb-2">价值区间 (α &gt; 1.1)</h3>
-                            <p className="text-xs text-slate-500 mb-2">市场定价低于真实概率，值得关注</p>
+                            <p className="text-xs text-slate-400 mb-2">市场定价低于真实概率，值得关注</p>
                             <div className="flex flex-wrap gap-2">
                               {undervaluedItems.slice(0, 5).map(item => item && (
                                 <span key={item.range} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-sm font-mono">

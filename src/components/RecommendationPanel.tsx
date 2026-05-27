@@ -240,9 +240,9 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{info.desc}</p>
           </div>
           <div className="text-right shrink-0 pl-4 border-l border-slate-700/50">
-            <p className="text-[10px] text-slate-400 mb-0.5 uppercase tracking-wider">预测落点</p>
+            <p className="text-xs text-slate-300 mb-0.5 uppercase tracking-wider font-medium">预测落点</p>
             <p className="text-2xl font-bold text-sky-300 font-mono">~{Math.round(mu)}</p>
-            <p className="text-[11px] text-slate-400 font-mono">{center.range}  {center.price.toFixed(1)}%</p>
+            <p className="text-xs text-slate-300 font-mono">{center.range}  {center.price.toFixed(1)}%</p>
           </div>
         </div>
 
@@ -264,21 +264,21 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-mono font-bold text-white text-sm">{rec.range}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${rec.tagColor} ${rec.tagBg}`}>{rec.tag}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${rec.tagColor} ${rec.tagBg}`}>{rec.tag}</span>
                     </div>
                     <p className="text-xs text-slate-400">{rec.reason}</p>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">现价 {rec.price.toFixed(1)}% · 买入后持 {rec.shares.toLocaleString()} 份</p>
+                    <p className="text-xs text-slate-300 font-mono mt-0.5">现价 {rec.price.toFixed(1)}% · 买入后持 {rec.shares.toLocaleString()} 份</p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="text-xl font-bold text-emerald-400 font-mono">${rec.amount.toLocaleString()}</p>
-                    <p className="text-[11px] text-slate-400">中奖 → ${rec.shares.toLocaleString()}</p>
+                    <p className="text-xs text-slate-300">中奖 → ${rec.shares.toLocaleString()}</p>
                   </div>
                 </div>
               ))}
             </div>
             {phase === 'entry1' && (
-              <p className="text-[11px] text-slate-500 mt-2 px-1 flex items-center gap-1">
-                <span className="text-amber-500">●</span>
+              <p className="text-xs text-slate-400 mt-2 px-1 flex items-center gap-1">
+                <span className="text-amber-400">●</span>
                 剩余 ${(capital - totalBuy).toLocaleString()} 留作第二次加仓 + 超额机会，本轮不要全部投入
               </p>
             )}
@@ -305,20 +305,20 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-mono font-bold text-white text-sm">{rec.range}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${rec.tagColor} ${rec.tagBg}`}>{rec.tag}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${rec.tagColor} ${rec.tagBg}`}>{rec.tag}</span>
                         {pnlPct !== null && (
-                          <span className={`text-[10px] font-mono font-semibold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <span className={`text-xs font-mono font-semibold ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {isProfit ? '+' : ''}{pnlPct.toFixed(0)}% vs 入场
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">{rec.reason}</p>
+                      <p className="text-xs text-slate-300">{rec.reason}</p>
                     </div>
                     <div className="text-right shrink-0 ml-4">
                       {rec.est !== undefined ? (
                         <>
                           <p className="text-xl font-bold text-amber-400 font-mono">≈${rec.est.toLocaleString()}</p>
-                          <p className="text-[11px] text-slate-400">按市价估算</p>
+                          <p className="text-xs text-slate-300">按市价估算</p>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400 italic">记录持仓后<br/>显示金额</p>
@@ -339,7 +339,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
               <div className="flex items-center gap-2 mb-3">
                 <Star className="w-4 h-4 text-yellow-400" />
                 <h3 className="text-xs font-bold text-yellow-300 uppercase tracking-wider">超额收益机会</h3>
-                <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold">EV+</span>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 font-bold">EV+</span>
               </div>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -349,20 +349,20 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                     模型概率 <span className="text-sky-300 font-bold">{bestValueRange.realProb.toFixed(1)}%</span>，
                     价格仅为模型的 <span className="text-yellow-300 font-bold">{(bestValueRange.price / bestValueRange.realProb * 100).toFixed(0)}%</span>
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
                     策略：用中心仓位的稳定收益覆盖风险，小仓位博弈该区间的超额赔率。
                     建议用 <span className="text-yellow-300">{centerCurrentValue ? '中心当前估值12%' : '总资金4%'}</span> 买入。
                   </p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-2xl font-bold text-yellow-400 font-mono">${valueBetAmount}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">建议下注</p>
-                  <p className="text-[11px] text-amber-400 font-mono font-semibold mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5">建议下注</p>
+                  <p className="text-xs text-amber-400 font-mono font-semibold mt-0.5">
                     中奖 → ${Math.round(valueBetAmount / (bestValueRange.price / 100)).toLocaleString()}
                   </p>
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-3 text-[11px]">
+              <div className="mt-3 flex items-center gap-3 text-xs">
                 <div className="flex-1 p-2 bg-slate-800/60 rounded-lg text-center">
                   <p className="text-slate-400">盈亏比</p>
                   <p className="text-yellow-300 font-bold font-mono">{(100 / bestValueRange.price).toFixed(1)}x</p>
@@ -385,11 +385,11 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
           <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 text-center">
             <Shield className="w-6 h-6 mx-auto mb-2 text-slate-500 opacity-60" />
             <p className="text-sm text-slate-300 font-semibold">当前处于观望期</p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               还剩 <span className="text-sky-400 font-bold">{Math.round(remainingDays * 24)} 小时</span>，
               距到期约 <span className="text-sky-400 font-bold">3天</span> 时（倒数第三天上午）开始第一次建仓
             </p>
-            <p className="text-xs text-slate-500 mt-1">此期间观察发推速率是否稳定，确认预测落点方向</p>
+            <p className="text-xs text-slate-400 mt-1">此期间观察发推速率是否稳定，确认预测落点方向</p>
           </div>
         )}
 
@@ -440,17 +440,17 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                 <div className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${step.active ? `bg-gradient-to-br ${step.color} shadow-lg` : 'bg-slate-600'}`} />
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className={`text-xs font-bold ${step.active ? 'text-white' : 'text-slate-500'}`}>{step.label}</span>
-                    <span className="text-[10px] text-slate-500">{step.sublabel}</span>
+                    <span className={`text-xs font-bold ${step.active ? 'text-white' : 'text-slate-400'}`}>{step.label}</span>
+                    <span className="text-xs text-slate-400">{step.sublabel}</span>
                   </div>
-                  <span className={`text-xs ${step.active ? 'text-slate-300' : 'text-slate-500'}`}>{step.action}</span>
+                  <span className={`text-xs ${step.active ? 'text-slate-200' : 'text-slate-400'}`}>{step.action}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-500 text-center">建议基于模型预测，不构成投资建议 · 请结合实际流动性操作</p>
+        <p className="text-xs text-slate-400 text-center">建议基于模型预测，不构成投资建议 · 请结合实际流动性操作</p>
       </div>
     </div>
   );
