@@ -109,20 +109,6 @@ function getBJHourNow(): number {
   return new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
 }
 
-// 从热力图 localStorage 缓存读取今日小时推文数
-function getHeatmapTodayHourly(): Record<number, number> {
-  try {
-    const cached = JSON.parse(localStorage.getItem('musk_tweet_heatmap_data') || '{}');
-    if (!cached.data || !Array.isArray(cached.data)) return {};
-    const todayBJ = new Date(Date.now() + 8 * 3600 * 1000).toISOString().split('T')[0];
-    const result: Record<number, number> = {};
-    for (const d of cached.data) {
-      if (d.date === todayBJ) result[d.hour] = d.count;
-    }
-    return result;
-  } catch { return {}; }
-}
-
 // ── 会话类型定义（205天/673会话统计）────────────────────────────────────────
 // freq: 出现频率; avgTweets: 出现时均推文数; medTweets: 中位数
 // strongThreshold: 超过此值为"强会话"（>1.5x中位）
@@ -469,6 +455,14 @@ export default function App() {
     catch { return []; }
   });
 
+  // Heatmap data state — reactive, powers session analysis panel on any tab
+  const [heatmapData, setHeatmapData] = useState<Array<{date: string; hour: number; count: number}>>(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('musk_tweet_heatmap_data') || '{}');
+      return Array.isArray(cached.data) ? cached.data : [];
+    } catch { return []; }
+  });
+
   // Live clock — ticks every second
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -660,6 +654,35 @@ export default function App() {
     }
   };
 
+  // ── Proactively fetch heatmap data so session panel works on page load ──────
+  // Without this, the panel only populates after visiting the heatmap tab.
+  const fetchHeatmapPanel = async () => {
+    const CACHE_KEY = 'musk_tweet_heatmap_data';
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+      const isRecent = cached.cachedAt && Date.now() - cached.cachedAt < 20 * 60 * 1000;
+      if (isRecent && Array.isArray(cached.data) && cached.data.length > 0) {
+        setHeatmapData(cached.data); // ensure state is in sync with localStorage
+        return;
+      }
+      const res = await fetch('/api/elon-tweets', { signal: AbortSignal.timeout(15000) });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.tweets?.length > 0) {
+          const filtered = result.tweets.map((item: any) => ({
+            date: item.date, hour: item.hour,
+            count: Math.min(item.count, 25),
+          }));
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            data: filtered, lastUpdated: result.lastUpdated, cachedAt: Date.now(),
+          }));
+          setHeatmapData(filtered);
+          console.log(`[heatmap] Prefetched ${filtered.length} hourly records for session panel`);
+        }
+      }
+    } catch { /* non-critical — session panel degrades gracefully */ }
+  };
+
   const handleRefresh = async () => {
     await Promise.all([fetchMarketData(), fetchTrackerData()]);
   };
@@ -668,12 +691,15 @@ export default function App() {
     fetchMarketData();
     fetchTrackerData();
     fetchGistHistory();
+    fetchHeatmapPanel(); // proactively load heatmap so session panel shows on first visit
 
     const marketInterval = setInterval(fetchMarketData, 5 * 60 * 1000);
     const histInterval = setInterval(fetchGistHistory, 10 * 60 * 1000);
+    const heatmapInterval = setInterval(fetchHeatmapPanel, 20 * 60 * 1000); // refresh every 20 min
     return () => {
       clearInterval(marketInterval);
       clearInterval(histInterval);
+      clearInterval(heatmapInterval);
     };
   }, []);
 
@@ -735,10 +761,23 @@ export default function App() {
     return Math.round((C + R * w) * 10) / 10;
   }, [C, R, T, mu]);
 
+  // ── 今日各小时推文数（从 heatmapData state 派生，响应式）————————————————————
+  // Must be declared BEFORE sessionAnalysis which references it.
+  const todayHourly = useMemo(() => {
+    const todayBJ = new Date(Date.now() + 8 * 3600 * 1000).toISOString().split('T')[0];
+    const result: Record<number, number> = {};
+    for (const d of heatmapData) {
+      if (d.date === todayBJ) result[d.hour] = d.count;
+    }
+    return result;
+  }, [heatmapData]);
+
+  const hasTodayData = Object.keys(todayHourly).length > 0;
+
   // ── 会话状态分析（核心：识别今日各会话现状，驱动µ修正和入场信号）────────────
   const sessionAnalysis = useMemo(() => {
     const h = getBJHourNow();
-    const todayHourly = getHeatmapTodayHourly();
+    // Use todayHourly from component state (reactive — populated on mount via fetchHeatmapPanel)
     const hasHeatmapData = Object.keys(todayHourly).length > 0;
     const states: SessionState[] = [];
     let totalMuAdjust = 0;
@@ -854,7 +893,7 @@ export default function App() {
       timing = { level:'NEUTRAL',badge:'🟡 过渡时段',      color:'yellow',  desc:'活跃度中等，等待下一个会话窗口' };
 
     return { states, totalMuAdjust, timing, buySignals, sellSignals, anomalies };
-  }, [R, mu]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [R, mu, todayHourly]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 会话修正后的µ
   const sessionAdjustedMu = Math.round(timeWeightedMu + sessionAnalysis.totalMuAdjust);
@@ -1612,8 +1651,7 @@ export default function App() {
             {/* ── 马斯克节奏摘要（市场概况页复用） ── */}
             {(() => {
               const bjH     = getBJHourNow();
-              const todayH  = getHeatmapTodayHourly();
-              const hasTodayData = Object.keys(todayH).length > 0;
+              const todayH  = todayHourly; // reactive — from heatmapData state
               const paceScale   = R > 0 ? R / 43.4 : 1;
               const t = sessionAnalysis.timing;
 
@@ -1845,8 +1883,7 @@ export default function App() {
                 {/* ── 马斯克节奏面板 v3 ── */}
                 {(() => {
                   const bjH     = getBJHourNow();
-                  const todayH  = getHeatmapTodayHourly();
-                  const hasTodayData = Object.keys(todayH).length > 0;
+                  const todayH  = todayHourly; // reactive — from heatmapData state
                   const paceScale   = R > 0 ? R / 43.4 : 1;
                   const t = sessionAnalysis.timing;
 
