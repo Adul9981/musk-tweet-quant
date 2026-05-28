@@ -726,14 +726,31 @@ export default function App() {
   }, [activeMarkets]);
 
   const currentMarket = activeMarkets[selectedMarketIndex] || activeMarkets[0];
-  // Match tracking by slug so switching markets always shows correct stats
-  const currentTracking = activeTrackings.find(t => t.slug === currentMarket?.slug)
-    || activeTrackings[selectedMarketIndex]
-    || activeTrackings[0];
+
+  // Match tracking by slug, then by end-date (more robust when slug formats differ).
+  // Do NOT fall back to activeTrackings[0] — that would show wrong data for markets
+  // that don't yet have xtracker coverage (e.g. future weeks).
+  const currentTracking: Tracking | undefined = (() => {
+    if (!currentMarket) return activeTrackings[0];
+    // 1. Exact slug match
+    const bySlug = activeTrackings.find(t => t.slug === currentMarket.slug);
+    if (bySlug) return bySlug;
+    // 2. End-date match (normalize both to YYYY-MM-DD)
+    const mEnd = currentMarket.end_date?.split('T')[0];
+    if (mEnd) {
+      const byDate = activeTrackings.find(t => t.endDate?.split('T')[0] === mEnd);
+      if (byDate) return byDate;
+    }
+    // 3. No xtracker data for this market yet → return undefined (UI shows '—')
+    return undefined;
+  })();
 
   useEffect(() => {
     if (currentTracking?.stats) {
       setCurrentTweetCount(currentTracking.stats.total);
+    } else {
+      // No xtracker data for this market yet — reset to avoid showing stale stats
+      setCurrentTweetCount(0);
     }
   }, [currentTracking]);
 
