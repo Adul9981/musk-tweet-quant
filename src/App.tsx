@@ -640,7 +640,9 @@ export default function App() {
           console.log('[xtracker] Gist fallback 成功');
           setTrackings(gistData.data.map((t: any) => ({
             ...t,
-            slug: t.marketLink?.split('/').pop() || '',
+            // Preserve slug if API already set it correctly; re-derive only as fallback.
+            // Strip query string (?via=...) so slug matches Gamma API event slug.
+            slug: t.slug || t.marketLink?.split('/').pop()?.split('?')[0] || '',
           })));
           return;
         }

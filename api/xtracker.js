@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       startDate: tracking.startDate,
       endDate: tracking.endDate,
       marketLink: tracking.marketLink + (tracking.marketLink.includes('?') ? '&' : REFERRAL_CODE),
-      slug: tracking.marketLink?.split('/').pop() || '',
+      slug: tracking.marketLink?.split('/').pop()?.split('?')[0] || '',
     }));
 
     const detailedTrackings = await Promise.all(
