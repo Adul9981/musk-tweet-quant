@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Target, TrendingUp, TrendingDown, Clock, Shield, Edit3, Zap, Star } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Clock, Shield, Edit3, Zap, Star, AlertTriangle } from 'lucide-react';
 import type { Position } from './PositionManager';
 
 interface RangeItem {
@@ -12,22 +12,68 @@ interface RangeItem {
 
 interface Props {
   mu: number;
-  remainingDays: number;
+  remainingDays: number; // fractional days (e.g. 2.54)
   analysisData: RangeItem[];
   positions: Position[];
 }
 
 const CAPITAL_KEY = 'rec_capital_v1';
 
-type Phase = 'watch' | 'entry1' | 'entry2' | 'sell_wing1' | 'sell_wing2' | 'final';
+// ── Phase 定义（对齐知识库 05_入场与仓位框架.md）──────────────────────────
+// 铁律：到期前 2–2.5 天是最佳入场窗口
+type Phase = 'watch' | 'entry' | 'hold' | 'trim1' | 'trim2' | 'final';
 
-const PHASE_INFO: Record<Phase, { label: string; color: string; bg: string; border: string; accent: string; desc: string }> = {
-  watch:      { label: '观望期',              color: 'text-slate-300',   bg: 'bg-slate-800/70',       border: 'border-slate-700/50',   accent: 'from-slate-600 to-slate-500',    desc: '距到期超3天，不确定性高，暂不入场' },
-  entry1:     { label: '第一次建仓 · 首开仓', color: 'text-sky-300',     bg: 'bg-sky-900/40',         border: 'border-sky-500/30',     accent: 'from-sky-500 to-blue-500',       desc: '倒数第三天上午（北京时间），分散布局中心+两翼，部署总资金约25%' },
-  entry2:     { label: '第二次加仓 · 主力仓', color: 'text-emerald-300', bg: 'bg-emerald-900/40',     border: 'border-emerald-500/30', accent: 'from-emerald-500 to-teal-500',   desc: '距到期1.5–2.5天，落点更确定，集中加仓中心区间，部署总资金约40%' },
-  sell_wing1: { label: '翼仓减仓 + 超额机会', color: 'text-amber-300',   bg: 'bg-amber-900/30',       border: 'border-amber-500/30',   accent: 'from-amber-500 to-orange-500',   desc: '距到期1–1.5天，开始减仓翼仓，同步寻找最佳盈亏比区间做超额收益' },
-  sell_wing2: { label: '翼仓继续减仓',        color: 'text-orange-300',  bg: 'bg-orange-900/30',      border: 'border-orange-500/30',  accent: 'from-orange-500 to-red-500',     desc: '距到期0.5–1天，翼仓再减仓，专注等待中心落点结算' },
-  final:      { label: '最终冲刺期',          color: 'text-rose-300',    bg: 'bg-rose-900/30',        border: 'border-rose-500/30',    accent: 'from-rose-500 to-pink-500',      desc: '到期前12小时，翼仓清仓；中心若已涨到65%+ 可减仓止盈' },
+const PHASE_INFO: Record<Phase, {
+  label: string; color: string; bg: string; border: string; accent: string; desc: string;
+}> = {
+  watch: {
+    label: '观望期',
+    color: 'text-slate-300',
+    bg: 'bg-slate-800/70',
+    border: 'border-slate-700/50',
+    accent: 'from-slate-600 to-slate-500',
+    desc: '距到期 > 2.5天，µ不确定性高（±35条），暂不入场',
+  },
+  entry: {
+    label: '⭐ 最佳入场窗口',
+    color: 'text-sky-300',
+    bg: 'bg-sky-900/40',
+    border: 'border-sky-500/30',
+    accent: 'from-sky-500 to-blue-500',
+    desc: '距到期 2–2.5天，铁律入场时机 — 主仓(50-70%) + 保护仓(20-30%下方1档) + 可选高赔率仓(≤10%)',
+  },
+  hold: {
+    label: '持有观察期',
+    color: 'text-emerald-300',
+    bg: 'bg-emerald-900/30',
+    border: 'border-emerald-500/20',
+    accent: 'from-emerald-600 to-teal-600',
+    desc: '距到期 1.5–2天，监控µ偏移，偏移 > 1.5σ（约25条）才考虑调仓，否则持有',
+  },
+  trim1: {
+    label: '翼仓减仓 + 超额机会',
+    color: 'text-amber-300',
+    bg: 'bg-amber-900/30',
+    border: 'border-amber-500/30',
+    accent: 'from-amber-500 to-orange-500',
+    desc: '距到期 1–1.5天，BJ 17:30死区评估是否剪仓，同步寻找高赔率超额机会',
+  },
+  trim2: {
+    label: '翼仓继续减仓',
+    color: 'text-orange-300',
+    bg: 'bg-orange-900/30',
+    border: 'border-orange-500/30',
+    accent: 'from-orange-500 to-red-500',
+    desc: '距到期 0.5–1天，继续减仓低概率区间，专注等待中心落点结算',
+  },
+  final: {
+    label: '最终冲刺期',
+    color: 'text-rose-300',
+    bg: 'bg-rose-900/30',
+    border: 'border-rose-500/30',
+    accent: 'from-rose-500 to-pink-500',
+    desc: '到期前12小时，中心 ≥ 75¢ 可减50%锁利；中心 < 75¢ 且模型概率 > 85% 仍可加仓',
+  },
 };
 
 export function RecommendationPanel({ mu, remainingDays, analysisData, positions }: Props) {
@@ -47,136 +93,172 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
     setEditing(false);
   };
 
+  // ── 价值比（VR）计算 ──────────────────────────────────────────────────────
+  // VR = 模型概率 / 市场价格。VR ≥ 1.0 值得入场，VR ≥ 1.2 理想，VR ≥ 2.5 可做高赔率仓
   const sortedRanges = useMemo(() =>
     [...analysisData]
       .filter(r => r.parsed && r.price >= 1)
-      .sort((a, b) => (a.parsed?.min ?? 0) - (b.parsed?.min ?? 0)),
+      .sort((a, b) => (a.parsed?.min ?? 0) - (b.parsed?.min ?? 0))
+      .map(r => ({ ...r, vr: r.price > 0 ? r.realProb / r.price : 0 })),
     [analysisData]
   );
+
   const centerIdx  = sortedRanges.findIndex(r => r.isCenter);
   const center     = centerIdx >= 0 ? sortedRanges[centerIdx] : null;
-  const upperWing  = centerIdx >= 0 && centerIdx < sortedRanges.length - 1 ? sortedRanges[centerIdx + 1] : null;
-  const lowerWing  = centerIdx > 0 ? sortedRanges[centerIdx - 1] : null;
+  // 保护仓：中心下方1档（模型存在+0.3档系统性偏高，下侧风险更大）
+  const protectRange = centerIdx > 0 ? sortedRanges[centerIdx - 1] : null;
+  // 上方相邻（仅用于参考对比）
+  const upperRange = centerIdx >= 0 && centerIdx < sortedRanges.length - 1
+    ? sortedRanges[centerIdx + 1] : null;
 
-  // ── Phase detection（修正：entry1 从2.5天开始，对应倒数第三天上午）
+  // ── 主仓选择：比较中心和两侧，选价值比最高的 ───────────────────────────────
+  const mainRange = useMemo(() => {
+    if (!center) return null;
+    const candidates = [protectRange, center, upperRange].filter(Boolean) as typeof sortedRanges;
+    return candidates.reduce((best, r) => r.vr > best.vr ? r : best, center);
+  }, [center, protectRange, upperRange]);
+
+  // 高赔率仓：VR ≥ 2.5，价格 ≤ 5¢，非中心区间
+  const highOddsRange = useMemo(() => {
+    if (!mainRange) return null;
+    const candidates = sortedRanges.filter(r =>
+      !r.isCenter && r.vr >= 2.5 && r.price <= 5 && r.price >= 1
+    );
+    if (!candidates.length) return null;
+    return candidates.sort((a, b) => b.vr - a.vr)[0];
+  }, [sortedRanges, mainRange]);
+
+  // ── Phase 判断（对齐知识库，2–2.5天是核心入场窗口）───────────────────────
   const phase: Phase =
-    remainingDays >= 3.0 ? 'watch' :
-    remainingDays >= 2.5 ? 'entry1' :
-    remainingDays >= 1.5 ? 'entry2' :
-    remainingDays >= 1.0 ? 'sell_wing1' :
-    remainingDays >= 0.5 ? 'sell_wing2' : 'final';
+    remainingDays >= 2.5 ? 'watch' :
+    remainingDays >= 2.0 ? 'entry' :
+    remainingDays >= 1.5 ? 'hold' :
+    remainingDays >= 1.0 ? 'trim1' :
+    remainingDays >= 0.5 ? 'trim2' : 'final';
 
   const info = PHASE_INFO[phase];
 
-  // ── 最佳盈亏比区间（超额收益机会）——price / realProb 最低 = 最便宜
-  const bestValueRange = useMemo(() => {
-    if (phase !== 'sell_wing1' && phase !== 'sell_wing2' && phase !== 'entry2') return null;
+  // ── 超额收益机会（trim1/trim2 专属）──────────────────────────────────────
+  const extraRange = useMemo(() => {
+    if (phase !== 'trim1' && phase !== 'trim2') return null;
     const candidates = sortedRanges.filter(r =>
-      !r.isCenter && r.realProb >= 5 && r.price >= 3 && r.price <= 35
+      !r.isCenter && r.vr >= 1.5 && r.price >= 2 && r.price <= 15
     );
     if (!candidates.length) return null;
-    const ranked = candidates
-      .map(r => ({ ...r, evRatio: r.realProb / r.price }))
-      .sort((a, b) => b.evRatio - a.evRatio);
-    const best = ranked[0];
-    return best.evRatio >= 1.25 ? best : null; // 只有当价格 < 模型概率80%时才推荐
+    const best = candidates.sort((a, b) => b.vr - a.vr)[0];
+    return best;
   }, [sortedRanges, phase]);
 
-  // 中心仓位当前估值（用于计算超额下注金额）
-  const centerPosition = positions.find(p => center && p.range === center.range);
-  const centerCurrentValue = centerPosition && center && center.price > 0
-    ? centerPosition.shares * (center.price / 100)
-    : null;
-  const valueBetAmount = centerCurrentValue
-    ? Math.round(centerCurrentValue * 0.12)   // 中心当前估值的12%
-    : Math.round(capital * 0.04);              // 回退：总资金的4%
-
-  // ── Buy recommendations
+  // ── 买入建议 ───────────────────────────────────────────────────────────────
   const buyRecs = useMemo(() => {
-    type BuyRec = { range: string; price: number; amount: number; shares: number; reason: string; tag: string; tagColor: string; tagBg: string };
+    type BuyRec = {
+      range: string; price: number; vr: number; amount: number; shares: number;
+      reason: string; tag: string; tagColor: string; tagBg: string; vrOk: boolean;
+    };
     const recs: BuyRec[] = [];
-    const add = (r: RangeItem, amount: number, reason: string, tag: string, tagColor: string, tagBg: string) => {
-      recs.push({ range: r.range, price: r.price, amount, shares: Math.round(amount / (r.price / 100)), reason, tag, tagColor, tagBg });
-    };
 
-    if (phase === 'entry1' && center) {
-      const budget = Math.round(capital * 0.25);
-      add(center,    Math.round(budget * 0.60), '中心主仓，首次建仓 60%', '主仓', 'text-sky-200', 'bg-sky-500/25');
-      if (upperWing) add(upperWing, Math.round(budget * 0.28), '上翼保险仓', '上翼', 'text-slate-300', 'bg-slate-700/60');
-      if (lowerWing) add(lowerWing, Math.round(budget * 0.12), '下翼少量保险', '下翼', 'text-slate-300', 'bg-slate-700/60');
-    }
-
-    if (phase === 'entry2' && center) {
-      const budget = Math.round(capital * 0.40);
-      add(center, Math.round(budget * 0.90), '落点更确定，集中加仓中心（主力仓位）', '主力加仓', 'text-emerald-200', 'bg-emerald-500/25');
-    }
-
-    // 低价保险机会
-    if (phase !== 'watch' && phase !== 'final') {
-      [upperWing, lowerWing].filter(Boolean).forEach(wing => {
-        if (!wing) return;
-        if (wing.price < wing.realProb * 0.60 && wing.price < 9) {
-          if (!recs.find(r => r.range === wing.range)) {
-            add(wing, Math.round(capital * 0.02),
-              `价格 ${wing.price.toFixed(1)}% 远低于模型概率 ${wing.realProb.toFixed(1)}%，低价保险`,
-              '低价险', 'text-violet-200', 'bg-violet-500/25');
-          }
-        }
+    const add = (r: typeof sortedRanges[0], amount: number, reason: string, tag: string, tagColor: string, tagBg: string) => {
+      recs.push({
+        range: r.range, price: r.price, vr: r.vr,
+        amount, shares: Math.round(amount / (r.price / 100)),
+        reason, tag, tagColor, tagBg,
+        vrOk: r.vr >= 1.0,
       });
-    }
-    return recs;
-  }, [phase, center, upperWing, lowerWing, capital]);
-
-  // ── Sell recommendations
-  const sellRecs = useMemo(() => {
-    type SellRec = { range: string; currentPrice: number; entryPrice?: number; pct: number; est?: number; reason: string; tag: string; tagColor: string; tagBg: string };
-    const recs: SellRec[] = [];
-
-    const getPos = (range?: string | null) => range ? positions.find(p => p.range === range) : undefined;
-    const est = (p: Position | undefined, currentPrice: number, pct: number) =>
-      p ? Math.round(p.shares * (currentPrice / 100) * (pct / 100)) : undefined;
-
-    const addWingSell = (wing: RangeItem | null | undefined, pct: number, reason: string, tag: string, tagColor: string, tagBg: string) => {
-      if (!wing) return;
-      const p = getPos(wing.range);
-      recs.push({ range: wing.range, currentPrice: wing.price, entryPrice: p?.entryPrice, pct, est: est(p, wing.price, pct), reason, tag, tagColor, tagBg });
     };
 
-    if (phase === 'sell_wing1') {
-      addWingSell(upperWing, 40, '距到期1–1.5天，翼仓第一批减仓40%', '减40%', 'text-amber-200', 'bg-amber-500/25');
-      addWingSell(lowerWing, 40, '距到期1–1.5天，翼仓第一批减仓40%', '减40%', 'text-amber-200', 'bg-amber-500/25');
+    if (phase === 'entry' && mainRange) {
+      const mainAmt  = Math.round(capital * 0.55); // 主仓 ~55%
+      const protAmt  = Math.round(capital * 0.25); // 保护仓 ~25%
+
+      add(mainRange, mainAmt,
+        `VR=${mainRange.vr.toFixed(2)} — 价值比最高区间，主仓 55%（铁律：主仓集中，不分散）`,
+        '主仓', 'text-sky-200', 'bg-sky-500/25');
+
+      if (protectRange && protectRange.range !== mainRange.range) {
+        add(protectRange, protAmt,
+          `VR=${protectRange.vr.toFixed(2)} — 中心下方1档，系统性偏高+0.3档，保护仓`,
+          '保护仓', 'text-violet-200', 'bg-violet-500/25');
+      }
+
+      if (highOddsRange) {
+        const highAmt = Math.round(capital * 0.08);
+        add(highOddsRange, highAmt,
+          `VR=${highOddsRange.vr.toFixed(2)} — 价格 ${highOddsRange.price.toFixed(1)}¢，高赔率仓（可选）`,
+          '高赔率', 'text-yellow-200', 'bg-yellow-500/20');
+      }
     }
-    if (phase === 'sell_wing2') {
-      addWingSell(upperWing, 50, '距到期0.5–1天，翼仓再减50%', '再减50%', 'text-orange-200', 'bg-orange-500/25');
-      addWingSell(lowerWing, 50, '距到期0.5–1天，翼仓再减50%', '再减50%', 'text-orange-200', 'bg-orange-500/25');
+
+    // 到期前<12小时 + 中心 < 75¢ + 模型概率 > 85% → 可加仓
+    if (phase === 'final' && center && center.realProb > 85 && center.price < 75) {
+      add(center, Math.round(capital * 0.10),
+        `模型概率 ${center.realProb.toFixed(0)}%，市价仅 ${center.price.toFixed(0)}¢，最后窗口加仓`,
+        '终盘加仓', 'text-rose-200', 'bg-rose-500/25');
+    }
+
+    return recs;
+  }, [phase, mainRange, protectRange, highOddsRange, center, capital]);
+
+  // ── 卖出建议 ───────────────────────────────────────────────────────────────
+  const sellRecs = useMemo(() => {
+    type SellRec = {
+      range: string; currentPrice: number; entryPrice?: number;
+      pct: number; est?: number; reason: string; tag: string; tagColor: string; tagBg: string;
+    };
+    const recs: SellRec[] = [];
+    const getPos = (range?: string | null) => range ? positions.find(p => p.range === range) : undefined;
+    const estAmt = (p: Position | undefined, price: number, pct: number) =>
+      p ? Math.round(p.shares * (price / 100) * (pct / 100)) : undefined;
+
+    // 翼仓减仓
+    const addSell = (r: typeof sortedRanges[0] | null | undefined, pct: number, reason: string, tag: string, tc: string, tb: string) => {
+      if (!r) return;
+      const p = getPos(r.range);
+      recs.push({ range: r.range, currentPrice: r.price, entryPrice: p?.entryPrice, pct, est: estAmt(p, r.price, pct), reason, tag, tagColor: tc, tagBg: tb });
+    };
+
+    if (phase === 'trim1') {
+      // 只减上方翼仓（概率已走低的区间）
+      if (upperRange && upperRange.range !== mainRange?.range) {
+        addSell(upperRange, 40, 'BJ 17:30死区评估：上方翼仓第一批减40%', '减40%', 'text-amber-200', 'bg-amber-500/25');
+      }
+    }
+    if (phase === 'trim2') {
+      if (upperRange && upperRange.range !== mainRange?.range) {
+        addSell(upperRange, 50, '翼仓再减50%，专注等待中心落点结算', '再减50%', 'text-orange-200', 'bg-orange-500/25');
+      }
     }
     if (phase === 'final') {
-      addWingSell(upperWing, 100, '到期前12小时，清仓翼仓', '清仓', 'text-rose-200', 'bg-rose-500/25');
-      addWingSell(lowerWing, 100, '到期前12小时，清仓翼仓', '清仓', 'text-rose-200', 'bg-rose-500/25');
+      if (upperRange && upperRange.range !== mainRange?.range) {
+        addSell(upperRange, 100, '到期前12小时，清仓低概率翼仓', '清仓', 'text-rose-200', 'bg-rose-500/25');
+      }
     }
 
-    // 中心止盈
+    // 中心止盈（到期前1.5天内）
     if (center && remainingDays < 1.5) {
       const cp = getPos(center.range);
       if (center.price >= 75) {
-        recs.push({
-          range: center.range, currentPrice: center.price, entryPrice: cp?.entryPrice,
-          pct: 30, est: est(cp, center.price, 30),
-          reason: `中心涨至 ${center.price.toFixed(0)}%，高价止盈区，减30%锁定收益`,
-          tag: '止盈30%', tagColor: 'text-emerald-200', tagBg: 'bg-emerald-500/25',
-        });
+        recs.push({ range: center.range, currentPrice: center.price, entryPrice: cp?.entryPrice, pct: 50, est: estAmt(cp, center.price, 50), reason: `中心涨至 ${center.price.toFixed(0)}¢，减50%锁利；剩余50%博$1到期`, tag: '止盈50%', tagColor: 'text-emerald-200', tagBg: 'bg-emerald-500/25' });
       } else if (center.price >= 65) {
-        recs.push({
-          range: center.range, currentPrice: center.price, entryPrice: cp?.entryPrice,
-          pct: 20, est: est(cp, center.price, 20),
-          reason: `中心涨至 ${center.price.toFixed(0)}%，轻度止盈20%，主仓继续持有`,
-          tag: '止盈20%', tagColor: 'text-teal-200', tagBg: 'bg-teal-500/25',
-        });
+        recs.push({ range: center.range, currentPrice: center.price, entryPrice: cp?.entryPrice, pct: 20, est: estAmt(cp, center.price, 20), reason: `中心涨至 ${center.price.toFixed(0)}¢（BJ 14-15高峰评估），轻度止盈20%`, tag: '止盈20%', tagColor: 'text-teal-200', tagBg: 'bg-teal-500/25' });
+      }
+    }
+
+    // 强制止损提示
+    if (remainingDays < 2 && center) {
+      const lowProbPos = positions.find(p => {
+        const r = sortedRanges.find(s => s.range === p.range);
+        return r && r.realProb < 15 && !r.isCenter;
+      });
+      if (lowProbPos) {
+        const r = sortedRanges.find(s => s.range === lowProbPos.range);
+        if (r) {
+          recs.push({ range: r.range, currentPrice: r.price, entryPrice: lowProbPos.entryPrice, pct: 100, est: estAmt(lowProbPos, r.price, 100), reason: `模型概率 < 15%，铁律：死区内强制评估是否止损出场`, tag: '⚠️ 止损', tagColor: 'text-red-200', tagBg: 'bg-red-500/20' });
+        }
       }
     }
 
     return recs;
-  }, [phase, center, upperWing, lowerWing, positions, remainingDays]);
+  }, [phase, upperRange, mainRange, center, positions, sortedRanges, remainingDays]);
 
   if (!center) {
     return (
@@ -187,6 +269,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
     );
   }
 
+  const mainVR = mainRange?.vr ?? 0;
   const totalBuy = buyRecs.reduce((s, r) => s + r.amount, 0);
 
   return (
@@ -204,7 +287,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
               </div>
               实时操作建议
             </h2>
-            <p className="text-xs text-slate-400 mt-1 pl-10">买入 · 卖出 · 止盈 · 超额机会 — 全自动计算</p>
+            <p className="text-xs text-slate-400 mt-1 pl-10">主仓 · 保护仓 · 高赔率仓 — 对齐知识库规则</p>
           </div>
           {editing ? (
             <div className="flex items-center gap-1.5">
@@ -230,7 +313,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
           )}
         </div>
 
-        {/* ── Phase + prediction ── */}
+        {/* ── Phase 状态 + 预测落点 ── */}
         <div className={`rounded-xl p-4 ${info.bg} border ${info.border} flex items-center gap-4`}>
           <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${info.accent} flex items-center justify-center shrink-0 shadow-lg`}>
             <Clock className="w-5 h-5 text-white" />
@@ -240,13 +323,44 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{info.desc}</p>
           </div>
           <div className="text-right shrink-0 pl-4 border-l border-slate-700/50">
-            <p className="text-xs text-slate-300 mb-0.5 uppercase tracking-wider font-medium">预测落点</p>
+            <p className="text-xs text-slate-300 mb-0.5 uppercase tracking-wider font-medium">预测落点 µ</p>
             <p className="text-2xl font-bold text-sky-300 font-mono">~{Math.round(mu)}</p>
-            <p className="text-xs text-slate-300 font-mono">{center.range}  {center.price.toFixed(1)}%</p>
+            <p className="text-xs text-slate-300 font-mono">{center.range}  {center.price.toFixed(1)}¢</p>
           </div>
         </div>
 
-        {/* ── Buy recommendations ── */}
+        {/* ── VR 入场条件检查（entry 期显示）── */}
+        {phase === 'entry' && mainRange && (
+          <div className={`rounded-xl p-3.5 border ${mainVR >= 1.2 ? 'border-emerald-500/40 bg-emerald-950/30' : mainVR >= 1.0 ? 'border-sky-500/30 bg-sky-950/20' : 'border-red-500/40 bg-red-950/20'}`}>
+            <p className="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">入场条件检查</p>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className={remainingDays <= 2.5 && remainingDays >= 2.0 ? 'text-emerald-400' : 'text-red-400'}>
+                  {remainingDays <= 2.5 && remainingDays >= 2.0 ? '✅' : '❌'}
+                </span>
+                <span className="text-slate-300">距到期 2–2.5天（当前 {(remainingDays * 24).toFixed(0)}h）</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={mainVR >= 1.0 ? 'text-emerald-400' : 'text-red-400'}>{mainVR >= 1.0 ? '✅' : '❌'}</span>
+                <span className="text-slate-300">
+                  主仓 VR = <span className={`font-mono font-bold ${mainVR >= 1.2 ? 'text-emerald-400' : mainVR >= 1.0 ? 'text-sky-400' : 'text-red-400'}`}>{mainVR.toFixed(2)}</span>
+                  <span className="text-slate-500 ml-1">（≥1.0可入 / ≥1.2理想）</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-amber-400">⚠️</span>
+                <span className="text-slate-400">避开BJ 13-16活跃高峰（价格已被推高）</span>
+              </div>
+            </div>
+            {!mainVR || mainVR < 1.0 ? (
+              <p className="text-xs text-red-400 mt-2 font-semibold">
+                ⛔ VR &lt; 1.0，市场价格偏高 — 等价格回落或改选相邻区间
+              </p>
+            ) : null}
+          </div>
+        )}
+
+        {/* ── 买入建议 ── */}
         {buyRecs.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -257,17 +371,22 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <div className="space-y-2">
               {buyRecs.map((rec, i) => (
                 <div key={i} className={`rounded-xl p-3.5 border flex items-center justify-between ${
-                  rec.tag === '主仓' || rec.tag === '主力加仓' ? 'bg-sky-950/60 border-sky-500/25' :
-                  rec.tag === '低价险' ? 'bg-violet-950/60 border-violet-500/25' :
+                  rec.tag === '主仓' ? 'bg-sky-950/60 border-sky-500/25' :
+                  rec.tag === '保护仓' ? 'bg-violet-950/60 border-violet-500/25' :
+                  rec.tag === '高赔率' ? 'bg-yellow-950/50 border-yellow-500/20' :
+                  rec.tag === '终盘加仓' ? 'bg-rose-950/60 border-rose-500/25' :
                   'bg-slate-800/60 border-slate-700/40'
                 }`}>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-mono font-bold text-white text-sm">{rec.range}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${rec.tagColor} ${rec.tagBg}`}>{rec.tag}</span>
+                      <span className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded ${rec.vrOk ? 'text-emerald-400 bg-emerald-950/60' : 'text-red-400 bg-red-950/60'}`}>
+                        VR {rec.vr.toFixed(2)}
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-400">{rec.reason}</p>
-                    <p className="text-xs text-slate-300 font-mono mt-0.5">现价 {rec.price.toFixed(1)}% · 买入后持 {rec.shares.toLocaleString()} 份</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">{rec.reason}</p>
+                    <p className="text-xs text-slate-300 font-mono mt-0.5">现价 {rec.price.toFixed(1)}¢ · 买入后持 {rec.shares.toLocaleString()} 份</p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="text-xl font-bold text-emerald-400 font-mono">${rec.amount.toLocaleString()}</p>
@@ -276,16 +395,16 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                 </div>
               ))}
             </div>
-            {phase === 'entry1' && (
+            {phase === 'entry' && (
               <p className="text-xs text-slate-400 mt-2 px-1 flex items-center gap-1">
                 <span className="text-amber-400">●</span>
-                剩余 ${(capital - totalBuy).toLocaleString()} 留作第二次加仓 + 超额机会，本轮不要全部投入
+                剩余 ${(capital - totalBuy).toLocaleString()} 留作紧急加仓备用（µ偏移超1.5σ时使用）
               </p>
             )}
           </div>
         )}
 
-        {/* ── Sell / Take-profit recommendations ── */}
+        {/* ── 卖出 / 止盈建议 ── */}
         {sellRecs.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -299,6 +418,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                 return (
                   <div key={i} className={`rounded-xl p-3.5 border flex items-center justify-between ${
                     rec.tag.includes('止盈') ? 'bg-emerald-950/60 border-emerald-500/25' :
+                    rec.tag.includes('止损') ? 'bg-red-950/60 border-red-500/25' :
                     rec.tag === '清仓' ? 'bg-rose-950/60 border-rose-500/25' :
                     'bg-amber-950/50 border-amber-500/25'
                   }`}>
@@ -312,7 +432,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-300">{rec.reason}</p>
+                      <p className="text-xs text-slate-300 leading-relaxed">{rec.reason}</p>
                     </div>
                     <div className="text-right shrink-0 ml-4">
                       {rec.est !== undefined ? (
@@ -331,8 +451,8 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
           </div>
         )}
 
-        {/* ── 超额收益机会（1–1.5天专属）── */}
-        {bestValueRange && (
+        {/* ── 超额收益机会（trim 期）── */}
+        {extraRange && (
           <div className="rounded-xl border border-yellow-500/30 bg-gradient-to-br from-yellow-950/50 to-amber-950/30 overflow-hidden">
             <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-amber-400" />
             <div className="p-4">
@@ -343,37 +463,17 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
               </div>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-white font-mono mb-1">{bestValueRange.range}</p>
+                  <p className="text-sm font-bold text-white font-mono mb-1">{extraRange.range}</p>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    市价 <span className="text-yellow-300 font-bold">{bestValueRange.price.toFixed(1)}%</span>，
-                    模型概率 <span className="text-sky-300 font-bold">{bestValueRange.realProb.toFixed(1)}%</span>，
-                    价格仅为模型的 <span className="text-yellow-300 font-bold">{(bestValueRange.price / bestValueRange.realProb * 100).toFixed(0)}%</span>
+                    市价 <span className="text-yellow-300 font-bold">{extraRange.price.toFixed(1)}¢</span>，
+                    模型概率 <span className="text-sky-300 font-bold">{extraRange.realProb.toFixed(1)}%</span>，
+                    VR = <span className="text-yellow-300 font-bold">{extraRange.vr.toFixed(2)}</span>
                   </p>
-                  <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                    策略：用中心仓位的稳定收益覆盖风险，小仓位博弈该区间的超额赔率。
-                    建议用 <span className="text-yellow-300">{centerCurrentValue ? '中心当前估值12%' : '总资金4%'}</span> 买入。
-                  </p>
+                  <p className="text-xs text-slate-400 mt-1">用主仓利润的5-10%小仓位博超额赔率</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-2xl font-bold text-yellow-400 font-mono">${valueBetAmount}</p>
-                  <p className="text-xs text-slate-300 mt-0.5">建议下注</p>
-                  <p className="text-xs text-amber-400 font-mono font-semibold mt-0.5">
-                    中奖 → ${Math.round(valueBetAmount / (bestValueRange.price / 100)).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-xs">
-                <div className="flex-1 p-2 bg-slate-800/60 rounded-lg text-center">
-                  <p className="text-slate-400">盈亏比</p>
-                  <p className="text-yellow-300 font-bold font-mono">{(100 / bestValueRange.price).toFixed(1)}x</p>
-                </div>
-                <div className="flex-1 p-2 bg-slate-800/60 rounded-lg text-center">
-                  <p className="text-slate-400">EV 指数</p>
-                  <p className="text-emerald-400 font-bold font-mono">{bestValueRange.evRatio.toFixed(2)}</p>
-                </div>
-                <div className="flex-1 p-2 bg-slate-800/60 rounded-lg text-center">
-                  <p className="text-slate-400">模型胜率</p>
-                  <p className="text-sky-300 font-bold font-mono">{bestValueRange.realProb.toFixed(1)}%</p>
+                  <p className="text-xs text-slate-400">盈亏比</p>
+                  <p className="text-2xl font-bold text-yellow-400 font-mono">{(100 / extraRange.price).toFixed(1)}x</p>
                 </div>
               </div>
             </div>
@@ -386,64 +486,71 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <Shield className="w-6 h-6 mx-auto mb-2 text-slate-500 opacity-60" />
             <p className="text-sm text-slate-300 font-semibold">当前处于观望期</p>
             <p className="text-xs text-slate-400 mt-1">
-              还剩 <span className="text-sky-400 font-bold">{Math.round(remainingDays * 24)} 小时</span>，
-              距到期约 <span className="text-sky-400 font-bold">3天</span> 时（倒数第三天上午）开始第一次建仓
+              距到期 <span className="text-sky-400 font-bold">{(remainingDays * 24).toFixed(0)} 小时</span>，
+              µ不确定性约 <span className="text-amber-400 font-bold">±35条</span>
             </p>
-            <p className="text-xs text-slate-400 mt-1">此期间观察发推速率是否稳定，确认预测落点方向</p>
+            <p className="text-xs text-slate-400 mt-1">到期前 <span className="text-sky-400 font-bold">2–2.5天</span>（约 {Math.round(remainingDays * 24 - 60)} 小时后）开始入场</p>
           </div>
         )}
 
-        {/* ── 操作时间表 ── */}
+        {/* ── 持有期提示 ── */}
+        {phase === 'hold' && (
+          <div className="p-4 bg-emerald-950/20 rounded-xl border border-emerald-700/30">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-slate-300 space-y-1">
+                <p className="font-semibold text-slate-200">持有期检查清单</p>
+                <p>• µ偏移 &lt; 1.5σ（25条以内）→ <span className="text-emerald-400">不调仓，继续持有</span></p>
+                <p>• µ偏移 ≥ 1.5σ → <span className="text-amber-400">等BJ 17:30死区内评估调仓</span></p>
+                <p>• Musk连续2天低于均值30%+ → <span className="text-rose-400">必须重算µ</span></p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 三个强制检查点时间表 ── */}
         <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/40">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <Zap className="w-3 h-3 text-sky-400" />操作时间表（以北京时间24:00到期为基准）
+            <Zap className="w-3 h-3 text-sky-400" />每日三个强制检查点（北京时间）
           </h3>
           <div className="space-y-3">
             {[
               {
-                label: '倒数第三天上午',
-                sublabel: '距到期 2.5–3天',
-                action: `第一次建仓  中心 $${Math.round(capital*0.15).toLocaleString()}  上翼 $${Math.round(capital*0.07).toLocaleString()}  下翼 $${Math.round(capital*0.03).toLocaleString()}`,
-                active: phase === 'entry1',
+                time: 'BJ 11:45',
+                label: '深夜前建仓窗口',
+                action: phase === 'entry'
+                  ? `✅ 当前在入场期 — 检查VR是否≥1.0，避开BJ 13-16高峰`
+                  : phase === 'watch'
+                  ? '观望 — 距到期仍 > 2.5天，不入场'
+                  : '检查仓位状态，评估是否需要补仓',
+                active: phase === 'entry',
                 color: 'from-sky-500 to-blue-500',
               },
               {
-                label: '倒数第二天',
-                sublabel: '距到期 1.5–2.5天',
-                action: `第二次加仓  中心主力 $${Math.round(capital*0.36).toLocaleString()}（落点已更明确）`,
-                active: phase === 'entry2',
+                time: 'BJ 17:30',
+                label: '死区剪仓评估（强制）',
+                action: phase === 'trim1' || phase === 'trim2'
+                  ? '⚠️ 当前在减仓期 — 检查概率<15%的区间，评估是否止损'
+                  : '检查今日会话是否缺席 → 修正µ；浮亏>20%且µ偏出 → 止损',
+                active: phase === 'trim1' || phase === 'trim2',
+                color: 'from-amber-500 to-orange-500',
+              },
+              {
+                time: 'BJ 21:00',
+                label: '晨间补仓窗口',
+                action: 'VR≥1.0且主仓未达50-70% → 可补仓；否则等次日BJ 11:45',
+                active: false,
                 color: 'from-emerald-500 to-teal-500',
               },
-              {
-                label: '最后一天上午',
-                sublabel: '距到期 1–1.5天',
-                action: '翼仓各减40%  +  评估超额收益机会',
-                active: phase === 'sell_wing1',
-                color: 'from-amber-500 to-orange-400',
-              },
-              {
-                label: '最后一天晚上',
-                sublabel: '距到期 0.5–1天',
-                action: '翼仓再减50%，专注等待中心落点结算',
-                active: phase === 'sell_wing2',
-                color: 'from-orange-500 to-red-500',
-              },
-              {
-                label: '到期前12小时',
-                sublabel: '最终阶段',
-                action: '翼仓清仓  ·  中心 >65% 则止盈20–30%',
-                active: phase === 'final',
-                color: 'from-rose-500 to-pink-500',
-              },
             ].map((step, i) => (
-              <div key={i} className={`flex items-start gap-3 transition-opacity ${step.active ? 'opacity-100' : 'opacity-35'}`}>
+              <div key={i} className={`flex items-start gap-3 transition-opacity ${step.active ? 'opacity-100' : 'opacity-45'}`}>
                 <div className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${step.active ? `bg-gradient-to-br ${step.color} shadow-lg` : 'bg-slate-600'}`} />
                 <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-xs font-bold ${step.active ? 'text-white' : 'text-slate-400'}`}>{step.label}</span>
-                    <span className="text-xs text-slate-400">{step.sublabel}</span>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className={`text-xs font-bold font-mono ${step.active ? 'text-white' : 'text-slate-400'}`}>{step.time}</span>
+                    <span className={`text-xs ${step.active ? 'text-slate-300' : 'text-slate-500'}`}>{step.label}</span>
                   </div>
-                  <span className={`text-xs ${step.active ? 'text-slate-200' : 'text-slate-400'}`}>{step.action}</span>
+                  <p className={`text-xs mt-0.5 leading-relaxed ${step.active ? 'text-slate-200' : 'text-slate-400'}`}>{step.action}</p>
                 </div>
               </div>
             ))}
