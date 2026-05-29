@@ -1,9 +1,13 @@
 name: Scrape xtracker Data
 
 on:
-  schedule:
-    - cron: '*/3 * * * *'   # 每 3 分钟一次
-  workflow_dispatch:         # 支持手动触发
+  # schedule 已暂停（2026-05-28）
+  # 原因：GitHub Actions 账单问题导致每 3 分钟失败一次，持续收到报错通知
+  # 备用方案：前端已通过 Vercel /api/xtracker 直接拉取，Gist fallback 暂不需要
+  # 恢复方法：取消注释下方两行，删除此注释块
+  # schedule:
+  #   - cron: '*/3 * * * *'
+  workflow_dispatch:         # 保留手动触发（需要时可手动更新 Gist）
 
 jobs:
   scrape:

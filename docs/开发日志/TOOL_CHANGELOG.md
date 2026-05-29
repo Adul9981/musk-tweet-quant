@@ -22,6 +22,50 @@
 
 ---
 
+## v2.6 — 2026-05-28
+
+### 触发原因
+GitHub Actions "Scrape xtracker Data" workflow 因账单问题持续失败（每3分钟一次），用户手机不断收到报错通知。
+
+### 问题描述
+- `scrape-xtracker.yml` 每3分钟定时触发，月消耗约960分钟，接近或超出 GitHub 免费额度（2000分钟/月）
+- GitHub 账户出现付款失败或限额问题，所有 Actions 运行被拒绝，持续报错通知扰人
+- 诊断错误信息：`The job was not started because recent account payments have failed or your spending limit needs to be increased`
+
+### 变更内容
+
+**`.github/workflows/scrape-xtracker.yml`**：
+- 注释掉 `schedule` 触发器（原 `*/3 * * * *`），保留 `workflow_dispatch`（手动触发）
+- 原文件备份至 `.github/workflows/scrape-xtracker.yml.bak`
+
+**为什么这样做是安全的**：
+- 前端数据优先级：① Vercel `/api/xtracker`（直接调 xtracker API，主路径，正常工作）→ ② GitHub Gist fallback（备用）
+- GitHub Actions 只负责更新 Gist fallback，主路径不受影响
+- 工具功能完全不受影响，xtracker 数据照常通过 Vercel proxy 获取
+
+### 验证方式
+- 推送后 GitHub Actions 不再自动触发，无新失败通知
+- 工具前端 xtracker 数据（总数/今日/日均/剩余）正常显示
+
+### 遗留问题
+- GitHub 账单问题未根本解决，需用户登录 GitHub → Settings → Billing 检查
+- 若需恢复 Gist 自动更新：取消注释 `schedule` 块，或考虑降低频率（每15-30分钟一次）
+- 备选方案：将仓库设为 Public（Actions 免费无限额）
+
+### 恢复方法
+```yaml
+# 在 scrape-xtracker.yml 中取消注释：
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # 建议改为每15分钟，月消耗约200分钟
+  workflow_dispatch:
+```
+
+### 关联规则
+无（基础设施变更，不涉及交易规则）
+
+---
+
 ## v2.4 — 2026-05-27
 
 ### 触发原因
