@@ -298,22 +298,34 @@ async function sendToOneChatId(
   try {
     let res: Response;
     if (config.workerUrl) {
+      // 用户自定义 Cloudflare Worker（优先级最高）
       res = await fetch(config.workerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ botToken: config.botToken, chatId, message }),
       });
     } else {
-      res = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        }),
-      });
+      // 生产环境走 Vercel 代理（解决国内浏览器直连 api.telegram.org 被墙的问题）
+      // 本地开发回退到直连（需要梯子）
+      const isProduction = !['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (isProduction) {
+        res = await fetch('/api/telegram-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ botToken: config.botToken, chatId, message }),
+        });
+      } else {
+        res = await fetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+          }),
+        });
+      }
     }
     const data = await res.json() as { ok?: boolean; description?: string };
     return data.ok === true ? { ok: true } : { ok: false, error: data.description ?? JSON.stringify(data) };
