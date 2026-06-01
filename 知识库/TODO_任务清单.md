@@ -15,7 +15,29 @@
 - [ ] 月度趋势的量化影响
   - 按月分析33期数据，量化月度日均对µ中心落点的系统性影响
 
-## 🛠 工具任务
+## 🛠 工具任务（本周优先）
+
+- [x] **访问人数统计功能**（2026-06-01 完成）
+  - 已接入 Vercel Analytics，Vercel 控制台已自动启用
+  - 数据已在收集：Visitors/PV/地区/设备
+
+- [x] **Claude Preview vs 生产不一致问题**（2026-06-01 已解决）
+  - 根因：npm run dev 跑本地 vite，API 函数全 404，前端降级读 Gist 旧数据
+  - 解决方案：改用 `vercel dev` 启动，本地 /api/* 函数真实执行，与生产一致
+  - 本地环境变量已配置好（.env 有 RAPIDAPI_KEY）
+
+- [ ] **推文数据源切换：twitterapi.io 替代 xtracker**（本周优先）
+  - 背景：xtracker.polymarket.com 返回空数组，社区已确认是官方 bug
+  - 方案：在 `/api/elon-tweets.js` 中将 twitterapi.io 作为主源，xtracker 降为备源
+  - API Key：`new1_8452e6aed9cd49e9b163a11635102474`
+  - 接口：`GET https://api.twitterapi.io/twitter/user/last_tweets?userName=elonmusk`
+  - 过滤规则：`isReply === false` 才计入（与 Polymarket 规则一致）
+  - 详见：`知识库/07_数据源与备份策略.md`
+
+- [ ] **商业化 MVP 规划落地**
+  - 产品简化：将 7 个 Tab 收敛为 3 屏（进度/入场建议/预警）
+  - Telegram 预警：网页内一键绑定 Chat ID
+  - 详见：`知识库/08_商业化规划.md`
 
 - [ ] 月度数据更新
   - 每月末运行 `/tmp/fetch_musk_patterns.py` 更新 `02_核心统计发现.md` 中的数据
@@ -38,7 +60,10 @@
 - [x] 33期回测完成（发现+0.3档系统性偏差）
 - [x] 知识库重组（docs/ → 知识库/，2026-05-27）
 - [x] 5月26日复盘及规则更新
+- [x] 访问统计接入 Vercel Analytics（2026-06-01）
+- [x] Preview vs 生产不一致问题定位（改用 vercel dev，2026-06-01）
+- [x] 数据源全面审查 + 知识库 07/08 新建（2026-06-01）
 
 ---
 
-*最后更新：2026-05-27*
+*最后更新：2026-06-01*
