@@ -1,11 +1,12 @@
 /**
  * /api/xtracker
  *
+ * 优化版：一次拉推文 → 按市场时段分配（原来每市场单独翻页，3×10页≈20秒）
+ * 现在：单次翻页抓14天推文，再切分给各市场，目标响应 <5 秒
+ *
  * 数据源优先级（见 知识库/07_数据源与备份策略.md）：
- * 1. 市场元数据：/api/discover-markets（内部复用，candidate slugs → Gamma API）
- *    fallback → xtracker.polymarket.com
- * 2. 推文计数：twitterapi.io（isReply=false，与 Polymarket 规则一致）
- *    fallback → xtracker stats（若返回有效数据）
+ *   市场元数据：Gamma API candidate slugs
+ *   推文计数：twitterapi.io（isReply=false，与 Polymarket 规则一致）
  */
 
 const TWITTERAPI_KEY = process.env.TWITTERAPI_KEY || 'new1_8452e6aed9cd49e9b163a11635102474';
@@ -16,7 +17,11 @@ const MONTHS = [
   'july','august','september','october','november','december',
 ];
 
-// ── Gamma API：生成候选 slug 列表 ───────────────────────
+// ── 内存缓存（Vercel 实例存活期间有效，约几分钟）─────────────
+let _cache = { data: null, ts: 0 };
+const CACHE_TTL = 5 * 60 * 1000; // 5 分钟
+
+// ── Gamma：候选 slug ────────────────────────────────────────
 function candidateSlugs() {
   const now  = new Date();
   const seen = new Set();
@@ -31,85 +36,77 @@ function candidateSlugs() {
 }
 
 async function fetchEventBySlug(slug) {
-  const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(6000),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const events = Array.isArray(data) ? data : data.data || [];
-  return events.find(e => e.slug === slug) || null;
+  try {
+    const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const events = Array.isArray(data) ? data : data.data || [];
+    return events.find(e => e.slug === slug) || null;
+  } catch { return null; }
 }
 
-// ── 获取活跃市场列表（优先 Gamma，备用 xtracker）───────────
+// ── 获取活跃市场列表 ────────────────────────────────────────
 async function fetchActiveMarkets() {
-  const now = new Date();
+  const now    = new Date();
+  const slugs  = candidateSlugs();
+  const results= await Promise.allSettled(slugs.map(fetchEventBySlug));
   const markets = [];
-
-  // 并发探测所有候选 slug
-  const slugs = candidateSlugs();
-  const results = await Promise.allSettled(slugs.map(fetchEventBySlug));
 
   for (const r of results) {
     if (r.status !== 'fulfilled' || !r.value) continue;
-    const ev = r.value;
+    const ev  = r.value;
     const end = new Date(ev.end_date_iso || ev.endDate);
     if (isNaN(end.getTime()) || end <= now) continue;
     const start = new Date(ev.start_date_iso || ev.startDate);
     markets.push({
-      id:        ev.id || ev.slug,
-      title:     ev.title,
-      startDate: start.toISOString(),
-      endDate:   end.toISOString(),
-      marketLink:`https://polymarket.com/event/${ev.slug}${REFERRAL_CODE}`,
-      slug:      ev.slug,
-      source:    'gamma',
+      id: ev.id || ev.slug, title: ev.title,
+      startDate: start.toISOString(), endDate: end.toISOString(),
+      marketLink: `https://polymarket.com/event/${ev.slug}${REFERRAL_CODE}`,
+      slug: ev.slug, source: 'gamma',
     });
   }
 
-  if (markets.length > 0) return markets;
-
-  // Fallback: xtracker.polymarket.com
-  try {
-    const resp = await fetch(
-      'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true',
-      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) }
-    );
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        return data.data
-          .filter(t => {
-            const diff = (new Date(t.endDate) - new Date(t.startDate)) / 86400000;
-            return diff >= 6 && diff <= 8;
-          })
-          .map(t => ({
-            id:        t.id,
-            title:     t.title,
-            startDate: t.startDate,
-            endDate:   t.endDate,
-            marketLink:t.marketLink + (t.marketLink.includes('?') ? '&' : REFERRAL_CODE),
-            slug:      t.marketLink?.split('/').pop()?.split('?')[0] || '',
-            source:    'xtracker',
-          }));
+  // Fallback: xtracker
+  if (markets.length === 0) {
+    try {
+      const resp = await fetch(
+        'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true',
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success && data.data?.length > 0) {
+          return data.data
+            .filter(t => {
+              const diff = (new Date(t.endDate) - new Date(t.startDate)) / 86400000;
+              return diff >= 6 && diff <= 8;
+            })
+            .map(t => ({
+              id: t.id, title: t.title,
+              startDate: t.startDate, endDate: t.endDate,
+              marketLink: t.marketLink + (t.marketLink.includes('?') ? '&' : REFERRAL_CODE),
+              slug: t.marketLink?.split('/').pop()?.split('?')[0] || '',
+              source: 'xtracker',
+            }));
+        }
       }
-    }
-  } catch (e) {
-    console.warn('[xtracker meta fallback] 失败:', e.message);
+    } catch (e) { console.warn('[xtracker fallback]', e.message); }
   }
 
-  return [];
+  return markets;
 }
 
-// ── twitterapi.io：抓取指定时段推文（isReply=false）────────
-async function fetchTweetsInPeriod(startDate, endDate) {
-  const startMs = new Date(startDate).getTime();
-  const endMs   = new Date(endDate).getTime();
-
-  let allTweets = [];
-  let cursor    = null;
-  let page      = 0;
-  const MAX_PAGES = 30; // 最多 600 条，7 天内通常 150-250 条
+// ── 一次性抓取最近 N 天的 Musk 推文（isReply=false）──────────
+// 比每个市场单独翻页快 3 倍
+async function fetchRecentTweets(daysBack = 14) {
+  const cutoffMs = Date.now() - daysBack * 86400000;
+  const allTweets = [];
+  let cursor = null;
+  let page   = 0;
+  const MAX_PAGES = 12; // 8天约需10页（Musk ~30条/天），控制在Vercel 10s超时内
 
   while (page < MAX_PAGES) {
     const url = cursor
@@ -118,7 +115,7 @@ async function fetchTweetsInPeriod(startDate, endDate) {
 
     const resp = await fetch(url, {
       headers: { 'X-API-Key': TWITTERAPI_KEY },
-      signal:  AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(8000),
     });
     if (!resp.ok) throw new Error(`twitterapi.io ${resp.status}`);
 
@@ -129,94 +126,102 @@ async function fetchTweetsInPeriod(startDate, endDate) {
     for (const t of tweets) {
       if (t.isReply) continue; // Polymarket 规则：不计回复
       const ts = new Date(t.createdAt).getTime();
-      if (isNaN(ts) || ts > endMs) continue;
-      if (ts < startMs) { done = true; break; }
-      allTweets.push(t);
+      if (isNaN(ts)) continue;
+      if (ts < cutoffMs) { done = true; break; }
+      allTweets.push({ ...t, _ts: ts });
     }
 
     if (done || !json.has_next_page || !json.next_cursor) break;
     cursor = json.next_cursor;
     page++;
-    await new Promise(r => setTimeout(r, 150));
+    // 无延迟，最大化速度（twitterapi.io 限速比较宽松）
   }
 
+  console.log(`[twitterapi] 抓取 ${allTweets.length} 条推文 (${page+1} 页, ${daysBack}天内)`);
   return allTweets;
 }
 
-// ── 按北京时间日期聚合 ───────────────────────────────────
+// ── 按北京时间日期聚合 ──────────────────────────────────────
 function aggregateByBjDate(tweets) {
   const map = new Map();
   for (const t of tweets) {
-    const bj = new Date(new Date(t.createdAt).getTime() + 8 * 3600000)
-      .toISOString().split('T')[0];
+    const bj = new Date(t._ts + 8 * 3600000).toISOString().split('T')[0];
     map.set(bj, (map.get(bj) || 0) + 1);
   }
   return map;
 }
 
-// ── 主 Handler ──────────────────────────────────────────
+// ── 主 Handler ──────────────────────────────────────────────
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // 缓存命中
+  if (_cache.data && Date.now() - _cache.ts < CACHE_TTL) {
+    return res.status(200).json({ ..._cache.data, fromCache: true });
+  }
+
   try {
-    const markets = await fetchActiveMarkets();
+    // 并发：同时获取市场列表 + 拉取推文
+    const [markets, allTweets] = await Promise.all([
+      fetchActiveMarkets(),
+      fetchRecentTweets(8),  // 8天足够覆盖所有7天市场，减少页数确保10s内完成
+    ]);
+
     if (markets.length === 0) {
-      console.warn('[xtracker] 无法获取市场元数据');
       return res.status(200).json({ success: true, trackings: [], lastUpdated: new Date().toISOString() });
     }
 
     const now = new Date();
 
-    const trackings = await Promise.all(
-      markets.map(async (market) => {
-        try {
-          const tweets    = await fetchTweetsInPeriod(market.startDate, market.endDate);
-          const dailyMap  = aggregateByBjDate(tweets);
-          const daily     = Array.from(dailyMap.entries())
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => a.date.localeCompare(b.date));
+    const trackings = markets.map((market) => {
+      try {
+        const startMs = new Date(market.startDate).getTime();
+        const endMs   = new Date(market.endDate).getTime();
 
-          const endDate   = new Date(market.endDate);
-          const startDate = new Date(market.startDate);
-          const diffMs        = endDate.getTime() - now.getTime();
-          const daysRemaining = Math.max(0, Math.floor(diffMs / 86400000));
-          const hoursRemaining= Math.max(0, Math.floor((diffMs % 86400000) / 3600000));
-          const elapsedDays   = Math.max(0.01, (now.getTime() - startDate.getTime()) / 86400000);
-          const daysTotal     = (endDate.getTime() - startDate.getTime()) / 86400000;
+        // 从已拉取的推文中过滤出当前市场时段
+        const periodTweets = allTweets.filter(t => t._ts >= startMs && t._ts <= endMs);
+        const dailyMap     = aggregateByBjDate(periodTweets);
+        const daily        = Array.from(dailyMap.entries())
+          .map(([date, count]) => ({ date, count }))
+          .sort((a, b) => a.date.localeCompare(b.date));
 
-          const total          = tweets.length;
-          const pace           = Math.round(total / elapsedDays);
-          const percentComplete= Math.min(100, Math.round((elapsedDays / daysTotal) * 100));
-          const todayBj        = new Date(now.getTime() + 8 * 3600000).toISOString().split('T')[0];
-          const todayTotal     = dailyMap.get(todayBj) || 0;
+        const diffMs         = endMs - now.getTime();
+        const daysRemaining  = Math.max(0, Math.floor(diffMs / 86400000));
+        const hoursRemaining = Math.max(0, Math.floor((diffMs % 86400000) / 3600000));
+        const elapsedDays    = Math.max(0.01, (now.getTime() - startMs) / 86400000);
+        const daysTotal      = (endMs - startMs) / 86400000;
 
-          console.log(`[xtracker] ${market.slug}: ${total} tweets (today:${todayTotal}) via twitterapi.io`);
+        const total           = periodTweets.length;
+        const pace            = Math.round(total / elapsedDays);
+        const percentComplete = Math.min(100, Math.round((elapsedDays / daysTotal) * 100));
+        const todayBj         = new Date(now.getTime() + 8 * 3600000).toISOString().split('T')[0];
+        const todayTotal      = dailyMap.get(todayBj) || 0;
 
-          return {
-            ...market,
-            stats: {
-              total, pace, percentComplete,
-              daysElapsed:  Math.floor(elapsedDays),
-              daysRemaining, hoursRemaining,
-              daysTotal:    Math.round(daysTotal),
-              daily, todayTotal,
-              dataSource:   'twitterapi.io',
-            },
-          };
-        } catch (e) {
-          console.error(`[twitterapi] 统计失败 ${market.id}:`, e.message);
-          return { ...market, stats: null };
-        }
-      })
-    );
+        console.log(`[xtracker] ${market.slug}: ${total}条 today:${todayTotal}`);
 
-    return res.status(200).json({
-      success:     true,
-      trackings,
-      lastUpdated: new Date().toISOString(),
+        return {
+          ...market,
+          stats: {
+            total, pace, percentComplete,
+            daysElapsed:   Math.floor(elapsedDays),
+            daysRemaining, hoursRemaining,
+            daysTotal:     Math.round(daysTotal),
+            daily, todayTotal,
+            dataSource: 'twitterapi.io',
+          },
+        };
+      } catch (e) {
+        console.error(`[xtracker] 统计失败 ${market.id}:`, e.message);
+        return { ...market, stats: null };
+      }
     });
+
+    const result = { success: true, trackings, lastUpdated: new Date().toISOString() };
+    _cache = { data: result, ts: Date.now() };
+
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error('xtracker handler error:', error);
