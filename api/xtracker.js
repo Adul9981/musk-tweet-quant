@@ -97,7 +97,22 @@ async function fetchActiveMarkets() {
   return markets;
 }
 
-// ── 数据源 A：polystrike.xyz（主力）─────────────────────────
+// ── 数据源 A：xtracker posts API（主力）────────────────────
+// 官方 posts 接口支持时间过滤，直接返回该区间全部推文数
+async function fetchFromXtrackerPosts(startDate, endDate) {
+  const url = `https://xtracker.polymarket.com/api/users/elonmusk/posts?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&limit=1000`;
+  const resp = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!resp.ok) throw new Error(`xtracker posts ${resp.status}`);
+  const json = await resp.json();
+  const posts = json.data || [];
+  if (!posts.length) throw new Error('xtracker posts: no data');
+  return posts.length;
+}
+
+// ── 数据源 B：polystrike.xyz（fallback）─────────────────────
 async function fetchFromPolystrike() {
   const resp = await fetch(POLYSTRIKE, {
     headers: { Accept: 'application/json' },
@@ -105,9 +120,8 @@ async function fetchFromPolystrike() {
   });
   if (!resp.ok) throw new Error(`polystrike ${resp.status}`);
   const json = await resp.json();
-  // 返回格式: { timestamp, data: [ { event_id, slug, start_ts, end_ts, real_counter, polymarket_xtracker_counter, ... } ] }
   if (!Array.isArray(json.data) || json.data.length === 0) throw new Error('polystrike: empty data');
-  return json.data; // 每条对应一个市场周期
+  return json.data;
 }
 
 // ── 数据源 B：twitterapi.io 自翻页（fallback）───────────────
@@ -170,7 +184,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 并发拉取：市场元数据 + polystrike 计数
+    // 先拉市场列表 + polystrike（并发）
     const [markets, polystrikeData] = await Promise.all([
       fetchActiveMarkets(),
       fetchFromPolystrike().catch(e => { console.warn('[polystrike] failed:', e.message); return null; }),
@@ -180,16 +194,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, trackings: [], lastUpdated: new Date().toISOString() });
     }
 
-    // polystrike 失败时再拉 twitterapi
-    let fallbackTweets = null;
-    if (!polystrikeData) {
-      console.warn('[xtracker] polystrike failed, falling back to twitterapi.io');
-      fallbackTweets = await fetchRecentTweets(8).catch(() => []);
-    }
-
     const now = new Date();
 
-    const trackings = markets.map((market) => {
+    // 并发：对每个市场同时请求 xtracker posts API
+    const trackings = await Promise.all(markets.map(async (market) => {
       try {
         const startMs = new Date(market.startDate).getTime();
         const endMs   = new Date(market.endDate).getTime();
@@ -202,38 +210,36 @@ export default async function handler(req, res) {
 
         let total = 0;
         let dataSource = 'unknown';
-        let daily = [];
+        const daily = [];
         let todayTotal = 0;
 
-        // 路径 A：polystrike 命中
-        if (polystrikeData) {
-          // 用 start_ts / end_ts 匹配（误差 ±1分钟内）
-          const match = polystrikeData.find(p =>
-            Math.abs(p.start_ts - startMs) < 60 * 60 * 1000 &&
-            Math.abs(p.end_ts   - endMs)   < 60 * 60 * 1000
-          );
+        // 路径 A：xtracker 官方 posts API（主力）
+        try {
+          total = await fetchFromXtrackerPosts(market.startDate, market.endDate);
+          dataSource = 'xtracker-posts';
+          console.log(`[xtracker-posts] ${market.slug}: ${total}条`);
+        } catch (e) {
+          console.warn(`[xtracker-posts] failed for ${market.slug}:`, e.message);
+        }
+
+        // 路径 B：polystrike fallback
+        if (dataSource === 'unknown' && polystrikeData) {
+          const match = polystrikeData.find(p => p.slug === market.slug)
+            || polystrikeData.find(p => Math.abs(p.end_ts - endMs) < 12 * 60 * 60 * 1000);
           if (match) {
-            // 优先 real_counter，其次 polymarket_xtracker_counter
             total = match.real_counter ?? match.polymarket_xtracker_counter ?? 0;
             dataSource = 'polystrike';
-            console.log(`[polystrike] ${market.slug}: real=${match.real_counter} oracle=${match.polymarket_xtracker_counter}`);
-          } else {
-            console.warn(`[polystrike] no match for ${market.slug} (startMs=${startMs})`);
+            console.log(`[polystrike] ${market.slug}: real=${match.real_counter}`);
           }
         }
 
-        // 路径 B：twitterapi.io fallback（有 daily breakdown）
-        if (dataSource === 'unknown' && fallbackTweets) {
-          const periodTweets = fallbackTweets.filter(t => t._ts >= startMs && t._ts <= endMs);
-          const dailyMap     = aggregateByBjDate(periodTweets);
-          daily = Array.from(dailyMap.entries())
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => a.date.localeCompare(b.date));
-          const todayBj = new Date(now.getTime() + 8 * 3600000).toISOString().split('T')[0];
-          todayTotal = dailyMap.get(todayBj) || 0;
+        // 路径 C：twitterapi.io 最后兜底
+        if (dataSource === 'unknown') {
+          console.warn(`[xtracker] all sources failed for ${market.slug}, trying twitterapi.io`);
+          const tweets = await fetchRecentTweets(8).catch(() => []);
+          const periodTweets = tweets.filter(t => t._ts >= startMs && t._ts <= endMs);
           total = periodTweets.length;
           dataSource = 'twitterapi.io';
-          console.log(`[twitterapi.io] ${market.slug}: ${total}条`);
         }
 
         const pace = Math.round(total / elapsedDays);
@@ -253,7 +259,7 @@ export default async function handler(req, res) {
         console.error(`[xtracker] 统计失败 ${market.id}:`, e.message);
         return { ...market, stats: null };
       }
-    });
+    }));
 
     const result = { success: true, trackings, lastUpdated: new Date().toISOString() };
     _cache = { data: result, ts: Date.now() };
