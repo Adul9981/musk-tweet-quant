@@ -1305,18 +1305,18 @@ export default function App() {
   }, [alertIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-[#0d1829]">
+    <div className="min-h-screen bg-[#080f1a]">
       {/* ── Header ── */}
-      <header className="bg-[#101f31]/95 backdrop-blur border-b border-sky-900/40 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-3.5">
+      <header className="bg-[#0c1525]/98 backdrop-blur border-b border-slate-700/50 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center">
-                <Radio className="w-5 h-5 text-sky-400" />
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-400/40 flex items-center justify-center">
+                <Radio className="w-4 h-4 text-sky-400" />
               </div>
               <div>
-                <h1 className="text-base font-semibold text-slate-100 tracking-wide">马斯克推文预测市场</h1>
-                <p className="text-xs text-slate-400 tracking-wider uppercase">Musk Tweet Prediction Markets</p>
+                <h1 className="text-sm font-bold text-white tracking-wide">马斯克推文预测市场</h1>
+                <p className="text-[10px] text-slate-500 tracking-widest uppercase">Musk Tweet Prediction</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -1361,7 +1361,7 @@ export default function App() {
                 href="https://polymarket.com/?r=adul"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 text-xs font-medium rounded-lg border border-slate-700 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-transparent hover:bg-slate-800 text-slate-500 hover:text-slate-300 text-xs font-medium rounded-lg border border-slate-700/50 transition-all"
               >
                 <span>主页</span>
                 <ExternalLink className="w-3 h-3" />
@@ -1370,7 +1370,7 @@ export default function App() {
                 href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-sky-500/20"
               >
                 <span>进入市场</span>
                 <ExternalLink className="w-3 h-3" />
@@ -1381,28 +1381,47 @@ export default function App() {
       </header>
 
       {/* ── Nav ── */}
-      <nav className="bg-[#101f31]/80 border-b border-slate-800/80">
+      <nav className="bg-[#0c1525] border-b border-slate-700/60">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-0">
+          <div className="flex gap-0 overflow-x-auto scrollbar-hide">
+            {/* 核心功能（高亮） */}
             {[
-              { id: 'market', label: '市场概览', icon: TrendingUp },
-              { id: 'analysis', label: '概率分析', icon: BarChart3 },
-              { id: 'positions', label: '持仓管理', icon: Wallet },
-              { id: 'heatmap', label: '发推热力图', icon: Grid3X3 },
-              { id: 'tweet', label: '推文生成', icon: FileText },
-              { id: 'guide', label: '策略指南', icon: BookOpen },
-              { id: 'telegram', label: 'Telegram 预警', icon: Bell },
+              { id: 'market',   label: '市场概览',  icon: TrendingUp, primary: true },
+              { id: 'analysis', label: '概率分析',  icon: BarChart3,  primary: true },
+              { id: 'heatmap',  label: '发推热力图', icon: Grid3X3,   primary: true },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 px-5 py-3.5 text-xs font-medium border-b-2 transition-all tracking-wide ${
+                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-sky-500 text-sky-400 bg-sky-500/5'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'border-sky-400 text-sky-300 bg-sky-500/8'
+                    : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            ))}
+            {/* 分隔线 */}
+            <div className="w-px bg-slate-700/60 my-2 mx-1" />
+            {/* 辅助功能（低调） */}
+            {[
+              { id: 'positions', label: '持仓管理', icon: Wallet },
+              { id: 'tweet',     label: '推文生成', icon: FileText },
+              { id: 'guide',     label: '策略指南', icon: BookOpen },
+              { id: 'telegram',  label: '预警',     icon: Bell },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'border-slate-400 text-slate-200 bg-white/5'
+                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/4'
+                }`}
+              >
+                <tab.icon className="w-3 h-3" />
                 {tab.label}
               </button>
             ))}
@@ -1449,18 +1468,18 @@ export default function App() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'market' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
                         <Target className="w-4.5 h-4.5 text-sky-400" />
                       </div>
-                      <h2 className="text-base font-semibold text-slate-200">
+                      <h2 className="text-base font-semibold text-white">
                         {currentMarket?.title ? parseMarketTitle(currentMarket.title) : '市场数据'}
                       </h2>
                     </div>
@@ -1475,24 +1494,24 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div className="bg-slate-800/50 border border-sky-500/15 rounded-xl p-4 text-center">
-                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">当前总数</p>
-                      <p className="text-3xl font-bold text-sky-400 font-mono">{currentTracking?.stats?.total || '—'}</p>
+                    <div className="bg-sky-500/8 border border-sky-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-sky-400/70 mb-1 uppercase tracking-widest font-semibold">当前总数</p>
+                      <p className="text-3xl font-bold text-sky-300 font-mono">{currentTracking?.stats?.total || '—'}</p>
                       <p className="text-xs text-slate-400 mt-1">条推文</p>
                     </div>
-                    <div className="bg-slate-800/50 border border-emerald-500/15 rounded-xl p-4 text-center">
-                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">今日新增</p>
-                      <p className="text-3xl font-bold text-emerald-400 font-mono">{currentTracking?.stats?.todayTotal || '—'}</p>
+                    <div className="bg-emerald-500/8 border border-emerald-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-emerald-400/70 mb-1 uppercase tracking-widest font-semibold">今日新增</p>
+                      <p className="text-3xl font-bold text-emerald-300 font-mono">{currentTracking?.stats?.todayTotal || '—'}</p>
                       <p className="text-xs text-slate-400 mt-1">条</p>
                     </div>
-                    <div className="bg-slate-800/50 border border-amber-500/15 rounded-xl p-4 text-center">
-                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">日均时速</p>
-                      <p className="text-3xl font-bold text-amber-400 font-mono">{currentTracking?.stats?.pace || '—'}</p>
+                    <div className="bg-amber-500/8 border border-amber-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-amber-400/70 mb-1 uppercase tracking-widest font-semibold">日均时速</p>
+                      <p className="text-3xl font-bold text-amber-300 font-mono">{currentTracking?.stats?.pace || '—'}</p>
                       <p className="text-xs text-slate-400 mt-1">条/天</p>
                     </div>
-                    <div className="bg-slate-800/50 border border-violet-500/15 rounded-xl p-4 text-center">
-                      <p className="text-xs text-slate-300 mb-1 uppercase tracking-wide font-medium">剩余时间</p>
-                      <p className="text-3xl font-bold text-violet-400 font-mono">
+                    <div className="bg-violet-500/8 border border-violet-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-violet-400/70 mb-1 uppercase tracking-widest font-semibold">剩余时间</p>
+                      <p className="text-3xl font-bold text-violet-300 font-mono">
                         {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}d` : '—'}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
@@ -1503,12 +1522,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-800">
+                  <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-600/50">
                     <div className="flex justify-between text-xs mb-2">
                       <span className="text-slate-400">完成进度</span>
                       <span className="text-slate-200 font-mono font-medium">{currentTracking?.stats?.percentComplete || 0}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-sky-500 transition-all duration-500"
                         style={{ width: `${Math.min(currentTracking?.stats?.percentComplete || 0, 100)}%` }}
@@ -1518,13 +1537,13 @@ export default function App() {
                 </section>
 
                 {currentMarket && (
-                  <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                  <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
                           <Activity className="w-4 h-4 text-sky-400" />
                         </div>
-                        <h2 className="text-base font-semibold text-slate-200">Polymarket 赔率</h2>
+                        <h2 className="text-base font-semibold text-white">Polymarket 赔率</h2>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
@@ -1553,7 +1572,7 @@ export default function App() {
                     <div className="mb-5 p-4 bg-sky-500/5 rounded-xl border border-sky-500/15">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-slate-300">预测中心落点</span>
-                        <span className="text-2xl font-bold text-sky-400 font-mono">
+                        <span className="text-2xl font-bold text-sky-300 font-mono">
                           ~{predictedCenter} 条
                         </span>
                       </div>
@@ -1570,7 +1589,7 @@ export default function App() {
                           className={`flex items-center justify-between rounded-lg px-4 py-2.5 transition-colors ${
                             r.isCenter
                               ? 'bg-sky-500/10 border border-sky-500/40'
-                              : 'bg-slate-800/40 border border-slate-800 hover:border-slate-700'
+                              : 'bg-slate-800/40 border border-slate-700/50 hover:border-slate-700'
                           }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1582,7 +1601,7 @@ export default function App() {
                             )}
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-20 bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div className="w-20 bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${r.isCenter ? 'bg-sky-500' : 'bg-slate-500'}`}
                                 style={{ width: `${Math.min(r.price || 0, 25) * 4}%` }}
@@ -1600,7 +1619,7 @@ export default function App() {
               </div>
 
               <div className="space-y-4">
-                <section className="bg-[#162538] rounded-2xl p-5 border border-slate-800/80">
+                <section className="bg-[#111e30] rounded-2xl p-5 border border-slate-700/60">
                   <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
                     市场列表
@@ -1617,7 +1636,7 @@ export default function App() {
                           className={`p-3 rounded-xl border transition-all ${
                             isActive
                               ? 'bg-sky-500/10 border-sky-500/40'
-                              : 'bg-slate-800/30 border-slate-800 hover:border-slate-700'
+                              : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-700'
                           }`}
                         >
                           <button onClick={() => handleSelectMarket(i)} className="w-full text-left mb-2.5">
@@ -1649,14 +1668,14 @@ export default function App() {
                 </section>
 
                 {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
-                  <section className="bg-[#162538] rounded-2xl p-5 border border-slate-800/80">
+                  <section className="bg-[#111e30] rounded-2xl p-5 border border-slate-700/60">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">每日发推</h3>
                       <span className="text-xs text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">UTC</span>
                     </div>
                     <div className="space-y-0">
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
-                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
                           <span className="text-sm text-slate-300">{formatDate(day.date)}</span>
                           <span className="text-sm font-bold text-sky-400 font-mono">{day.count}</span>
                         </div>
@@ -1729,13 +1748,13 @@ export default function App() {
               return (
                 <div className="space-y-5">
                   {/* 节奏面板 */}
-                  <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
+                  <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60 space-y-5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
                         <span className="text-xl">🕐</span>
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
+                        <h2 className="text-lg font-semibold text-white">马斯克节奏 & 落点影响</h2>
                         <p className="text-xs text-slate-400">北京时间 {bjH}:00 · 基于206天历史数据</p>
                       </div>
                     </div>
@@ -1749,7 +1768,7 @@ export default function App() {
                           <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{t.desc}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
+                          <p className="text-3xl font-bold text-emerald-300 font-mono">{bestMu}</p>
                           <p className="text-xs text-slate-400 mt-0.5">本期落点预测（条）</p>
                           {Math.abs(bestMu - Math.round(mu)) >= 3 && (
                             <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -1816,13 +1835,13 @@ export default function App() {
 
                   {/* 热力图（今日发推 24h）*/}
                   {hasTodayData && (
-                    <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                    <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
                           <span className="text-xl">📊</span>
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-slate-200">今日发推热力图</h2>
+                          <h2 className="text-lg font-semibold text-white">今日发推热力图</h2>
                           <p className="text-xs text-slate-400">北京时间 · 每小时实际条数 vs 历史基线</p>
                         </div>
                       </div>
@@ -1880,7 +1899,7 @@ export default function App() {
         {activeTab === 'analysis' && (
           <div className="space-y-6">
             {!currentMarket || analysisData.length === 0 ? (
-              <div className="bg-[#162538] rounded-2xl p-8 border border-slate-800 text-center">
+              <div className="bg-[#111e30] rounded-2xl p-8 border border-slate-700/50 text-center">
                 <p className="text-slate-500">暂无市场数据，请先选择一个活跃市场</p>
               </div>
             ) : (
@@ -1961,14 +1980,14 @@ export default function App() {
                                          'text-slate-300';
 
                   return (
-                    <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80 space-y-5">
+                    <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60 space-y-5">
                       {/* 标题 */}
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
                           <span className="text-xl">🕐</span>
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-slate-200">马斯克节奏 & 落点影响</h2>
+                          <h2 className="text-lg font-semibold text-white">马斯克节奏 & 落点影响</h2>
                           <p className="text-xs text-slate-400">北京时间 {bjH}:00 · 基于206天历史数据</p>
                         </div>
                       </div>
@@ -1982,7 +2001,7 @@ export default function App() {
                             <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{t.desc}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-3xl font-bold text-emerald-400 font-mono">{bestMu}</p>
+                            <p className="text-3xl font-bold text-emerald-300 font-mono">{bestMu}</p>
                             <p className="text-xs text-slate-400 mt-0.5">本期落点预测（条）</p>
                             {Math.abs(bestMu - Math.round(mu)) >= 3 && (
                               <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -2055,14 +2074,14 @@ export default function App() {
                   );
                 })()}
 
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
                         <BarChart3 className="w-5 h-5 text-sky-400" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-200">盘口价值比分析</h2>
+                        <h2 className="text-lg font-semibold text-white">盘口价值比分析</h2>
                         <p className="text-xs text-slate-400">基于泊松分布 · 简单 μ = {mu.toFixed(1)} · 最佳 μ = {bestMu}</p>
                       </div>
                     </div>
@@ -2073,20 +2092,20 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="text-center p-4 bg-violet-500/10 rounded-xl border border-violet-500/20">
-                      <p className="text-2xl font-bold text-violet-400 font-mono">{currentTweetCount}</p>
+                    <div className="text-center p-4 bg-violet-500/10 rounded-xl border border-violet-400/30">
+                      <p className="text-2xl font-bold text-violet-300 font-mono">{currentTweetCount}</p>
                       <p className="text-xs text-slate-400">当前推文</p>
                     </div>
-                    <div className="text-center p-4 bg-sky-500/10 rounded-xl border border-sky-500/20">
-                      <p className="text-2xl font-bold text-sky-400 font-mono">{apiPace.toFixed(1)}</p>
+                    <div className="text-center p-4 bg-sky-500/10 rounded-xl border border-sky-400/30">
+                      <p className="text-2xl font-bold text-sky-300 font-mono">{apiPace.toFixed(1)}</p>
                       <p className="text-xs text-slate-400">日均时速</p>
                     </div>
-                    <div className="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                      <p className="text-2xl font-bold text-amber-400 font-mono">{E_rem.toFixed(0)}</p>
+                    <div className="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-400/30">
+                      <p className="text-2xl font-bold text-amber-300 font-mono">{E_rem.toFixed(0)}</p>
                       <p className="text-xs text-slate-400">预期剩余</p>
                     </div>
-                    <div className="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                      <p className="text-2xl font-bold text-emerald-400 font-mono">{remainingDays}d</p>
+                    <div className="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-400/30">
+                      <p className="text-2xl font-bold text-emerald-300 font-mono">{remainingDays}d</p>
                       <p className="text-xs text-slate-400">剩余时间</p>
                     </div>
                   </div>
@@ -2094,7 +2113,7 @@ export default function App() {
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="border-b border-slate-800">
+                        <tr className="border-b border-slate-700/50">
                           <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 uppercase">区间</th>
                           <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">赔率</th>
                           <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">真实概率</th>
@@ -2121,7 +2140,7 @@ export default function App() {
                           const plClass = profitLoss > 0 ? 'text-emerald-400' : profitLoss < 0 ? 'text-rose-400' : 'text-slate-400';
 
                           return (
-                            <tr key={item.range} className={`border-b border-slate-800/60 hover:bg-slate-800/30 ${item.isCenter ? 'bg-sky-500/5' : ''}`}>
+                            <tr key={item.range} className={`border-b border-slate-700/50/60 hover:bg-slate-800/30 ${item.isCenter ? 'bg-sky-500/5' : ''}`}>
                               <td className={`py-3 px-3 font-semibold font-mono ${item.isCenter ? 'text-sky-300' : 'text-slate-300'}`}>
                                 {item.range}
                               </td>
@@ -2154,14 +2173,14 @@ export default function App() {
                   </div>
                 </section>
 
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
                         <Gauge className="w-5 h-5 text-sky-400" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-slate-200">目标区间时速倒推雷达</h2>
+                        <h2 className="text-lg font-semibold text-white">目标区间时速倒推雷达</h2>
                         <p className="text-xs text-slate-400 font-mono">当前速率: {(apiPace / 24).toFixed(2)} 条/时</p>
                       </div>
                     </div>
@@ -2250,9 +2269,9 @@ export default function App() {
                   </div>
                 </section>
 
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
                         <Target className="w-4 h-4 text-sky-400" />
                       </div>
@@ -2284,7 +2303,7 @@ export default function App() {
                                 <p className="text-xs text-slate-400">仓位比例</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-sky-400 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
+                                <p className="text-2xl font-bold text-sky-300 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
                                 <p className="text-xs text-slate-400">真实概率</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
@@ -2292,7 +2311,7 @@ export default function App() {
                                 <p className="text-xs text-slate-400">潜在亏损</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-emerald-400 font-mono">{maxGain.toFixed(0)}%</p>
+                                <p className="text-2xl font-bold text-emerald-300 font-mono">{maxGain.toFixed(0)}%</p>
                                 <p className="text-xs text-slate-400">潜在收益</p>
                               </div>
                             </div>
@@ -2307,7 +2326,7 @@ export default function App() {
                           </div>
                         )}
 
-                        <div className="p-4 bg-slate-800/30 border border-slate-800 rounded-xl">
+                        <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl">
                           <h3 className="text-sm font-semibold text-slate-300 mb-3">下注区间参考</h3>
                           <div className="space-y-2">
                             {intervalAnalysis.slice(0, 8).map(item => item && (
@@ -2347,23 +2366,23 @@ export default function App() {
               </div>
 
               <div className="space-y-6">
-                <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
-                  <h2 className="text-base font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
+                  <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
                       <Activity className="w-4 h-4 text-sky-400" />
                     </div>
                     泊松概率模型
                   </h2>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-800">
+                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                       <span className="text-sm text-slate-400">当前已发推</span>
                       <span className="text-sm font-bold text-slate-200 font-mono">{probabilityModel.C} 条</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-800">
+                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                       <span className="text-sm text-slate-400">日均发推</span>
                       <span className="text-sm font-bold text-amber-400 font-mono">{probabilityModel.R.toFixed(1)} 条/天</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-800">
+                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                       <span className="text-sm text-slate-400">剩余时间</span>
                       <span className="text-sm font-bold text-slate-200 font-mono">{(T / 24).toFixed(1)} 天</span>
                     </div>
@@ -2382,8 +2401,8 @@ export default function App() {
                 </section>
 
                 {normalProbs.length > 0 && (
-                  <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
-                    <h2 className="text-base font-semibold text-slate-200 mb-1 flex items-center gap-2">
+                  <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
+                    <h2 className="text-base font-semibold text-white mb-1 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
                         <BarChart3 className="w-4 h-4 text-sky-400" />
                       </div>
@@ -2437,14 +2456,14 @@ export default function App() {
                 )}
 
                 {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
-                  <section className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+                  <section className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-sm font-semibold text-slate-300">每日发推统计</h3>
                       <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded font-mono">UTC</span>
                     </div>
                     <div className="space-y-1">
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
-                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">
+                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
                           <span className="text-sm text-slate-400">{formatDate(day.date)}</span>
                           <span className="text-sm font-semibold text-sky-400 font-mono">{day.count}</span>
                         </div>
@@ -2672,7 +2691,7 @@ ${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <section className="bg-[#11202f] rounded-2xl p-6 border border-slate-800">
+      <section className="bg-[#11202f] rounded-2xl p-6 border border-slate-700/50">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-slate-200 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
@@ -2698,7 +2717,7 @@ ${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
           </div>
         </div>
 
-        <div className="bg-slate-900/80 rounded-xl p-5 mb-4 font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap border border-slate-800">
+        <div className="bg-slate-900/80 rounded-xl p-5 mb-4 font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap border border-slate-700/50">
           {tweetContent}
         </div>
 

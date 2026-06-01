@@ -268,7 +268,7 @@ export function TweetHeatmap() {
   const cellSize = 34;
 
   return (
-    <div className="bg-[#162538] rounded-2xl p-6 border border-slate-800/80">
+    <div className="bg-[#111e30] rounded-2xl p-6 border border-slate-700/60">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold text-slate-100 flex items-center gap-3">
