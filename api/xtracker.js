@@ -49,52 +49,65 @@ async function fetchEventBySlug(slug) {
 }
 
 async function fetchActiveMarkets() {
-  const now    = new Date();
-  const slugs  = candidateSlugs();
-  const results= await Promise.allSettled(slugs.map(fetchEventBySlug));
-  const markets = [];
+  const now = new Date();
 
-  for (const r of results) {
-    if (r.status !== 'fulfilled' || !r.value) continue;
-    const ev  = r.value;
-    const end = new Date(ev.end_date_iso || ev.endDate);
-    if (isNaN(end.getTime()) || end <= now) continue;
-    const start = new Date(ev.start_date_iso || ev.startDate);
-    markets.push({
-      id: ev.id || ev.slug, title: ev.title,
-      startDate: start.toISOString(), endDate: end.toISOString(),
-      marketLink: `https://polymarket.com/event/${ev.slug}${REFERRAL_CODE}`,
-      slug: ev.slug, source: 'gamma',
-    });
-  }
-
-  if (markets.length === 0) {
-    try {
-      const resp = await fetch(
-        'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true',
-        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(5000) }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.success && data.data?.length > 0) {
-          return data.data
-            .filter(t => {
-              const diff = (new Date(t.endDate) - new Date(t.startDate)) / 86400000;
-              return diff >= 6 && diff <= 8;
-            })
-            .map(t => ({
+  // 主路径：xtracker trackings（startDate/endDate 是正确的推文计数窗口）
+  try {
+    const resp = await fetch(
+      'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true',
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(6000) }
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        const trackings = data.data
+          .filter(t => {
+            const end = new Date(t.endDate);
+            const diff = (new Date(t.endDate) - new Date(t.startDate)) / 86400000;
+            return end > now && diff >= 1 && diff <= 10;
+          })
+          .map(t => {
+            // 从 title 推断 slug：e.g. "Elon Musk # tweets May 26 - June 2, 2026?"
+            const slug = titleToSlug(t.title);
+            return {
               id: t.id, title: t.title,
               startDate: t.startDate, endDate: t.endDate,
-              marketLink: t.marketLink + (t.marketLink.includes('?') ? '&' : REFERRAL_CODE),
-              slug: t.marketLink?.split('/').pop()?.split('?')[0] || '',
-              source: 'xtracker',
-            }));
-        }
+              marketLink: `https://polymarket.com/event/${slug}${REFERRAL_CODE}`,
+              slug, source: 'xtracker',
+            };
+          });
+        if (trackings.length > 0) return trackings;
       }
-    } catch (e) { console.warn('[xtracker fallback]', e.message); }
-  }
+    }
+  } catch (e) { console.warn('[fetchActiveMarkets xtracker]', e.message); }
 
+  // 备用路径：Gamma API（注意：startDate 是创建时间，不是计数窗口，仅用于展示）
+  const slugs = candidateSlugs();
+  const results = await Promise.allSettled(slugs.map(fetchEventBySlug));
+  const markets = [];
+  for (const r of results) {
+    if (r.status !== 'fulfilled' || !r.value) continue;
+    const ev = r.value;
+    const end = new Date(ev.end_date_iso || ev.endDate);
+    if (isNaN(end.getTime()) || end <= now) continue;
+    // Gamma startDate 是创建时间，用 end-7d 作为估算计数窗口
+    const estimatedStart = new Date(end.getTime() - 7 * 86400000);
+    markets.push({
+      id: ev.id || ev.slug, title: ev.title,
+      startDate: estimatedStart.toISOString(), endDate: end.toISOString(),
+      marketLink: `https://polymarket.com/event/${ev.slug}${REFERRAL_CODE}`,
+      slug: ev.slug, source: 'gamma-fallback',
+    });
+  }
   return markets;
+}
+
+// title → slug：e.g. "Elon Musk # tweets May 26 - June 2, 2026?" → "elon-musk-of-tweets-may-26-june-2"
+function titleToSlug(title) {
+  const m = title.match(/tweets\s+(\w+)\s+(\d+)\s*[-–]\s*(\w+)\s+(\d+)/i);
+  if (!m) return '';
+  const [, m1, d1, m2, d2] = m;
+  return `elon-musk-of-tweets-${m1.toLowerCase()}-${d1}-${m2.toLowerCase()}-${d2}`;
 }
 
 // ── 数据源 A：xtracker posts API（主力）────────────────────
