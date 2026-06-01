@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>主题色调预览</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; font-family:-apple-system,'PingFang SC',sans-serif; padding:24px; }
+h1 { color:#555; font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:24px; text-align:center; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:960px; margin:0 auto; }
+.theme { border-radius:14px; overflow:hidden; }
+.tlabel { padding:9px 14px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.tbody { padding:14px; }
+.nav { display:flex; align-items:center; border-bottom:1px solid rgba(255,255,255,.07); margin-bottom:14px; }
+.ni { padding:8px 10px; font-size:11px; font-weight:600; border-bottom:2px solid transparent; white-space:nowrap; }
+.sep { width:1px; height:14px; margin:0 3px; background:rgba(255,255,255,.1); }
+.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:12px; }
+.card { border-radius:9px; padding:11px 6px; text-align:center; border:1px solid; }
+.num { font-size:19px; font-weight:800; font-family:'SF Mono',monospace; }
+.lbl { font-size:9px; margin-top:3px; opacity:.45; letter-spacing:.05em; color:#9ca3af; }
+.sec { border-radius:9px; padding:12px; border:1px solid; }
+.stitle { font-size:11px; font-weight:700; color:#fff; margin-bottom:9px; }
+.br { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.bl { font-size:9px; width:55px; flex-shrink:0; opacity:.45; color:#9ca3af; }
+.bb { flex:1; height:4px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+.bf { height:100%; border-radius:2px; }
+.bv { font-size:9px; font-family:monospace; width:24px; text-align:right; }
+</style>
+</head>
+<body>
+<h1>色调方案 — 告诉我选哪个</h1>
+<div class="grid">
+
+<!-- ① 绿色 -->
+<div class="theme" style="background:#07100a;border:1px solid rgba(52,211,153,.15)">
+  <div class="tlabel" style="background:#0b1a0e;color:#34d399;border-bottom:1px solid rgba(52,211,153,.12)">① 绿色系 · 金融终端感</div>
+  <div class="tbody">
+    <div class="nav">
+      <div class="ni" style="color:#34d399;border-bottom-color:#34d399">市场概览</div>
+      <div class="ni" style="color:#2dd4bf;border-bottom-color:#2dd4bf">概率分析</div>
+      <div class="ni" style="color:#86efac;border-bottom-color:#86efac">热力图</div>
+      <div class="sep"></div>
+      <div class="ni" style="color:#1f2937">持仓</div>
+      <div class="ni" style="color:#1f2937">推文</div>
+      <div class="ni" style="color:#1f2937">预警</div>
+    </div>
+    <div class="cards">
+      <div class="card" style="background:rgba(52,211,153,.07);border-color:rgba(52,211,153,.3)"><div class="num" style="color:#34d399">122</div><div class="lbl">当前总数</div></div>
+      <div class="card" style="background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.3)"><div class="num" style="color:#fbbf24">18</div><div class="lbl">今日新增</div></div>
+      <div class="card" style="background:rgba(45,212,191,.07);border-color:rgba(45,212,191,.3)"><div class="num" style="color:#2dd4bf">21</div><div class="lbl">日均时速</div></div>
+      <div class="card" style="background:rgba(134,239,172,.07);border-color:rgba(134,239,172,.25)"><div class="num" style="color:#86efac">1d</div><div class="lbl">剩余时间</div></div>
+    </div>
+    <div class="sec" style="background:#0b1a0e;border-color:rgba(52,211,153,.12)">
+      <div class="stitle">目标区间时速倒推</div>
+      <div class="br"><span class="bl">150–200条</span><div class="bb"><div class="bf" style="width:78%;background:#34d399"></div></div><span class="bv" style="color:#34d399">78%</span></div>
+      <div class="br"><span class="bl">200–250条</span><div class="bb"><div class="bf" style="width:45%;background:#2dd4bf"></div></div><span class="bv" style="color:#2dd4bf">45%</span></div>
+      <div class="br"><span class="bl">250–300条</span><div class="bb"><div class="bf" style="width:12%;background:#86efac"></div></div><span class="bv" style="color:#86efac">12%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ② 紫色 -->
+<div class="theme" style="background:#09070f;border:1px solid rgba(167,139,250,.15)">
+  <div class="tlabel" style="background:#100c1c;color:#a78bfa;border-bottom:1px solid rgba(167,139,250,.12)">② 紫色系 · 科技感</div>
+  <div class="tbody">
+    <div class="nav">
+      <div class="ni" style="color:#a78bfa;border-bottom-color:#a78bfa">市场概览</div>
+      <div class="ni" style="color:#818cf8;border-bottom-color:#818cf8">概率分析</div>
+      <div class="ni" style="color:#e879f9;border-bottom-color:#e879f9">热力图</div>
+      <div class="sep"></div>
+      <div class="ni" style="color:#1f2937">持仓</div>
+      <div class="ni" style="color:#1f2937">推文</div>
+      <div class="ni" style="color:#1f2937">预警</div>
+    </div>
+    <div class="cards">
+      <div class="card" style="background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.3)"><div class="num" style="color:#a78bfa">122</div><div class="lbl">当前总数</div></div>
+      <div class="card" style="background:rgba(232,121,249,.07);border-color:rgba(232,121,249,.3)"><div class="num" style="color:#e879f9">18</div><div class="lbl">今日新增</div></div>
+      <div class="card" style="background:rgba(129,140,248,.07);border-color:rgba(129,140,248,.3)"><div class="num" style="color:#818cf8">21</div><div class="lbl">日均时速</div></div>
+      <div class="card" style="background:rgba(251,113,133,.07);border-color:rgba(251,113,133,.3)"><div class="num" style="color:#fb7185">1d</div><div class="lbl">剩余时间</div></div>
+    </div>
+    <div class="sec" style="background:#100c1c;border-color:rgba(167,139,250,.12)">
+      <div class="stitle">目标区间时速倒推</div>
+      <div class="br"><span class="bl">150–200条</span><div class="bb"><div class="bf" style="width:78%;background:#a78bfa"></div></div><span class="bv" style="color:#a78bfa">78%</span></div>
+      <div class="br"><span class="bl">200–250条</span><div class="bb"><div class="bf" style="width:45%;background:#818cf8"></div></div><span class="bv" style="color:#818cf8">45%</span></div>
+      <div class="br"><span class="bl">250–300条</span><div class="bb"><div class="bf" style="width:12%;background:#e879f9"></div></div><span class="bv" style="color:#e879f9">12%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ③ 金色 -->
+<div class="theme" style="background:#0d0a05;border:1px solid rgba(251,191,36,.15)">
+  <div class="tlabel" style="background:#181008;color:#fbbf24;border-bottom:1px solid rgba(251,191,36,.12)">③ 金色系 · Bloomberg感</div>
+  <div class="tbody">
+    <div class="nav">
+      <div class="ni" style="color:#fbbf24;border-bottom-color:#fbbf24">市场概览</div>
+      <div class="ni" style="color:#fb923c;border-bottom-color:#fb923c">概率分析</div>
+      <div class="ni" style="color:#fde047;border-bottom-color:#fde047">热力图</div>
+      <div class="sep"></div>
+      <div class="ni" style="color:#1f2937">持仓</div>
+      <div class="ni" style="color:#1f2937">推文</div>
+      <div class="ni" style="color:#1f2937">预警</div>
+    </div>
+    <div class="cards">
+      <div class="card" style="background:rgba(251,191,36,.07);border-color:rgba(251,191,36,.3)"><div class="num" style="color:#fbbf24">122</div><div class="lbl">当前总数</div></div>
+      <div class="card" style="background:rgba(251,146,60,.07);border-color:rgba(251,146,60,.3)"><div class="num" style="color:#fb923c">18</div><div class="lbl">今日新增</div></div>
+      <div class="card" style="background:rgba(253,224,71,.07);border-color:rgba(253,224,71,.3)"><div class="num" style="color:#fde047">21</div><div class="lbl">日均时速</div></div>
+      <div class="card" style="background:rgba(168,162,158,.07);border-color:rgba(168,162,158,.2)"><div class="num" style="color:#a8a29e">1d</div><div class="lbl">剩余时间</div></div>
+    </div>
+    <div class="sec" style="background:#181008;border-color:rgba(251,191,36,.12)">
+      <div class="stitle">目标区间时速倒推</div>
+      <div class="br"><span class="bl">150–200条</span><div class="bb"><div class="bf" style="width:78%;background:#fbbf24"></div></div><span class="bv" style="color:#fbbf24">78%</span></div>
+      <div class="br"><span class="bl">200–250条</span><div class="bb"><div class="bf" style="width:45%;background:#fb923c"></div></div><span class="bv" style="color:#fb923c">45%</span></div>
+      <div class="br"><span class="bl">250–300条</span><div class="bb"><div class="bf" style="width:12%;background:#fde047"></div></div><span class="bv" style="color:#fde047">12%</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ④ 灰白 -->
+<div class="theme" style="background:#0b0b0b;border:1px solid rgba(255,255,255,.1)">
+  <div class="tlabel" style="background:#141414;color:#e5e7eb;border-bottom:1px solid rgba(255,255,255,.08)">④ 灰白系 · 极简无色</div>
+  <div class="tbody">
+    <div class="nav">
+      <div class="ni" style="color:#f9fafb;border-bottom-color:#f9fafb">市场概览</div>
+      <div class="ni" style="color:#d1d5db;border-bottom-color:#d1d5db">概率分析</div>
+      <div class="ni" style="color:#9ca3af;border-bottom-color:#9ca3af">热力图</div>
+      <div class="sep"></div>
+      <div class="ni" style="color:#1f2937">持仓</div>
+      <div class="ni" style="color:#1f2937">推文</div>
+      <div class="ni" style="color:#1f2937">预警</div>
+    </div>
+    <div class="cards">
+      <div class="card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)"><div class="num" style="color:#f9fafb">122</div><div class="lbl">当前总数</div></div>
+      <div class="card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)"><div class="num" style="color:#f9fafb">18</div><div class="lbl">今日新增</div></div>
+      <div class="card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)"><div class="num" style="color:#f9fafb">21</div><div class="lbl">日均时速</div></div>
+      <div class="card" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)"><div class="num" style="color:#9ca3af">1d</div><div class="lbl">剩余时间</div></div>
+    </div>
+    <div class="sec" style="background:#141414;border-color:rgba(255,255,255,.08)">
+      <div class="stitle">目标区间时速倒推</div>
+      <div class="br"><span class="bl">150–200条</span><div class="bb"><div class="bf" style="width:78%;background:#9ca3af"></div></div><span class="bv" style="color:#9ca3af">78%</span></div>
+      <div class="br"><span class="bl">200–250条</span><div class="bb"><div class="bf" style="width:45%;background:#6b7280"></div></div><span class="bv" style="color:#6b7280">45%</span></div>
+      <div class="br"><span class="bl">250–300条</span><div class="bb"><div class="bf" style="width:12%;background:#4b5563"></div></div><span class="bv" style="color:#4b5563">12%</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
