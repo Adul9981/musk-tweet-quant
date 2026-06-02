@@ -9,7 +9,7 @@
  * 市场元数据：Gamma API（候选 slug 枚举）
  */
 
-const TWITTERAPI_KEY = process.env.TWITTERAPI_KEY || 'new1_8452e6aed9cd49e9b163a11635102474';
+
 const REFERRAL_CODE  = '?via=serene77mc-g6kj';
 const GAMMA          = 'https://gamma-api.polymarket.com';
 const POLYSTRIKE     = 'https://polystrike.xyz/api/v1/meta/elon';
@@ -226,34 +226,35 @@ export default async function handler(req, res) {
         const daily = [];
         let todayTotal = 0;
 
-        // 路径 A：xtracker 官方 posts API（主力）
-        try {
-          total = await fetchFromXtrackerPosts(market.startDate, market.endDate);
-          dataSource = 'xtracker-posts';
-          console.log(`[xtracker-posts] ${market.slug}: ${total}条`);
-        } catch (e) {
-          console.warn(`[xtracker-posts] failed for ${market.slug}:`, e.message);
-        }
-
-        // 路径 B：polystrike fallback
-        if (dataSource === 'unknown' && polystrikeData) {
+        // 路径 A：polystrike oracle_counter（主力）— 与 Polymarket 官方计数完全一致
+        if (polystrikeData) {
           const match = polystrikeData.find(p => p.slug === market.slug)
             || polystrikeData.find(p => Math.abs(p.end_ts - endMs) < 12 * 60 * 60 * 1000);
           if (match) {
-            total = match.real_counter ?? match.polymarket_xtracker_counter ?? 0;
-            dataSource = 'polystrike';
-            console.log(`[polystrike] ${market.slug}: real=${match.real_counter}`);
+            // 优先用 oracle_counter（Polymarket 官方），其次 real_counter
+            const count = match.polymarket_xtracker_counter > 0
+              ? match.polymarket_xtracker_counter
+              : match.real_counter;
+            if (count > 0) {
+              total = count;
+              dataSource = 'polystrike';
+              console.log(`[polystrike] ${market.slug}: oracle=${match.polymarket_xtracker_counter} real=${match.real_counter}`);
+            }
           }
         }
 
-        // 路径 C：twitterapi.io 最后兜底
+        // 路径 B：xtracker 官方 posts API（备用）
         if (dataSource === 'unknown') {
-          console.warn(`[xtracker] all sources failed for ${market.slug}, trying twitterapi.io`);
-          const tweets = await fetchRecentTweets(8).catch(() => []);
-          const periodTweets = tweets.filter(t => t._ts >= startMs && t._ts <= endMs);
-          total = periodTweets.length;
-          dataSource = 'twitterapi.io';
+          try {
+            total = await fetchFromXtrackerPosts(market.startDate, market.endDate);
+            dataSource = 'xtracker-posts';
+            console.log(`[xtracker-posts] ${market.slug}: ${total}条`);
+          } catch (e) {
+            console.warn(`[xtracker-posts] failed for ${market.slug}:`, e.message);
+          }
         }
+
+        // 注意：twitterapi.io 已移除，它的计数不符合 Polymarket 规则（含回复/引用）
 
         const pace = Math.round(total / elapsedDays);
 
