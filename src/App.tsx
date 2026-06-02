@@ -1448,6 +1448,25 @@ export default function App() {
             r.vr >= 1.5 && r.price <= 20
           );
 
+          // ── 彩票仓信号：YES ≤ 2¢，区间下沿在 µ 射程内（µ ~ µ+60），仍可到达 ──
+          const lotterySignals = analysisData
+            .map(r => {
+              const yesPrice = r.price;           // YES price in ¢
+              const rangeMin = r.parsed?.min ?? 9999;
+              const rangeMax = r.parsed?.max ?? 9999;
+              const shootDist = rangeMin - mu;    // 距µ的距离（条）
+              const tweetsNeeded = Math.max(0, rangeMin - currentTweetCount);
+              return { ...r, yesPrice, rangeMin, rangeMax, shootDist, tweetsNeeded };
+            })
+            .filter(r =>
+              r.yesPrice > 0 &&
+              r.yesPrice <= 2 &&                  // YES极低价（≤2¢）
+              r.rangeMin > currentTweetCount &&    // 还没到达该区间
+              r.shootDist >= 0 &&                  // 区间在µ上方或包含µ
+              r.shootDist <= 60                    // 不超过µ+60条
+            )
+            .sort((a, b) => a.rangeMin - b.rangeMin);
+
           // ── 每日热力色块颜色（等高色块，深浅=强度）──
           const dailyData = currentTracking?.stats?.daily?.slice(-7) || [];
           const maxDaily = Math.max(...dailyData.map(d => d.count), 1);
@@ -1659,6 +1678,42 @@ export default function App() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── 彩票仓提示（YES ≤ 2¢ 且在µ射程内）── */}
+            {lotterySignals.length > 0 && (
+              <div className="bg-violet-500/8 border border-violet-500/30 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-base">🎰</span>
+                  <p className="text-xs font-semibold text-violet-300">彩票仓机会</p>
+                  <span className="text-[10px] text-slate-500 ml-auto">YES ≤ 2¢ · µ射程内 · 建议 ≤ $50</span>
+                </div>
+                <div className="space-y-2">
+                  {lotterySignals.map(r => {
+                    const payoffX = r.yesPrice > 0 ? Math.round(100 / r.yesPrice) : 0;
+                    return (
+                      <div key={r.range} className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-violet-200">{r.range}</span>
+                          <span className="text-[10px] text-slate-500">还需 +{r.tweetsNeeded}条</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="font-mono text-violet-300 font-bold">{r.yesPrice.toFixed(1)}¢</span>
+                          <span className="text-amber-300 font-bold font-mono">
+                            最高 {payoffX}x
+                          </span>
+                          <span className="text-[10px] text-slate-500 bg-violet-900/30 px-2 py-0.5 rounded-lg border border-violet-700/30">
+                            彩票仓 ≤$50
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-600 mt-2 leading-relaxed">
+                  ⚠️ 高风险 · 极低成本 · 仅在确信今日节奏活跃时布局 · 最坏归零不影响主仓
+                </p>
               </div>
             )}
 
