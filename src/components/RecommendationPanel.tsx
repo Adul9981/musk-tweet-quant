@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Target, TrendingUp, TrendingDown, Clock, Shield, Edit3, Zap, Star, AlertTriangle } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Clock, Shield, Edit3, Zap, Star, AlertTriangle, Flame, Moon, Minus } from 'lucide-react';
 import type { Position } from './PositionManager';
 
 interface RangeItem {
@@ -12,10 +12,68 @@ interface RangeItem {
 
 interface Props {
   mu: number;
-  remainingDays: number; // fractional days (e.g. 2.54)
+  remainingDays: number;
   analysisData: RangeItem[];
   positions: Position[];
+  currentTweetCount?: number;   // 当前推文总数
+  bjHour?: number;              // 北京时间小时（0-23）
 }
+
+// ── 活跃时段定义（来自知识库 03_马斯克行为规律.md）──────────────────────────
+type SessionLevel = 'peak' | 'active' | 'low' | 'dead';
+interface SessionDef {
+  label: string;
+  level: SessionLevel;
+  hours: number[];
+  desc: string;
+  action: string;
+  color: string;
+  bg: string;
+  border: string;
+}
+
+const SESSIONS: SessionDef[] = [
+  {
+    label: '🔥 深夜爆发期',
+    level: 'peak',
+    hours: [12, 13, 14, 15],
+    desc: '全天最高峰，日均 3.0–3.4条/h，BJ 12→13跳跃+150%',
+    action: '最佳止盈评估窗口 / 期末NO埋伏出场窗口',
+    color: 'text-orange-300',
+    bg: 'bg-orange-950/40',
+    border: 'border-orange-500/40',
+  },
+  {
+    label: '⚡ 美国上午活跃期',
+    level: 'active',
+    hours: [20, 21, 22, 23, 0, 1, 2, 3],
+    desc: '美国上午/下午，中等活跃，0.8–1.8条/h',
+    action: '可建仓 / 补仓 / 评估期末NO机会',
+    color: 'text-sky-300',
+    bg: 'bg-sky-950/30',
+    border: 'border-sky-500/30',
+  },
+  {
+    label: '💤 入睡低谷期',
+    level: 'dead',
+    hours: [16, 17, 18, 19],
+    desc: 'Musk入睡，全天最低 0.2–0.4条/h，BJ 17:30为死区',
+    action: '⚠️ 强制剪仓评估（死区）/ 不追买',
+    color: 'text-slate-400',
+    bg: 'bg-slate-800/50',
+    border: 'border-slate-600/40',
+  },
+  {
+    label: '📉 美国傍晚低谷',
+    level: 'low',
+    hours: [4, 5, 6, 7, 8, 9, 10, 11],
+    desc: '美国傍晚/晚上，偏低 0.4–0.8条/h',
+    action: '等待 / 低价建仓窗口（价格往往在此最低）',
+    color: 'text-violet-300',
+    bg: 'bg-violet-950/20',
+    border: 'border-violet-500/20',
+  },
+];
 
 const CAPITAL_KEY = 'rec_capital_v1';
 
@@ -76,7 +134,7 @@ const PHASE_INFO: Record<Phase, {
   },
 };
 
-export function RecommendationPanel({ mu, remainingDays, analysisData, positions }: Props) {
+export function RecommendationPanel({ mu, remainingDays, analysisData, positions, currentTweetCount, bjHour }: Props) {
   const [capital, setCapital] = useState<number>(() => {
     try { return parseInt(localStorage.getItem(CAPITAL_KEY) || '5000'); }
     catch { return 5000; }
@@ -92,6 +150,12 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
     }
     setEditing(false);
   };
+
+  // ── 当前时段 ──────────────────────────────────────────────────────────────
+  const currentSession = useMemo(() => {
+    if (bjHour === undefined) return null;
+    return SESSIONS.find(s => s.hours.includes(bjHour)) ?? SESSIONS[3];
+  }, [bjHour]);
 
   // ── 价值比（VR）计算 ──────────────────────────────────────────────────────
   // VR = 模型概率 / 市场价格。VR ≥ 1.0 值得入场，VR ≥ 1.2 理想，VR ≥ 2.5 可做高赔率仓
@@ -260,6 +324,48 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
     return recs;
   }, [phase, upperRange, mainRange, center, positions, sortedRanges, remainingDays]);
 
+  // ── 期末 NO 埋伏策略 触发检测 ────────────────────────────────────────────
+  // 条件：到期当天 + 推文在区间中段 + NO价格≤15¢ + 处于活跃窗口
+  const noAmbushSignal = useMemo(() => {
+    if (!currentTweetCount || !center?.parsed || remainingDays > 1) return null;
+    const { min, max } = center.parsed;
+    const distToTop = max - currentTweetCount;
+    const isInRange = currentTweetCount >= min && currentTweetCount <= max;
+    const isActiveWindow = currentSession?.level === 'peak' || currentSession?.level === 'active';
+
+    // 找所有区间的NO价格（即 100 - YES价格，这里price是YES价格）
+    // 实际上 NO价格 = 100 - YES价格（近似，不含手续费）
+    const noPriceCents = center.price > 0 ? (100 - center.price) : null;
+    const noIsLow = noPriceCents !== null && noPriceCents <= 20;
+
+    if (!isInRange || distToTop < 5) return null; // 太接近上沿不算
+
+    const conditions = [
+      { ok: remainingDays <= 1,    label: '到期当天' },
+      { ok: isInRange && distToTop >= 10, label: `推文在中段（距上沿${distToTop}条）` },
+      { ok: noIsLow ?? false,      label: `NO价格低（≈${noPriceCents?.toFixed(0)}¢）` },
+      { ok: isActiveWindow,        label: `处于活跃窗口（${currentSession?.label}）` },
+    ];
+    const hitCount = conditions.filter(c => c.ok).length;
+    if (hitCount < 2) return null;
+
+    return { conditions, hitCount, noPriceCents, distToTop };
+  }, [currentTweetCount, center, remainingDays, currentSession]);
+
+  // ── 出本留利提醒 ─────────────────────────────────────────────────────────
+  const returnPrincipalAlerts = useMemo(() => {
+    return positions.filter(pos => {
+      const r = sortedRanges.find(s => s.range === pos.range);
+      if (!r || !pos.entryPrice) return false;
+      const pnlPct = (r.price - pos.entryPrice) / pos.entryPrice * 100;
+      return pnlPct >= 100;
+    }).map(pos => {
+      const r = sortedRanges.find(s => s.range === pos.range)!;
+      const pnlPct = ((r.price - pos.entryPrice!) / pos.entryPrice! * 100).toFixed(0);
+      return { range: pos.range, price: r.price, entryPrice: pos.entryPrice!, pnlPct };
+    });
+  }, [positions, sortedRanges]);
+
   if (!center) {
     return (
       <div className="rounded-2xl p-6 border border-slate-700/50 bg-gradient-to-br from-slate-900 to-[#162538] text-center py-12">
@@ -312,6 +418,67 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             </button>
           )}
         </div>
+
+        {/* ── 出本留利提醒（最高优先级）── */}
+        {returnPrincipalAlerts.length > 0 && returnPrincipalAlerts.map((a, i) => (
+          <div key={i} className="rounded-xl border border-emerald-400/50 bg-emerald-950/50 p-4 flex items-start gap-3">
+            <div className="text-xl shrink-0 animate-pulse">💰</div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-emerald-300">出本留利信号 · {a.range}</p>
+              <p className="text-xs text-emerald-200/80 mt-0.5">
+                入场 <span className="font-mono font-bold">{a.entryPrice.toFixed(1)}¢</span> → 现价 <span className="font-mono font-bold text-emerald-300">{a.price.toFixed(1)}¢</span>，已涨 <span className="font-mono font-bold text-emerald-300">+{a.pnlPct}%</span>
+              </p>
+              <p className="text-xs text-emerald-400 mt-1 font-semibold">→ 卖出本金部分，剩余利润仓零成本持有</p>
+            </div>
+          </div>
+        ))}
+
+        {/* ── 当前时段信号 ── */}
+        {currentSession && (
+          <div className={`rounded-xl border p-3.5 ${currentSession.bg} ${currentSession.border}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                {currentSession.level === 'peak' && <Flame className="w-4 h-4 text-orange-400" />}
+                {currentSession.level === 'active' && <Zap className="w-4 h-4 text-sky-400" />}
+                {currentSession.level === 'dead' && <Moon className="w-4 h-4 text-slate-400" />}
+                {currentSession.level === 'low' && <Minus className="w-4 h-4 text-violet-400" />}
+                <span className={`text-xs font-bold ${currentSession.color}`}>{currentSession.label}</span>
+              </div>
+              <span className="text-xs text-slate-500 font-mono">BJ {bjHour?.toString().padStart(2,'0')}:xx</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-1">{currentSession.desc}</p>
+            <p className={`text-xs font-semibold ${currentSession.color}`}>→ {currentSession.action}</p>
+          </div>
+        )}
+
+        {/* ── 期末 NO 埋伏策略触发 ── */}
+        {noAmbushSignal && (
+          <div className="rounded-xl border border-yellow-500/50 bg-yellow-950/40 overflow-hidden">
+            <div className="h-0.5 bg-gradient-to-r from-yellow-500 to-orange-400" />
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs font-bold text-yellow-300 uppercase tracking-wider">
+                  期末 NO 埋伏信号
+                  <span className="ml-2 text-yellow-500 normal-case font-normal">（{noAmbushSignal.hitCount}/4 条件满足）</span>
+                </span>
+              </div>
+              <div className="space-y-1.5 mb-3">
+                {noAmbushSignal.conditions.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className={c.ok ? 'text-emerald-400' : 'text-slate-600'}>{c.ok ? '✅' : '○'}</span>
+                    <span className={c.ok ? 'text-slate-300' : 'text-slate-600'}>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-yellow-950/60 rounded-lg p-3 text-xs text-yellow-200/90 leading-relaxed">
+                <p className="font-semibold mb-1">策略：买入当前区间 NO（≤20%仓位）</p>
+                <p>→ 涨幅达 +100% 后出本金，利润仓持有至活跃窗口结束或速率归零</p>
+                <p className="text-yellow-400/70 mt-1">⚠️ 风险：发推停滞则 NO 亏损，控制仓位</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Phase 状态 + 预测落点 ── */}
         <div className={`rounded-xl p-4 ${info.bg} border ${info.border} flex items-center gap-4`}>

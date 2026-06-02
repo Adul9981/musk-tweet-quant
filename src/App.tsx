@@ -1916,6 +1916,8 @@ export default function App() {
                     parsed: r.parsed ?? null,
                   }))}
                   positions={positions}
+                  currentTweetCount={currentTweetCount}
+                  bjHour={getBJHourNow()}
                 />
 
                 {/* ── 马斯克节奏面板 v3 ── */}
