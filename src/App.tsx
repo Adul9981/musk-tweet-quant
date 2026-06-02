@@ -6,8 +6,6 @@ import {
   ExternalLink,
   RefreshCw,
   Clock,
-  Activity,
-  Target,
   FileText,
   Send,
   Radio,
@@ -161,11 +159,6 @@ function parseRange(range: string): { min: number; max: number } | null {
   return null;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return `${date.getMonth() + 1}/${date.getDate()} ${dayNames[date.getDay()]}`;
-}
 
 function getPhase(remainingDays: number): { name: string; color: string; bg: string } {
   if (remainingDays >= 5) return { name: '前期布局', color: 'text-teal-400', bg: 'bg-teal-500/20 border-teal-500/40 text-indigo-300' };
@@ -1044,13 +1037,7 @@ export default function App() {
     }));
   }, [analysisData, mu, normalSigma]);
   
-  const probabilityModel = {
-    mu,
-    C,
-    R,
-    T,
-    E_rem,
-  };
+
 
   const handleSelectMarket = (index: number) => {
     setSelectedMarketIndex(index);
@@ -1429,44 +1416,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* ── Alert Banners ── */}
-      {visibleAlerts.length > 0 && (
-        <div className="max-w-7xl mx-auto px-6 pt-4 space-y-2">
-          {visibleAlerts.map(alert => {
-            const isCritical = alert.severity === 'critical';
-            const isBoundary = alert.type === 'boundary';
-            const isPosition = alert.type === 'position';
-            const colors = isCritical
-              ? 'bg-rose-500/10 border-rose-500/50 text-rose-200'
-              : isBoundary
-                ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
-                : isPosition
-                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
-                  : 'bg-teal-500/10 border-teal-500/40 text-teal-200';
-            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : isPosition ? 'text-emerald-400' : 'text-teal-400';
-            const pulse = isCritical ? 'animate-pulse' : '';
-            return (
-              <div key={alert.id} className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${colors}`}>
-                <div className={`text-lg shrink-0 ${pulse}`}>
-                  {isCritical ? '🚨' : isBoundary ? '⚠️' : isPosition ? '💼' : '📊'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-semibold ${iconColor}`}>{alert.title}</div>
-                  <div className="text-xs mt-0.5 opacity-80">{alert.body}</div>
-                  <div className="text-xs mt-1 font-medium opacity-90">→ {alert.action}</div>
-                </div>
-                <button
-                  onClick={() => setDismissedAlerts(prev => new Set([...prev, alert.id]))}
-                  className="shrink-0 text-xs opacity-50 hover:opacity-100 transition-opacity px-2 py-1 rounded hover:bg-white/10"
-                  title="关闭提醒"
-                >
-                  ✕
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Alert Banners disabled */}
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'market' && (() => {
@@ -1498,16 +1448,29 @@ export default function App() {
             r.vr >= 1.5 && r.price <= 20
           );
 
-          // ── 每日热力色块颜色 ──
+          // ── 每日热力色块颜色（等高色块，深浅=强度）──
           const dailyData = currentTracking?.stats?.daily?.slice(-7) || [];
           const maxDaily = Math.max(...dailyData.map(d => d.count), 1);
-          const heatColor = (count: number) => {
+          const heatBg = (count: number) => {
             const ratio = count / maxDaily;
-            if (ratio >= 0.8) return 'bg-emerald-500';
-            if (ratio >= 0.6) return 'bg-emerald-600/80';
-            if (ratio >= 0.4) return 'bg-emerald-700/60';
-            if (ratio >= 0.2) return 'bg-emerald-800/50';
-            return 'bg-slate-700/40';
+            if (ratio >= 0.8) return 'bg-emerald-400';
+            if (ratio >= 0.6) return 'bg-emerald-600';
+            if (ratio >= 0.4) return 'bg-emerald-700/80';
+            if (ratio >= 0.2) return 'bg-emerald-900/70';
+            return 'bg-slate-800/60';
+          };
+          const heatText = (count: number) => {
+            const ratio = count / maxDaily;
+            return ratio >= 0.6 ? 'text-white' : ratio >= 0.3 ? 'text-emerald-200' : 'text-slate-400';
+          };
+
+          // ── 市场标签日期格式：start_date/end_date → "X月X日–X月X日" ──
+          const marketTabLabel = (market: typeof activeMarkets[0]) => {
+            try {
+              const s = new Date(market.start_date);
+              const e = new Date(market.end_date);
+              return `${s.getUTCMonth()+1}月${s.getUTCDate()}日–${e.getUTCMonth()+1}月${e.getUTCDate()}日`;
+            } catch { return parseMarketTitle(market.title); }
           };
 
           return (
@@ -1526,7 +1489,7 @@ export default function App() {
                         : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-600'
                     }`}
                   >
-                    {parseMarketTitle(market.title).replace(/Will Elon Musk post /, '').replace(/tweets.*$/i, '').trim()}
+                    {marketTabLabel(market)}
                   </button>
                 ))}
               </div>
@@ -1607,26 +1570,25 @@ export default function App() {
               <div className="lg:col-span-2 bg-[#141414] border border-slate-700/40 rounded-2xl p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">本期每日发推</p>
                 {dailyData.length > 0 ? (
-                  <div className="flex gap-1.5">
-                    {dailyData.map((day, i) => (
-                      <div
-                        key={day.date || i}
-                        className="flex-1 flex flex-col items-center gap-1.5"
-                        title={`${day.date} · ${day.count}条`}
-                      >
+                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${dailyData.length}, 1fr)` }}>
+                    {dailyData.map((day, i) => {
+                      const d = new Date(day.date + 'T00:00:00Z');
+                      return (
                         <div
-                          className={`w-full rounded-lg transition-all ${heatColor(day.count)}`}
-                          style={{ height: `${Math.max(20, Math.round((day.count / maxDaily) * 72))}px` }}
-                        />
-                        <span className="text-xs font-mono text-slate-300 font-semibold">{day.count}</span>
-                        <span className="text-[9px] text-slate-500 font-mono">
-                          {new Date(day.date).getMonth() + 1}/{new Date(day.date).getDate()}
-                        </span>
-                      </div>
-                    ))}
+                          key={day.date || i}
+                          className={`rounded-xl p-2 text-center transition-all ${heatBg(day.count)}`}
+                          title={`${day.date} · ${day.count}条`}
+                        >
+                          <p className={`text-base font-bold font-mono leading-tight ${heatText(day.count)}`}>{day.count}</p>
+                          <p className={`text-[9px] mt-1 ${heatText(day.count)} opacity-70`}>
+                            {d.getUTCMonth()+1}/{d.getUTCDate()}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500 text-center py-4">暂无日数据</p>
+                  <p className="text-xs text-slate-500 text-center py-4">暂无本期每日数据</p>
                 )}
               </div>
 
@@ -2263,136 +2225,9 @@ export default function App() {
                   </div>
                 </section>
 
-                <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <Target className="w-4 h-4 text-teal-400" />
-                      </div>
-                      仓位分配策略建议
-                    </h2>
-                  </div>
-                  {(() => {
-                    const centerItem = intervalAnalysis.find(i => i?.isCenter);
-                    const centerProb = centerItem?.trueProb || 0;
-                    const totalProb = intervalAnalysis.reduce((sum, i) => sum + (i?.trueProb || 0), 0);
-                    const centerRatio = totalProb > 0 ? (centerProb / totalProb * 100) : 0;
-
-                    const undervaluedItems = intervalAnalysis.filter(i => i && i.status === 'active' && i.alpha > 1.1);
-                    const maxLoss = centerItem?.marketPrice ? (100 - centerItem.marketPrice) : 0;
-                    const maxGain = centerItem?.marketPrice ? (100 / centerItem.marketPrice * 100 - 100) : 0;
-
-                    return (
-                      <div className="space-y-4">
-                        {centerItem && (
-                          <div className="p-4 bg-teal-500/10 border border-teal-500/20 rounded-xl">
-                            <div className="flex items-center gap-3 mb-4">
-                              <span className="px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-sm font-semibold">核心仓位</span>
-                              <span className="text-teal-200 font-bold text-lg font-mono">{centerItem.range}</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                              <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-teal-300 font-mono">{centerRatio.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-400">仓位比例</p>
-                              </div>
-                              <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-teal-300 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
-                                <p className="text-xs text-slate-400">真实概率</p>
-                              </div>
-                              <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-rose-400 font-mono">{maxLoss.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-400">潜在亏损</p>
-                              </div>
-                              <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-emerald-300 font-mono">{maxGain.toFixed(0)}%</p>
-                                <p className="text-xs text-slate-400">潜在收益</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/40 p-3 rounded-lg">
-                              <span className="font-medium">风险收益比:</span>
-                              <span className="text-rose-400 font-semibold">-{maxLoss.toFixed(0)}%</span>
-                              <span className="text-slate-400">vs</span>
-                              <span className="text-emerald-400 font-semibold">+{maxGain.toFixed(0)}%</span>
-                              <span className="text-slate-400 ml-2">(赔率 {centerItem.marketPrice.toFixed(1)}%)</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl">
-                          <h3 className="text-sm font-semibold text-slate-300 mb-3">下注区间参考</h3>
-                          <div className="space-y-2">
-                            {intervalAnalysis.slice(0, 8).map(item => item && (
-                              <div key={item.range} className={`flex items-center justify-between p-2 rounded-lg ${item.isCenter ? 'bg-teal-500/10 border border-teal-500/30' : 'bg-slate-800/40'}`}>
-                                <span className={`font-medium font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-300'}`}>
-                                  {item.range}
-                                  {item.isCenter && <span className="ml-2 text-xs bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded">推荐</span>}
-                                </span>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span className="text-slate-300 font-mono">赔率: {item.marketPrice.toFixed(1)}%</span>
-                                  <span className={`font-medium font-mono ${item.alpha > 1 ? 'text-emerald-400' : item.alpha < 1 ? 'text-rose-400' : 'text-slate-300'}`}>
-                                    α: {item.alpha.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {undervaluedItems.length > 0 && (
-                          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                            <h3 className="text-sm font-semibold text-emerald-400 mb-2">价值区间 (α &gt; 1.1)</h3>
-                            <p className="text-xs text-slate-400 mb-2">市场定价低于真实概率，值得关注</p>
-                            <div className="flex flex-wrap gap-2">
-                              {undervaluedItems.slice(0, 5).map(item => item && (
-                                <span key={item.range} className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-sm font-mono">
-                                  {item.range} α={item.alpha.toFixed(2)}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </section>
               </div>
 
               <div className="space-y-6">
-                <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                  <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                      <Activity className="w-4 h-4 text-teal-400" />
-                    </div>
-                    泊松概率模型
-                  </h2>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
-                      <span className="text-sm text-slate-400">当前已发推</span>
-                      <span className="text-sm font-bold text-slate-200 font-mono">{probabilityModel.C} 条</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
-                      <span className="text-sm text-slate-400">日均发推</span>
-                      <span className="text-sm font-bold text-amber-400 font-mono">{probabilityModel.R.toFixed(1)} 条/天</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
-                      <span className="text-sm text-slate-400">剩余时间</span>
-                      <span className="text-sm font-bold text-slate-200 font-mono">{(T / 24).toFixed(1)} 天</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-teal-500/10 rounded-lg border border-teal-500/20">
-                      <span className="text-sm text-slate-400">预期落点 μ</span>
-                      <span className="text-lg font-bold text-teal-300 font-mono">{probabilityModel.mu.toFixed(0)} 条</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-teal-400/15">
-                      <span className="text-sm text-slate-400">预期剩余 λ</span>
-                      <span className="text-sm font-bold text-teal-400 font-mono">{probabilityModel.E_rem.toFixed(1)} 条</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-slate-800/30 rounded-lg text-xs text-slate-500 font-mono">
-                    泊松分布: P(X=k) = μ^k * e^(-μ) / k!
-                  </div>
-                </section>
 
                 {normalProbs.length > 0 && (
                   <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
@@ -2449,22 +2284,6 @@ export default function App() {
                   </section>
                 )}
 
-                {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
-                  <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-slate-300">每日发推统计</h3>
-                      <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded font-mono">UTC</span>
-                    </div>
-                    <div className="space-y-1">
-                      {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
-                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
-                          <span className="text-sm text-slate-400">{formatDate(day.date)}</span>
-                          <span className="text-sm font-semibold text-teal-400 font-mono">{day.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
 
                 <a
                   href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
