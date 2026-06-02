@@ -1,8 +1,9 @@
 name: Elon Tweet Alerts
 
 on:
-  schedule:
-    - cron: '*/3 * * * *'
+  # 已禁用 (2026-06-02)
+  # 原因：每30分钟跑一次消耗大量 Actions 分钟，Telegram 配置未完成
+  # 恢复方法：将下方 workflow_dispatch 改回 schedule
   workflow_dispatch:
 
 jobs:
@@ -11,19 +12,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
-        run: |
-          pip install requests
-
+        run: pip install requests
       - name: Check for new tweets
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python scripts/alert_bot.py
+        run: python scripts/alert_bot.py

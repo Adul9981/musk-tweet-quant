@@ -10,6 +10,7 @@
  */
 
 
+const TWITTERAPI_KEY = process.env.TWITTERAPI_KEY || 'new1_8452e6aed9cd49e9b163a11635102474';
 const REFERRAL_CODE  = '?via=serene77mc-g6kj';
 const GAMMA          = 'https://gamma-api.polymarket.com';
 const POLYSTRIKE     = 'https://polystrike.xyz/api/v1/meta/elon';

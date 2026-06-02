@@ -1,8 +1,8 @@
 name: Scrape Polymarket Data
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
+  # 已禁用：前端直接调 Vercel /api/xtracker，无需 GitHub Actions 抓取
+  # 原来每5分钟跑一次，消耗大量 Actions 分钟，已停用
   workflow_dispatch:
 
 jobs:
@@ -11,20 +11,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install dependencies
-        run: |
-          pip install requests
-
+        run: pip install requests
       - name: Run scraper
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python scripts/scrape_polymarket.py
+        run: python scripts/scrape_polymarket.py

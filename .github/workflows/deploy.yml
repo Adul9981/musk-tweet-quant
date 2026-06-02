@@ -1,8 +1,8 @@
 name: Deploy to Vercel
 
 on:
-  push:
-    branches: [main]
+  # 已禁用：Vercel 已通过 GitHub 集成自动部署，无需此 workflow
+  # 原来每次 push 都触发，重复部署且浪费 Actions 分钟
   workflow_dispatch:
 
 jobs:
