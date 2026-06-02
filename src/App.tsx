@@ -1448,9 +1448,8 @@ export default function App() {
             return { ...r, vr, noPrice };
           }).filter(r => r.vr > 0).sort((a, b) => (a.parsed?.min || 0) - (b.parsed?.min || 0));
 
-          const highValueSignals = rangeSignals.filter(r =>
-            r.vr >= 1.5 && r.price <= 20
-          );
+          // highValueSignals: 入场信号条已移除，待重新设计后恢复
+          // const highValueSignals = rangeSignals.filter(r => r.vr >= 1.5 && r.price <= 20);
 
           // ── 彩票仓信号：YES ≤ 2¢，区间下沿在 µ 射程内（µ ~ µ+60），仍可到达 ──
           const lotterySignals = analysisData
@@ -1680,26 +1679,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* ── 入场信号条（只有真正有信号才显示）── */}
-            {highValueSignals.length > 0 && (
-              <div className="bg-emerald-500/8 border border-emerald-500/30 rounded-2xl p-4">
-                <p className="text-xs font-semibold text-emerald-400 mb-2">💡 入场信号</p>
-                <div className="space-y-1.5">
-                  {highValueSignals.map(r => {
-                    const payoff = r.price > 0 ? (100 / r.price).toFixed(1) : '—';
-                    return (
-                      <div key={r.range} className="flex items-center justify-between text-sm">
-                        <span className="text-white font-mono font-semibold">{r.range}</span>
-                        <span className="text-slate-300">
-                          YES {r.price.toFixed(0)}¢ · NO {r.noPrice.toFixed(0)}¢ · VR <span className="text-emerald-400 font-bold">{r.vr.toFixed(2)}</span> · 盈亏比 <span className="text-amber-300 font-bold">{payoff}x</span>
-                        </span>
-                        <span className="text-xs text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-lg">建议仓位 ≤20%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* 入场信号条已移除，待重新设计后恢复 */}
 
             {/* ── 彩票仓提示（YES ≤ 2¢ 且在µ射程内）── */}
             {lotterySignals.length > 0 && (
