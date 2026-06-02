@@ -1469,227 +1469,240 @@ export default function App() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-6">
-        {activeTab === 'market' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
-                        <Target className="w-4.5 h-4.5 text-teal-400" />
-                      </div>
-                      <h2 className="text-base font-semibold text-white">
-                        {currentMarket?.title ? parseMarketTitle(currentMarket.title) : '市场数据'}
-                      </h2>
-                    </div>
-                    <button
-                      onClick={handleRefresh}
-                      disabled={isLoadingGist || isLoadingTracker}
-                      className="flex items-center gap-2 text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition-all disabled:opacity-40"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGist || isLoadingTracker ? 'animate-spin' : ''}`} />
-                      {isLoadingGist || isLoadingTracker ? '刷新中...' : '刷新数据'}
-                    </button>
-                  </div>
+        {activeTab === 'market' && (() => {
+          // ── 精准度计算（基于剩余时间）──
+          const totalRemainingH = remainingDays * 24 + remainingHoursFromApi;
+          const accuracy =
+            totalRemainingH >= 72 ? 45 :
+            totalRemainingH >= 48 ? Math.round(45 + (72 - totalRemainingH) / 24 * 13) :
+            totalRemainingH >= 24 ? Math.round(58 + (48 - totalRemainingH) / 24 * 14) :
+            totalRemainingH >= 12 ? Math.round(72 + (24 - totalRemainingH) / 12 * 10) :
+            totalRemainingH >= 6  ? Math.round(82 + (12 - totalRemainingH) / 6  * 6)  : 88;
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div className="bg-teal-500/8 border border-teal-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-teal-400/70 mb-1 uppercase tracking-widest font-semibold">当前总数</p>
-                      <p className="text-3xl font-bold text-teal-300 font-mono">{currentTracking?.stats?.total || '—'}</p>
-                      <p className="text-xs text-slate-400 mt-1">条推文</p>
-                    </div>
-                    <div className="bg-emerald-500/8 border border-emerald-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-emerald-400/70 mb-1 uppercase tracking-widest font-semibold">今日新增</p>
-                      <p className="text-3xl font-bold text-emerald-300 font-mono">{currentTracking?.stats?.todayTotal || '—'}</p>
-                      <p className="text-xs text-slate-400 mt-1">条</p>
-                    </div>
-                    <div className="bg-amber-500/8 border border-amber-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-amber-400/70 mb-1 uppercase tracking-widest font-semibold">日均时速</p>
-                      <p className="text-3xl font-bold text-amber-300 font-mono">{currentTracking?.stats?.pace || '—'}</p>
-                      <p className="text-xs text-slate-400 mt-1">条/天</p>
-                    </div>
-                    <div className="bg-teal-500/8 border border-teal-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-teal-400/70 mb-1 uppercase tracking-widest font-semibold">剩余时间</p>
-                      <p className="text-3xl font-bold text-teal-300 font-mono">
-                        {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}d` : '—'}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {currentTracking?.stats && currentTracking.stats.hoursRemaining > 0
-                          ? `${currentTracking.stats.hoursRemaining}h`
-                          : '结束'}
-                      </p>
-                    </div>
-                  </div>
+          // ── 当前活跃窗口 ──
+          const bjH = getBJHourNow();
+          const activeWindow =
+            bjH >= 12 && bjH < 16 ? { emoji: '🔥', label: '深夜爆发期', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' } :
+            bjH >= 16 && bjH < 20 ? { emoji: '💤', label: '入睡低谷',   color: 'text-slate-400',  bg: 'bg-slate-800/60 border-slate-600/40' } :
+            (bjH >= 20 || bjH < 4) ? { emoji: '⚡', label: '美国活跃期', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' } :
+                                     { emoji: '📉', label: '傍晚低谷',   color: 'text-teal-400',   bg: 'bg-teal-500/8 border-teal-500/20' };
 
-                  <div className="bg-slate-800/60 rounded-lg p-3 border border-slate-600/50">
-                    <div className="flex justify-between text-xs mb-2">
-                      <span className="text-slate-400">完成进度</span>
-                      <span className="text-slate-200 font-mono font-medium">{currentTracking?.stats?.percentComplete || 0}%</span>
-                    </div>
-                    <div className="w-full bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-teal-500 transition-all duration-500"
-                        style={{ width: `${Math.min(currentTracking?.stats?.percentComplete || 0, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </section>
+          // ── 区间信号（VR = realProb / price）──
+          const rangeSignals = analysisData.map(r => {
+            const vr = r.price > 0 ? r.realProb / r.price : 0;
+            const noPrice = 100 - r.price; // NO价格（¢）
+            return { ...r, vr, noPrice };
+          }).filter(r => r.vr > 0).sort((a, b) => (a.parsed?.min || 0) - (b.parsed?.min || 0));
 
-                {currentMarket && (
-                  <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                          <Activity className="w-4 h-4 text-teal-400" />
-                        </div>
-                        <h2 className="text-base font-semibold text-white">Polymarket 赔率</h2>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-xs text-slate-300 uppercase tracking-wide font-medium">交易量</p>
-                          <p className="text-sm font-bold text-teal-400 font-mono">
-                            ${(currentMarket.volume / 1000000).toFixed(1)}M
-                          </p>
-                        </div>
-                        <a
-                          href={`https://polymarket.com/event/${currentMarket?.slug || 'elon-musk-of-tweets-march-24-march-31'}${REFERRAL}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition-all"
-                        >
-                          <span>查看市场</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    </div>
-                    {lastUpdated && (
-                      <div className="text-xs text-slate-400 mb-4 font-mono">
-                        数据更新: {new Date(lastUpdated).toLocaleString('zh-CN')}
-                      </div>
-                    )}
+          const highValueSignals = rangeSignals.filter(r =>
+            r.vr >= 1.5 && r.price <= 20
+          );
 
-                    <div className="mb-5 p-4 bg-teal-500/5 rounded-xl border border-teal-500/15">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-300">预测中心落点</span>
-                        <span className="text-2xl font-bold text-teal-300 font-mono">
-                          ~{predictedCenter} 条
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1 font-mono">
-                        日均 <span className="text-amber-400">{apiPace.toFixed(1)}</span> 条/天
-                        <span className="ml-2 text-slate-400">· {(apiPace / 24).toFixed(2)} 条/h</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      {analysisData.slice(0, 8).map((r) => (
-                        <div
-                          key={r.range}
-                          className={`flex items-center justify-between rounded-lg px-4 py-2.5 transition-colors ${
-                            r.isCenter
-                              ? 'bg-teal-500/10 border border-teal-500/40'
-                              : 'bg-slate-800/40 border border-slate-700/50 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={`font-mono text-sm font-semibold ${r.isCenter ? 'text-teal-300' : 'text-slate-200'}`}>
-                              {r.range}
-                            </span>
-                            {r.isCenter && (
-                              <span className="px-1.5 py-0.5 bg-teal-500/20 text-teal-300 text-xs rounded font-semibold tracking-wide">CENTER</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-20 bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${r.isCenter ? 'bg-teal-500' : 'bg-slate-500'}`}
-                                style={{ width: `${Math.min(r.price || 0, 25) * 4}%` }}
-                              />
-                            </div>
-                            <span className={`text-sm font-bold font-mono w-12 text-right ${r.isCenter ? 'text-teal-400' : 'text-slate-300'}`}>
-                              {r.price.toFixed(1)}%
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
+          // ── 每日热力色块颜色 ──
+          const dailyData = currentTracking?.stats?.daily?.slice(-7) || [];
+          const maxDaily = Math.max(...dailyData.map(d => d.count), 1);
+          const heatColor = (count: number) => {
+            const ratio = count / maxDaily;
+            if (ratio >= 0.8) return 'bg-emerald-500';
+            if (ratio >= 0.6) return 'bg-emerald-600/80';
+            if (ratio >= 0.4) return 'bg-emerald-700/60';
+            if (ratio >= 0.2) return 'bg-emerald-800/50';
+            return 'bg-slate-700/40';
+          };
 
-              <div className="space-y-4">
-                <section className="bg-[#13152e] rounded-2xl p-5 border border-slate-700/60">
-                  <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
-                    市场列表
-                  </h3>
-                  <div className="space-y-2">
-                    {activeMarkets.map((market, i) => {
-                      const end = new Date(market.end_date);
-                      const now = new Date();
-                      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                      const isActive = i === selectedMarketIndex;
-                      return (
-                        <div
-                          key={market.slug}
-                          className={`p-3 rounded-xl border transition-all ${
-                            isActive
-                              ? 'bg-teal-500/10 border-teal-500/40'
-                              : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-700'
-                          }`}
-                        >
-                          <button onClick={() => handleSelectMarket(i)} className="w-full text-left mb-2.5">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <span className={`text-sm font-semibold block ${isActive ? 'text-teal-300' : 'text-slate-200'}`}>
-                                  {parseMarketTitle(market.title)}
-                                </span>
-                                <span className="text-xs text-slate-400 mt-0.5 block font-mono">
-                                  剩余 {daysLeft}d · ${(market.volume / 1000000).toFixed(1)}M
-                                </span>
-                              </div>
-                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isActive ? 'bg-teal-400' : 'bg-slate-700'}`} />
-                            </div>
-                          </button>
-                          <a
-                            href={`https://polymarket.com/event/${market.slug}${REFERRAL}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-1.5 w-full py-1.5 bg-slate-800/60 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 text-xs font-medium rounded-lg transition-colors border border-slate-700/50"
-                          >
-                            <span>进入市场</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                {currentTracking?.stats?.daily && currentTracking.stats.daily.length > 0 && (
-                  <section className="bg-[#13152e] rounded-2xl p-5 border border-slate-700/60">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">每日发推</h3>
-                      <span className="text-xs text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">UTC</span>
-                    </div>
-                    <div className="space-y-0">
-                      {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
-                        <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
-                          <span className="text-sm text-slate-300">{formatDate(day.date)}</span>
-                          <span className="text-sm font-bold text-teal-400 font-mono">{day.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
+          return (
+          <div className="space-y-4">
+            {/* ── 顶部：市场切换标签 ── */}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-500 font-mono">BJ {bjH}:00</div>
+              <div className="flex gap-1.5 flex-wrap justify-end">
+                {activeMarkets.map((market, i) => (
+                  <button
+                    key={market.slug}
+                    onClick={() => handleSelectMarket(i)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                      i === selectedMarketIndex
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                        : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                    }`}
+                  >
+                    {parseMarketTitle(market.title).replace(/Will Elon Musk post /, '').replace(/tweets.*$/i, '').trim()}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* ── 马斯克节奏摘要（市场概况页复用） ── */}
+            {/* ── 第一行：4个核心数字 ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">推文数</p>
+                <p className="text-3xl font-bold text-white font-mono">{currentTracking?.stats?.total ?? '—'}</p>
+                <p className="text-xs text-slate-500 mt-1">条</p>
+              </div>
+              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">时速</p>
+                <p className="text-3xl font-bold text-white font-mono">{currentTracking?.stats?.pace ?? '—'}</p>
+                <p className="text-xs text-slate-500 mt-1">条/天</p>
+              </div>
+              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">剩余时间</p>
+                <p className="text-3xl font-bold text-white font-mono">
+                  {currentTracking?.stats ? (
+                    remainingDays > 0
+                      ? `${remainingDays}d`
+                      : `${remainingHoursFromApi}h`
+                  ) : '—'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {currentTracking?.stats && remainingDays > 0 && remainingHoursFromApi > 0
+                    ? `${remainingHoursFromApi}h`
+                    : ''}
+                </p>
+              </div>
+              <div className={`rounded-2xl p-4 text-center border ${activeWindow.bg}`}>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">当前窗口</p>
+                <p className="text-2xl font-bold">{activeWindow.emoji}</p>
+                <p className={`text-xs font-semibold mt-1 ${activeWindow.color}`}>{activeWindow.label}</p>
+              </div>
+            </div>
+
+            {/* ── 第二行：预测落点 + 精准度 ── */}
+            <div className="bg-[#141414] border border-emerald-900/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">预测落点</p>
+                <p className="text-4xl font-bold text-emerald-300 font-mono">~{predictedCenter}</p>
+                <p className="text-xs text-slate-400 mt-1">条 · 日均 <span className="text-white font-mono">{apiPace.toFixed(1)}</span> 条/天</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-slate-500 mb-1">预测精准度</p>
+                <p className="text-4xl font-bold text-white font-mono">{accuracy}%</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {totalRemainingH >= 24
+                    ? `距到期 ${remainingDays}d ${remainingHoursFromApi}h`
+                    : `距到期 ${totalRemainingH}h`}
+                </p>
+              </div>
+              <div className="hidden md:flex flex-col items-end gap-1">
+                <a
+                  href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition-all"
+                >
+                  查看市场 <ExternalLink className="w-3 h-3" />
+                </a>
+                <button
+                  onClick={handleRefresh}
+                  disabled={isLoadingGist || isLoadingTracker}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition-all disabled:opacity-40"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGist || isLoadingTracker ? 'animate-spin' : ''}`} />
+                  {isLoadingGist || isLoadingTracker ? '刷新中...' : '刷新'}
+                </button>
+              </div>
+            </div>
+
+            {/* ── 第三行：左=每日热力色块，右=区间定价 ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+              {/* 左：每日热力色块 */}
+              <div className="lg:col-span-2 bg-[#141414] border border-slate-700/40 rounded-2xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">本期每日发推</p>
+                {dailyData.length > 0 ? (
+                  <div className="flex gap-1.5">
+                    {dailyData.map((day, i) => (
+                      <div
+                        key={day.date || i}
+                        className="flex-1 flex flex-col items-center gap-1.5"
+                        title={`${day.date} · ${day.count}条`}
+                      >
+                        <div
+                          className={`w-full rounded-lg transition-all ${heatColor(day.count)}`}
+                          style={{ height: `${Math.max(20, Math.round((day.count / maxDaily) * 72))}px` }}
+                        />
+                        <span className="text-xs font-mono text-slate-300 font-semibold">{day.count}</span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {new Date(day.date).getMonth() + 1}/{new Date(day.date).getDate()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center py-4">暂无日数据</p>
+                )}
+              </div>
+
+              {/* 右：区间定价 + VR + 盈亏比 */}
+              <div className="lg:col-span-3 bg-[#141414] border border-slate-700/40 rounded-2xl p-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">区间定价</p>
+                <div className="space-y-1.5">
+                  {rangeSignals.slice(0, 6).map(r => {
+                    const vrStars = r.vr >= 2.0 ? '⭐⭐' : r.vr >= 1.5 ? '⭐' : '';
+                    const payoff = r.price > 0 ? (100 / r.price).toFixed(1) : '—';
+                    const isHigh = r.vr >= 1.5 && r.price <= 20;
+                    return (
+                      <div
+                        key={r.range}
+                        className={`flex items-center justify-between rounded-xl px-3 py-2 border ${
+                          r.isCenter
+                            ? 'bg-emerald-500/8 border-emerald-500/30'
+                            : isHigh
+                            ? 'bg-amber-500/8 border-amber-500/25'
+                            : 'bg-slate-800/30 border-slate-700/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`font-mono text-sm font-semibold ${r.isCenter ? 'text-emerald-300' : 'text-slate-200'}`}>
+                            {r.range}
+                          </span>
+                          {r.isCenter && <span className="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded font-bold">CENTER</span>}
+                          {vrStars && <span className="text-xs">{vrStars}</span>}
+                        </div>
+                        <div className="flex items-center gap-3 text-right">
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-500">价格</p>
+                            <p className="text-sm font-mono font-bold text-white">{r.price.toFixed(0)}¢</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-500">VR</p>
+                            <p className={`text-sm font-mono font-bold ${r.vr >= 1.5 ? 'text-emerald-400' : r.vr >= 1.0 ? 'text-slate-300' : 'text-rose-400'}`}>
+                              {r.vr.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-slate-500">盈亏比</p>
+                            <p className="text-sm font-mono font-bold text-amber-300">{payoff}x</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* ── 入场信号条（只有真正有信号才显示）── */}
+            {highValueSignals.length > 0 && (
+              <div className="bg-emerald-500/8 border border-emerald-500/30 rounded-2xl p-4">
+                <p className="text-xs font-semibold text-emerald-400 mb-2">💡 入场信号</p>
+                <div className="space-y-1.5">
+                  {highValueSignals.map(r => {
+                    const payoff = r.price > 0 ? (100 / r.price).toFixed(1) : '—';
+                    return (
+                      <div key={r.range} className="flex items-center justify-between text-sm">
+                        <span className="text-white font-mono font-semibold">{r.range}</span>
+                        <span className="text-slate-300">
+                          YES {r.price.toFixed(0)}¢ · NO {r.noPrice.toFixed(0)}¢ · VR <span className="text-emerald-400 font-bold">{r.vr.toFixed(2)}</span> · 盈亏比 <span className="text-amber-300 font-bold">{payoff}x</span>
+                        </span>
+                        <span className="text-xs text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-lg">建议仓位 ≤20%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── 节奏面板（活跃时段 + 落点影响）── */}
             {(() => {
-              const bjH     = getBJHourNow();
-              const todayH  = todayHourly; // reactive — from heatmapData state
+              const todayH  = todayHourly;
               const paceScale   = R > 0 ? R / 43.4 : 1;
               const t = sessionAnalysis.timing;
 
@@ -1746,85 +1759,71 @@ export default function App() {
                                      'text-slate-300';
 
               return (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {/* 节奏面板 */}
-                  <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60 space-y-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
-                        <span className="text-xl">🕐</span>
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-white">马斯克节奏 & 落点影响</h2>
-                        <p className="text-xs text-slate-400">北京时间 {bjH}:00 · 基于206天历史数据</p>
-                      </div>
+                  <section className="bg-[#141414] rounded-2xl p-5 border border-slate-700/40 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-semibold text-slate-300">📊 今日节奏 & 落点影响</h2>
+                      <span className="text-xs text-slate-500 font-mono">BJ {bjH}:00 · 206天数据</span>
                     </div>
 
                     {/* 当前状态 + 落点 */}
                     <div className={`rounded-xl p-4 border ${timingBg}`}>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-slate-400 mb-1">当前马斯克状态</p>
-                          <p className={`text-lg font-bold leading-snug ${timingText}`}>{t.badge}</p>
-                          <p className="text-sm text-slate-300 mt-1.5 leading-relaxed">{t.desc}</p>
+                          <p className={`text-base font-bold leading-snug ${timingText}`}>{t.badge}</p>
+                          <p className="text-sm text-slate-300 mt-1 leading-relaxed">{t.desc}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-3xl font-bold text-emerald-300 font-mono">{bestMu}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">本期落点预测（条）</p>
-                          {Math.abs(bestMu - Math.round(mu)) >= 3 && (
-                            <p className={`text-xs mt-0.5 ${bestMu > mu ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {bestMu > mu ? '↑' : '↓'} 比简单预测{bestMu > mu ? '高' : '低'} {Math.abs(bestMu - Math.round(mu))} 条
-                            </p>
-                          )}
+                          <p className="text-xs text-slate-400 mt-0.5">落点预测</p>
                         </div>
                       </div>
                     </div>
 
                     {/* 24h 时间轴 */}
-                    <div>
-                      <p className="text-xs text-slate-400 mb-2.5">今日24小时活跃规律（北京时间）</p>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {SEGS.map(seg => {
-                          const hours     = seg.hours as readonly number[];
-                          const isCurrent = hours.includes(bjH);
-                          const isPast    = hours[hours.length - 1] < bjH;
-                          const actual    = hours.reduce((s, hh) => s + (todayH[hh] || 0), 0);
-                          const actEmoji =
-                            seg.level==='peak'  ? '🔥' :
-                            seg.level==='sleep' ? '💤' :
-                            seg.level==='medium'? '📢' : '🔵';
-                          const cardBg =
-                            isCurrent
-                              ? 'bg-teal-500/15 border-teal-500/40'
-                              : seg.level==='peak'
-                              ? 'bg-teal-500/10 border-teal-500/25'
-                              : seg.level==='sleep'
-                              ? 'bg-slate-900/50 border-slate-700/20'
-                              : 'bg-slate-800/40 border-slate-700/20';
-                          return (
-                            <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
-                              <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-teal-300' : seg.level==='peak' ? 'text-teal-300' : 'text-slate-300'}`}>
-                                {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {SEGS.map(seg => {
+                        const hours     = seg.hours as readonly number[];
+                        const isCurrent = hours.includes(bjH);
+                        const isPast    = hours[hours.length - 1] < bjH;
+                        const actual    = hours.reduce((s, hh) => s + (todayH[hh] || 0), 0);
+                        const actEmoji =
+                          seg.level==='peak'  ? '🔥' :
+                          seg.level==='sleep' ? '💤' :
+                          seg.level==='medium'? '📢' : '🔵';
+                        const cardBg =
+                          isCurrent
+                            ? 'bg-teal-500/15 border-teal-500/40'
+                            : seg.level==='peak'
+                            ? 'bg-teal-500/10 border-teal-500/25'
+                            : seg.level==='sleep'
+                            ? 'bg-slate-900/50 border-slate-700/20'
+                            : 'bg-slate-800/40 border-slate-700/20';
+                        return (
+                          <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
+                            <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-teal-300' : seg.level==='peak' ? 'text-teal-300' : 'text-slate-300'}`}>
+                              {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
+                            </p>
+                            <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
+                            {isPast && hasTodayData ? (
+                              <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
+                            ) : isCurrent ? (
+                              <p className="text-xs font-semibold text-teal-400">进行中</p>
+                            ) : (
+                              <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-teal-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                               </p>
-                              <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
-                              {isPast && hasTodayData ? (
-                                <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
-                              ) : isCurrent ? (
-                                <p className="text-xs font-semibold text-teal-400">进行中</p>
-                              ) : (
-                                <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-teal-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
-                                  {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
-                                </p>
-                              )}
-                              <p className="text-xs text-slate-400 mt-1.5 leading-tight">{seg.zh}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            )}
+                            <p className="text-xs text-slate-400 mt-1.5 leading-tight">{seg.zh}</p>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* 落点影响白话 */}
-                    <div className="rounded-xl p-4 border border-slate-700/40 bg-slate-800/30 space-y-2.5">
-                      <p className="text-xs font-semibold text-slate-300">📌 对本期落点的影响</p>
+                    <div className="rounded-xl p-3 border border-slate-700/40 bg-slate-800/20 space-y-2">
+                      <p className="text-xs font-semibold text-slate-400">📌 对本期落点的影响</p>
                       {impactLines.map((l, i) => (
                         <p key={i} className={`text-sm leading-relaxed ${l.color}`}>
                           {l.icon}  {l.text}
@@ -1835,15 +1834,10 @@ export default function App() {
 
                   {/* 热力图（今日发推 24h）*/}
                   {hasTodayData && (
-                    <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
-                          <span className="text-xl">📊</span>
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-semibold text-white">今日发推热力图</h2>
-                          <p className="text-xs text-slate-400">北京时间 · 每小时实际条数 vs 历史基线</p>
-                        </div>
+                    <section className="bg-[#141414] rounded-2xl p-5 border border-slate-700/40">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-slate-300">今日发推热力图</h2>
+                        <span className="text-xs text-slate-500">北京时间 · 每小时实际条数 vs 历史基线</span>
                       </div>
                       <div className="flex items-end gap-1 h-28">
                         {Array.from({ length: 24 }, (_, h) => {
@@ -1857,13 +1851,11 @@ export default function App() {
                           return (
                             <div key={h} className="flex-1 flex flex-col items-center gap-0.5" title={`BJ ${h}:00 · 实际${actual}条 · 基线${baseline}条`}>
                               <div className="w-full flex flex-col justify-end gap-px" style={{ height: '96px' }}>
-                                {/* 基线条（灰色，底部） */}
                                 <div className="relative w-full flex flex-col justify-end" style={{ height: '96px' }}>
                                   <div
                                     className={`w-full rounded-t-sm ${isCurr ? 'bg-teal-500/40' : 'bg-slate-700/50'}`}
                                     style={{ height: `${Math.min(100, baseH)}%` }}
                                   />
-                                  {/* 实际条（叠加） */}
                                   {isPastH && actual > 0 && (
                                     <div
                                       className={`absolute bottom-0 w-full rounded-t-sm ${
@@ -1884,7 +1876,6 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-teal-500 inline-block"/>实际（正常）</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-teal-500 inline-block"/>实际（偏高）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500/70 inline-block"/>实际（偏低）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-slate-700/50 inline-block"/>历史基线</span>
                       </div>
@@ -1894,7 +1885,8 @@ export default function App() {
               );
             })()}
           </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'analysis' && (
           <div className="space-y-6">
