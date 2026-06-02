@@ -368,9 +368,9 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
 
   if (!center) {
     return (
-      <div className="rounded-2xl p-6 border border-slate-700/50 bg-gradient-to-br from-[#040a06] to-[#0a1a0d] text-center py-12">
-        <Target className="w-8 h-8 mx-auto mb-3 text-slate-600 opacity-40" />
-        <p className="text-slate-500 text-sm">等待市场数据加载...</p>
+      <div className="rounded-xl px-4 py-3 border border-slate-700/40 bg-slate-900/40 flex items-center gap-2">
+        <Target className="w-4 h-4 text-slate-600 shrink-0" />
+        <p className="text-slate-500 text-xs">推荐操作面板：等待市场区间数据...</p>
       </div>
     );
   }

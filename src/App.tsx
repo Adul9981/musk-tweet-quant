@@ -1629,6 +1629,11 @@ export default function App() {
               {/* 右：区间定价 + VR + 盈亏比 */}
               <div className="lg:col-span-3 bg-[#141414] border border-slate-700/40 rounded-2xl p-4">
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">区间定价</p>
+                {rangeSignals.length === 0 && (
+                  <div className="flex items-center gap-2 py-4 px-2">
+                    <span className="text-slate-600 text-xs">暂无区间数据 · 刷新或选择其他市场</span>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   {rangeSignals.slice(0, 6).map(r => {
                     const vrStars = r.vr >= 2.0 ? '⭐⭐' : r.vr >= 1.5 ? '⭐' : '';
