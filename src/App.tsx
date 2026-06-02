@@ -910,7 +910,11 @@ export default function App() {
   // 会话修正后的µ
   const sessionAdjustedMu = Math.round(timeWeightedMu + sessionAnalysis.totalMuAdjust);
   // 向用户展示的「最佳µ估计」= 取时间加权µ与会话修正µ的中间值（避免过度修正）
-  const bestMu = Math.round((timeWeightedMu + sessionAdjustedMu) / 2);
+  // 下限：不低于当前推文数（落点不可能低于已发数），且不为负
+  const bestMu = Math.max(
+    currentTweetCount,
+    Math.round((timeWeightedMu + sessionAdjustedMu) / 2)
+  );
 
   const getPoissonProb = (k: number, lambda: number): number => {
     if (k < 0) return 0;
@@ -1483,8 +1487,19 @@ export default function App() {
             return ratio >= 0.6 ? 'text-white' : ratio >= 0.3 ? 'text-emerald-200' : 'text-slate-400';
           };
 
-          // ── 市场标签日期格式：start_date/end_date → "X月X日–X月X日" ──
+          // ── 市场标签日期格式：从 slug 提取计数周期日期（比 start_date 准确）──
+          // slug 格式: elon-musk-of-tweets-{month}-{day}-{month}-{day}
+          const SLUG_MONTH: Record<string, number> = {
+            january:1, february:2, march:3, april:4, may:5, june:6,
+            july:7, august:8, september:9, october:10, november:11, december:12
+          };
           const marketTabLabel = (market: typeof activeMarkets[0]) => {
+            const m = market.slug.match(/tweets-(\w+)-(\d+)-(\w+)-(\d+)$/);
+            if (m) {
+              const sm = SLUG_MONTH[m[1]]; const sd = parseInt(m[2]);
+              const em = SLUG_MONTH[m[3]]; const ed = parseInt(m[4]);
+              if (sm && em) return `${sm}月${sd}日–${em}月${ed}日`;
+            }
             try {
               const s = new Date(market.start_date);
               const e = new Date(market.end_date);
