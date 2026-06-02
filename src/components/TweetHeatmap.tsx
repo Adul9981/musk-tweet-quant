@@ -272,7 +272,7 @@ export function TweetHeatmap() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-xl font-bold text-slate-100 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
               <span className="text-2xl">📊</span>
             </div>
             马斯克发推热力图
@@ -295,7 +295,7 @@ export function TweetHeatmap() {
           <button
             onClick={fetchRealData}
             disabled={isLoading || isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
             {isLoading ? '加载中...' : isRefreshing ? '刷新中...' : '刷新数据'}
@@ -324,7 +324,7 @@ export function TweetHeatmap() {
 
       {isLoading && data.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-          <Loader2 className="w-12 h-12 animate-spin text-sky-500 mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mb-4" />
           <p className="text-lg">正在获取数据...</p>
           <p className="text-sm text-slate-500 mt-2">约需 10-20 秒</p>
         </div>
@@ -348,7 +348,7 @@ export function TweetHeatmap() {
                     ({getETFromBeijing(hour).replace(' ET', '')})
                   </span>
                   {hour === currentBJHour && (
-                    <div className="w-1 h-1 bg-sky-400 rounded-full mt-0.5" />
+                    <div className="w-1 h-1 bg-emerald-400 rounded-full mt-0.5" />
                   )}
                 </div>
               ))}
@@ -378,7 +378,7 @@ export function TweetHeatmap() {
                         key={hour}
                         className={`relative rounded cursor-pointer transition-all hover:scale-110 hover:z-10 ${
                           isCurrentHour
-                            ? 'ring-2 ring-sky-400 ring-offset-1 ring-offset-[#162538]'
+                            ? 'ring-2 ring-emerald-400 ring-offset-1 ring-offset-[#162538]'
                             : ''
                         }`}
                         style={{
@@ -410,12 +410,12 @@ export function TweetHeatmap() {
                           </div>
                         )}
                         {isCurrentHour && (
-                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-sky-400" />
+                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-b-2 border-l-transparent border-r-transparent border-b-emerald-400" />
                         )}
                       </div>
                     );
                   })}
-                  <span className="text-sm font-bold text-sky-400 w-10 text-right">{dayTotal}</span>
+                  <span className="text-sm font-bold text-emerald-400 w-10 text-right">{dayTotal}</span>
                 </div>
               );
             })}
@@ -446,7 +446,7 @@ export function TweetHeatmap() {
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-sky-400 rounded-full" />
+              <div className="w-2 h-2 bg-emerald-400 rounded-full" />
               <span className="text-slate-500">当前时段</span>
             </div>
             <div className="flex items-center gap-1">
@@ -455,7 +455,7 @@ export function TweetHeatmap() {
                 <span
                   key={i}
                   className={`text-xs px-2 py-0.5 rounded ${
-                    i === 0 ? 'bg-sky-500/20 text-sky-300' : 'bg-slate-800 text-slate-400'
+                    i === 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
                   }`}
                 >
                   {block.start}:00-{block.start + 3}:59
@@ -469,7 +469,7 @@ export function TweetHeatmap() {
 
       {hoveredCell && (
         <div
-          className="fixed z-50 bg-[#111f30] border border-sky-500/40 rounded-xl px-4 py-3 shadow-2xl pointer-events-none"
+          className="fixed z-50 bg-[#111f30] border border-emerald-500/40 rounded-xl px-4 py-3 shadow-2xl pointer-events-none"
           style={{
             left: hoveredPos.x,
             top: hoveredPos.y - 100,
@@ -485,7 +485,7 @@ export function TweetHeatmap() {
             <span className="text-slate-400">发推 </span>
             <span
               className={`font-bold text-xl ${
-                isAbnormal(hoveredCell.count) ? 'text-rose-400' : 'text-sky-300'
+                isAbnormal(hoveredCell.count) ? 'text-rose-400' : 'text-emerald-300'
               }`}
             >
               {hoveredCell.count}
@@ -507,12 +507,12 @@ export function TweetHeatmap() {
             value={jsonInput}
             onChange={e => setJsonInput(e.target.value)}
             placeholder='[{"date": "2026-03-27", "hour": 14, "count": 8}, ...]'
-            className="w-full h-24 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono resize-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+            className="w-full h-24 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-300 font-mono resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
           {importError && <p className="text-xs text-rose-400 mt-2">{importError}</p>}
           <button
             onClick={handleImport}
-            className="mt-3 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-500 transition-colors"
+            className="mt-3 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-500 transition-colors"
           >
             应用
           </button>
@@ -573,10 +573,10 @@ export function TweetHeatmap() {
                         />
                       )}
                       {isCurrent && (
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-sky-400" />
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
                       )}
                     </div>
-                    <span className={`text-[10px] ${isCurrent ? 'text-sky-400 font-bold' : isPeak ? 'text-violet-400' : 'text-slate-500'}`}>
+                    <span className={`text-[10px] ${isCurrent ? 'text-emerald-400 font-bold' : isPeak ? 'text-teal-400' : 'text-slate-500'}`}>
                       {h}
                     </span>
                   </div>
@@ -584,9 +584,9 @@ export function TweetHeatmap() {
               })}
             </div>
             <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-blue-500 inline-block opacity-90"/> 今日实际</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-emerald-500 inline-block opacity-90"/> 今日实际</span>
               <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-slate-500 inline-block opacity-40"/> 历史均值</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-violet-500 inline-block opacity-40"/> 高峰时段</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-teal-500 inline-block opacity-40"/> 高峰时段</span>
               <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-amber-500 inline-block"/> 超预期</span>
               <span className="flex items-center gap-1"><span className="w-3 h-2 rounded-sm bg-red-500 inline-block"/> 低于预期40%</span>
             </div>
@@ -653,7 +653,7 @@ function LatestTweets() {
           href={XTRACKER_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 text-sm px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium rounded-lg transition-colors"
+          className="flex items-center gap-2 text-sm px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
         >
           <span>查看全部</span>
           <ExternalLink className="w-3.5 h-3.5" />
@@ -669,7 +669,7 @@ function LatestTweets() {
               href={`https://x.com/elonmusk/status/${post.platformId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block bg-slate-800/40 rounded-xl p-4 border border-slate-700/50 hover:border-sky-500/40 hover:bg-slate-800/70 transition-colors"
+              className="block bg-slate-800/40 rounded-xl p-4 border border-slate-700/50 hover:border-emerald-500/40 hover:bg-slate-800/70 transition-colors"
             >
               <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {truncateContent(post.content)}

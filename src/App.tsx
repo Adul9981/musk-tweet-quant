@@ -168,7 +168,7 @@ function formatDate(dateStr: string): string {
 }
 
 function getPhase(remainingDays: number): { name: string; color: string; bg: string } {
-  if (remainingDays >= 5) return { name: '前期布局', color: 'text-indigo-400', bg: 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' };
+  if (remainingDays >= 5) return { name: '前期布局', color: 'text-teal-400', bg: 'bg-teal-500/20 border-teal-500/40 text-indigo-300' };
   if (remainingDays >= 3) return { name: '中期调整', color: 'text-teal-400', bg: 'bg-teal-500/20 border-teal-500/40 text-teal-300' };
   if (remainingDays >= 1) return { name: '后期收缩', color: 'text-amber-400', bg: 'bg-amber-500/20 border-amber-500/40 text-amber-300' };
   return { name: '最后24H', color: 'text-rose-400', bg: 'bg-rose-500/20 border-rose-500/40 text-rose-300' };
@@ -1311,8 +1311,8 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-400/40 flex items-center justify-center">
-                <Radio className="w-4 h-4 text-violet-400" />
+              <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-400/40 flex items-center justify-center">
+                <Radio className="w-4 h-4 text-teal-400" />
               </div>
               <div>
                 <h1 className="text-sm font-bold text-white tracking-wide">马斯克推文预测市场</h1>
@@ -1320,7 +1320,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded text-xs font-medium bg-violet-500/10 border border-violet-500/30 text-violet-400">
+              <span className="px-2.5 py-1 rounded text-xs font-medium bg-teal-500/10 border border-teal-500/30 text-teal-400">
                 {phase.name}
               </span>
               {visibleAlerts.length > 0 && (
@@ -1339,7 +1339,7 @@ export default function App() {
               <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
                 {/* Live clock */}
                 <div className="flex items-center gap-1.5 text-slate-300">
-                  <Clock className="w-3 h-3 text-violet-500" />
+                  <Clock className="w-3 h-3 text-teal-500" />
                   <span>{now.toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                   <span className="text-slate-600">BJ</span>
                 </div>
@@ -1370,7 +1370,7 @@ export default function App() {
                 href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-violet-500/20"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-teal-500/20"
               >
                 <span>进入市场</span>
                 <ExternalLink className="w-3 h-3" />
@@ -1395,7 +1395,7 @@ export default function App() {
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-violet-400 text-violet-300 bg-violet-500/8'
+                    ? 'border-teal-400 text-teal-300 bg-teal-500/8'
                     : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -1442,8 +1442,8 @@ export default function App() {
                 ? 'bg-amber-500/10 border-amber-500/40 text-amber-200'
                 : isPosition
                   ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-200'
-                  : 'bg-violet-500/10 border-violet-500/40 text-violet-200';
-            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : isPosition ? 'text-emerald-400' : 'text-violet-400';
+                  : 'bg-teal-500/10 border-teal-500/40 text-teal-200';
+            const iconColor = isCritical ? 'text-rose-400' : isBoundary ? 'text-amber-400' : isPosition ? 'text-emerald-400' : 'text-teal-400';
             const pulse = isCritical ? 'animate-pulse' : '';
             return (
               <div key={alert.id} className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${colors}`}>
@@ -1476,8 +1476,8 @@ export default function App() {
                 <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
-                        <Target className="w-4.5 h-4.5 text-violet-400" />
+                      <div className="w-9 h-9 rounded-lg bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
+                        <Target className="w-4.5 h-4.5 text-teal-400" />
                       </div>
                       <h2 className="text-base font-semibold text-white">
                         {currentMarket?.title ? parseMarketTitle(currentMarket.title) : '市场数据'}
@@ -1494,9 +1494,9 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div className="bg-violet-500/8 border border-violet-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-violet-400/70 mb-1 uppercase tracking-widest font-semibold">当前总数</p>
-                      <p className="text-3xl font-bold text-violet-300 font-mono">{currentTracking?.stats?.total || '—'}</p>
+                    <div className="bg-teal-500/8 border border-teal-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-teal-400/70 mb-1 uppercase tracking-widest font-semibold">当前总数</p>
+                      <p className="text-3xl font-bold text-teal-300 font-mono">{currentTracking?.stats?.total || '—'}</p>
                       <p className="text-xs text-slate-400 mt-1">条推文</p>
                     </div>
                     <div className="bg-emerald-500/8 border border-emerald-400/30 rounded-xl p-4 text-center">
@@ -1509,9 +1509,9 @@ export default function App() {
                       <p className="text-3xl font-bold text-amber-300 font-mono">{currentTracking?.stats?.pace || '—'}</p>
                       <p className="text-xs text-slate-400 mt-1">条/天</p>
                     </div>
-                    <div className="bg-violet-500/8 border border-violet-400/30 rounded-xl p-4 text-center">
-                      <p className="text-[10px] text-violet-400/70 mb-1 uppercase tracking-widest font-semibold">剩余时间</p>
-                      <p className="text-3xl font-bold text-violet-300 font-mono">
+                    <div className="bg-teal-500/8 border border-teal-400/30 rounded-xl p-4 text-center">
+                      <p className="text-[10px] text-teal-400/70 mb-1 uppercase tracking-widest font-semibold">剩余时间</p>
+                      <p className="text-3xl font-bold text-teal-300 font-mono">
                         {currentTracking?.stats ? `${currentTracking.stats.daysRemaining}d` : '—'}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
@@ -1529,7 +1529,7 @@ export default function App() {
                     </div>
                     <div className="w-full bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                        className="h-full rounded-full bg-teal-500 transition-all duration-500"
                         style={{ width: `${Math.min(currentTracking?.stats?.percentComplete || 0, 100)}%` }}
                       />
                     </div>
@@ -1541,14 +1541,14 @@ export default function App() {
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                          <Activity className="w-4 h-4 text-violet-400" />
+                          <Activity className="w-4 h-4 text-teal-400" />
                         </div>
                         <h2 className="text-base font-semibold text-white">Polymarket 赔率</h2>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="text-xs text-slate-300 uppercase tracking-wide font-medium">交易量</p>
-                          <p className="text-sm font-bold text-violet-400 font-mono">
+                          <p className="text-sm font-bold text-teal-400 font-mono">
                             ${(currentMarket.volume / 1000000).toFixed(1)}M
                           </p>
                         </div>
@@ -1569,10 +1569,10 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="mb-5 p-4 bg-violet-500/5 rounded-xl border border-violet-500/15">
+                    <div className="mb-5 p-4 bg-teal-500/5 rounded-xl border border-teal-500/15">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-slate-300">预测中心落点</span>
-                        <span className="text-2xl font-bold text-violet-300 font-mono">
+                        <span className="text-2xl font-bold text-teal-300 font-mono">
                           ~{predictedCenter} 条
                         </span>
                       </div>
@@ -1588,26 +1588,26 @@ export default function App() {
                           key={r.range}
                           className={`flex items-center justify-between rounded-lg px-4 py-2.5 transition-colors ${
                             r.isCenter
-                              ? 'bg-violet-500/10 border border-violet-500/40'
+                              ? 'bg-teal-500/10 border border-teal-500/40'
                               : 'bg-slate-800/40 border border-slate-700/50 hover:border-slate-700'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span className={`font-mono text-sm font-semibold ${r.isCenter ? 'text-violet-300' : 'text-slate-200'}`}>
+                            <span className={`font-mono text-sm font-semibold ${r.isCenter ? 'text-teal-300' : 'text-slate-200'}`}>
                               {r.range}
                             </span>
                             {r.isCenter && (
-                              <span className="px-1.5 py-0.5 bg-violet-500/20 text-violet-300 text-xs rounded font-semibold tracking-wide">CENTER</span>
+                              <span className="px-1.5 py-0.5 bg-teal-500/20 text-teal-300 text-xs rounded font-semibold tracking-wide">CENTER</span>
                             )}
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="w-20 bg-slate-700/80 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${r.isCenter ? 'bg-violet-500' : 'bg-slate-500'}`}
+                                className={`h-full rounded-full ${r.isCenter ? 'bg-teal-500' : 'bg-slate-500'}`}
                                 style={{ width: `${Math.min(r.price || 0, 25) * 4}%` }}
                               />
                             </div>
-                            <span className={`text-sm font-bold font-mono w-12 text-right ${r.isCenter ? 'text-violet-400' : 'text-slate-300'}`}>
+                            <span className={`text-sm font-bold font-mono w-12 text-right ${r.isCenter ? 'text-teal-400' : 'text-slate-300'}`}>
                               {r.price.toFixed(1)}%
                             </span>
                           </div>
@@ -1621,7 +1621,7 @@ export default function App() {
               <div className="space-y-4">
                 <section className="bg-[#13152e] rounded-2xl p-5 border border-slate-700/60">
                   <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
                     市场列表
                   </h3>
                   <div className="space-y-2">
@@ -1635,21 +1635,21 @@ export default function App() {
                           key={market.slug}
                           className={`p-3 rounded-xl border transition-all ${
                             isActive
-                              ? 'bg-violet-500/10 border-violet-500/40'
+                              ? 'bg-teal-500/10 border-teal-500/40'
                               : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-700'
                           }`}
                         >
                           <button onClick={() => handleSelectMarket(i)} className="w-full text-left mb-2.5">
                             <div className="flex items-start justify-between">
                               <div>
-                                <span className={`text-sm font-semibold block ${isActive ? 'text-violet-300' : 'text-slate-200'}`}>
+                                <span className={`text-sm font-semibold block ${isActive ? 'text-teal-300' : 'text-slate-200'}`}>
                                   {parseMarketTitle(market.title)}
                                 </span>
                                 <span className="text-xs text-slate-400 mt-0.5 block font-mono">
                                   剩余 {daysLeft}d · ${(market.volume / 1000000).toFixed(1)}M
                                 </span>
                               </div>
-                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isActive ? 'bg-violet-400' : 'bg-slate-700'}`} />
+                              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${isActive ? 'bg-teal-400' : 'bg-slate-700'}`} />
                             </div>
                           </button>
                           <a
@@ -1677,7 +1677,7 @@ export default function App() {
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
                         <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
                           <span className="text-sm text-slate-300">{formatDate(day.date)}</span>
-                          <span className="text-sm font-bold text-violet-400 font-mono">{day.count}</span>
+                          <span className="text-sm font-bold text-teal-400 font-mono">{day.count}</span>
                         </div>
                       ))}
                     </div>
@@ -1719,10 +1719,10 @@ export default function App() {
               const ongoingNight  = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && (s.status==='ongoing'||s.status==='strong'||s.status==='pending'));
               if (upcomingNight) {
                 const hoursLeft = Math.max(0, 13 - bjH);
-                impactLines.push({ icon:'⏳', color:'text-violet-300',
+                impactLines.push({ icon:'⏳', color:'text-teal-300',
                   text:`深夜爆发时段（BJ 13–16）约 ${hoursLeft} 小时后开始，是落点最大变量（历史均值 +14 条）` });
               } else if (ongoingNight) {
-                impactLines.push({ icon:'🌙', color:'text-violet-300',
+                impactLines.push({ icon:'🌙', color:'text-teal-300',
                   text:'深夜时段进行中（全天最高），µ正在上移，注意评估止盈' });
               }
               if (impactLines.length === 0) {
@@ -1732,15 +1732,15 @@ export default function App() {
 
               const timingBg =
                 t.level==='BEST'   ? 'bg-emerald-500/10 border-emerald-500/35' :
-                t.level==='GOOD'   ? 'bg-violet-500/10 border-violet-500/35' :
-                t.level==='ACTIVE' ? 'bg-violet-500/10 border-violet-500/35' :
+                t.level==='GOOD'   ? 'bg-teal-500/10 border-teal-500/35' :
+                t.level==='ACTIVE' ? 'bg-teal-500/10 border-teal-500/35' :
                 t.level==='DEAD'   ? 'bg-slate-900/60 border-slate-600/50' :
                 t.level==='WATCH'  ? 'bg-yellow-500/8 border-yellow-500/25' :
                                      'bg-slate-800/40 border-slate-700/40';
               const timingText =
                 t.level==='BEST'   ? 'text-emerald-300' :
-                t.level==='GOOD'   ? 'text-violet-300' :
-                t.level==='ACTIVE' ? 'text-violet-300' :
+                t.level==='GOOD'   ? 'text-teal-300' :
+                t.level==='ACTIVE' ? 'text-teal-300' :
                 t.level==='DEAD'   ? 'text-slate-500' :
                 t.level==='WATCH'  ? 'text-yellow-300' :
                                      'text-slate-300';
@@ -1750,7 +1750,7 @@ export default function App() {
                   {/* 节奏面板 */}
                   <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60 space-y-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
                         <span className="text-xl">🕐</span>
                       </div>
                       <div>
@@ -1794,24 +1794,24 @@ export default function App() {
                             seg.level==='medium'? '📢' : '🔵';
                           const cardBg =
                             isCurrent
-                              ? 'bg-violet-500/15 border-violet-500/40'
+                              ? 'bg-teal-500/15 border-teal-500/40'
                               : seg.level==='peak'
-                              ? 'bg-violet-500/10 border-violet-500/25'
+                              ? 'bg-teal-500/10 border-teal-500/25'
                               : seg.level==='sleep'
                               ? 'bg-slate-900/50 border-slate-700/20'
                               : 'bg-slate-800/40 border-slate-700/20';
                           return (
                             <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
-                              <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-violet-300' : seg.level==='peak' ? 'text-violet-300' : 'text-slate-300'}`}>
+                              <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-teal-300' : seg.level==='peak' ? 'text-teal-300' : 'text-slate-300'}`}>
                                 {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
                               </p>
                               <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
                               {isPast && hasTodayData ? (
                                 <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
                               ) : isCurrent ? (
-                                <p className="text-xs font-semibold text-violet-400">进行中</p>
+                                <p className="text-xs font-semibold text-teal-400">进行中</p>
                               ) : (
-                                <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-violet-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-teal-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
                                   {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                 </p>
                               )}
@@ -1837,7 +1837,7 @@ export default function App() {
                   {hasTodayData && (
                     <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
                           <span className="text-xl">📊</span>
                         </div>
                         <div>
@@ -1860,22 +1860,22 @@ export default function App() {
                                 {/* 基线条（灰色，底部） */}
                                 <div className="relative w-full flex flex-col justify-end" style={{ height: '96px' }}>
                                   <div
-                                    className={`w-full rounded-t-sm ${isCurr ? 'bg-violet-500/40' : 'bg-slate-700/50'}`}
+                                    className={`w-full rounded-t-sm ${isCurr ? 'bg-teal-500/40' : 'bg-slate-700/50'}`}
                                     style={{ height: `${Math.min(100, baseH)}%` }}
                                   />
                                   {/* 实际条（叠加） */}
                                   {isPastH && actual > 0 && (
                                     <div
                                       className={`absolute bottom-0 w-full rounded-t-sm ${
-                                        actual >= baseline * 1.4 ? 'bg-violet-500' :
-                                        actual >= baseline * 0.6 ? 'bg-violet-500' : 'bg-rose-500/70'
+                                        actual >= baseline * 1.4 ? 'bg-teal-500' :
+                                        actual >= baseline * 0.6 ? 'bg-teal-500' : 'bg-rose-500/70'
                                       }`}
                                       style={{ height: `${Math.min(100, actH)}%` }}
                                     />
                                   )}
                                 </div>
                               </div>
-                              <p className={`text-xs font-mono ${isCurr ? 'text-violet-400' : 'text-slate-400'}`}>
+                              <p className={`text-xs font-mono ${isCurr ? 'text-teal-400' : 'text-slate-400'}`}>
                                 {h === 0 || h % 4 === 0 ? h : ''}
                               </p>
                             </div>
@@ -1883,8 +1883,8 @@ export default function App() {
                         })}
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-violet-500 inline-block"/>实际（正常）</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-violet-500 inline-block"/>实际（偏高）</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-teal-500 inline-block"/>实际（正常）</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-teal-500 inline-block"/>实际（偏高）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500/70 inline-block"/>实际（偏低）</span>
                         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-slate-700/50 inline-block"/>历史基线</span>
                       </div>
@@ -1955,10 +1955,10 @@ export default function App() {
                   const ongoingNight  = sessionAnalysis.states.find(s => s.def.name==='深夜会话' && (s.status==='ongoing'||s.status==='strong'||s.status==='pending'));
                   if (upcomingNight) {
                     const hoursLeft = Math.max(0, 13 - bjH);
-                    impactLines.push({ icon:'⏳', color:'text-violet-300',
+                    impactLines.push({ icon:'⏳', color:'text-teal-300',
                       text:`深夜爆发时段（BJ 13–16）约 ${hoursLeft} 小时后开始，是今日落点的最大变量（历史均值 +14 条）` });
                   } else if (ongoingNight) {
-                    impactLines.push({ icon:'🌙', color:'text-violet-300',
+                    impactLines.push({ icon:'🌙', color:'text-teal-300',
                       text:'深夜爆发时段正在进行中，µ正在上移，注意评估止盈时机' });
                   }
                   if (impactLines.length === 0) {
@@ -1968,15 +1968,15 @@ export default function App() {
 
                   const timingBg =
                     t.level==='BEST'   ? 'bg-emerald-500/10 border-emerald-500/35' :
-                    t.level==='GOOD'   ? 'bg-violet-500/10 border-violet-500/35' :
-                    t.level==='ACTIVE' ? 'bg-violet-500/10 border-violet-500/35' :
+                    t.level==='GOOD'   ? 'bg-teal-500/10 border-teal-500/35' :
+                    t.level==='ACTIVE' ? 'bg-teal-500/10 border-teal-500/35' :
                     t.level==='DEAD'   ? 'bg-slate-900/60 border-slate-600/50' :
                     t.level==='WATCH'  ? 'bg-yellow-500/8 border-yellow-500/25' :
                                          'bg-slate-800/40 border-slate-700/40';
                   const timingText =
                     t.level==='BEST'   ? 'text-emerald-300' :
-                    t.level==='GOOD'   ? 'text-violet-300' :
-                    t.level==='ACTIVE' ? 'text-violet-300' :
+                    t.level==='GOOD'   ? 'text-teal-300' :
+                    t.level==='ACTIVE' ? 'text-teal-300' :
                     t.level==='DEAD'   ? 'text-slate-500' :
                     t.level==='WATCH'  ? 'text-yellow-300' :
                                          'text-slate-300';
@@ -1985,7 +1985,7 @@ export default function App() {
                     <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60 space-y-5">
                       {/* 标题 */}
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/25 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/25 flex items-center justify-center">
                           <span className="text-xl">🕐</span>
                         </div>
                         <div>
@@ -2031,9 +2031,9 @@ export default function App() {
 
                             const cardBg =
                               isCurrent
-                                ? 'bg-violet-500/15 border-violet-500/40'
+                                ? 'bg-teal-500/15 border-teal-500/40'
                                 : seg.level === 'peak'
-                                ? 'bg-violet-500/10 border-violet-500/25'
+                                ? 'bg-teal-500/10 border-teal-500/25'
                                 : seg.level === 'sleep'
                                 ? 'bg-slate-900/50 border-slate-700/20'
                                 : 'bg-slate-800/40 border-slate-700/20';
@@ -2042,7 +2042,7 @@ export default function App() {
 
                             return (
                               <div key={seg.label} className={`rounded-xl p-2.5 text-center border ${cardBg}`}>
-                                <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-violet-300' : seg.level === 'peak' ? 'text-violet-300' : 'text-slate-300'}`}>
+                                <p className={`text-xs font-bold font-mono mb-1 ${isCurrent ? 'text-teal-300' : seg.level === 'peak' ? 'text-teal-300' : 'text-slate-300'}`}>
                                   {isCurrent && <span className="mr-0.5">▶</span>}{seg.label}
                                 </p>
                                 <p className="text-lg leading-none mb-1.5">{actEmoji}</p>
@@ -2050,9 +2050,9 @@ export default function App() {
                                 {isPast && hasTodayData ? (
                                   <p className="text-sm font-mono font-bold text-slate-100">{actual}条</p>
                                 ) : isCurrent ? (
-                                  <p className="text-xs font-semibold text-violet-400">进行中</p>
+                                  <p className="text-xs font-semibold text-teal-400">进行中</p>
                                 ) : (
-                                  <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-violet-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                  <p className={`text-xs font-medium ${seg.level==='peak' ? 'text-teal-300' : seg.level==='sleep' ? 'text-slate-500' : 'text-slate-400'}`}>
                                     {seg.level==='peak' ? '预计爆发' : seg.level==='sleep' ? '入睡' : '预计中等'}
                                   </p>
                                 )}
@@ -2080,7 +2080,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-violet-400" />
+                        <BarChart3 className="w-5 h-5 text-teal-400" />
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-white">盘口价值比分析</h2>
@@ -2094,12 +2094,12 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="text-center p-4 bg-violet-500/10 rounded-xl border border-violet-400/30">
-                      <p className="text-2xl font-bold text-violet-300 font-mono">{currentTweetCount}</p>
+                    <div className="text-center p-4 bg-teal-500/10 rounded-xl border border-teal-400/30">
+                      <p className="text-2xl font-bold text-teal-300 font-mono">{currentTweetCount}</p>
                       <p className="text-xs text-slate-400">当前推文</p>
                     </div>
-                    <div className="text-center p-4 bg-violet-500/10 rounded-xl border border-violet-400/30">
-                      <p className="text-2xl font-bold text-violet-300 font-mono">{apiPace.toFixed(1)}</p>
+                    <div className="text-center p-4 bg-teal-500/10 rounded-xl border border-teal-400/30">
+                      <p className="text-2xl font-bold text-teal-300 font-mono">{apiPace.toFixed(1)}</p>
                       <p className="text-xs text-slate-400">日均时速</p>
                     </div>
                     <div className="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-400/30">
@@ -2127,7 +2127,7 @@ export default function App() {
                       <tbody>
                         {intervalAnalysis.slice(0, 12).map((item) => {
                           if (!item) return null;
-                          const statusClass = item.isCenter ? 'bg-violet-500/20 text-violet-300' :
+                          const statusClass = item.isCenter ? 'bg-teal-500/20 text-teal-300' :
                                              item.status === 'busted' ? 'bg-rose-500/15 text-rose-400' :
                                              item.status === 'passed' ? 'bg-emerald-500/15 text-emerald-400' :
                                              'bg-slate-800 text-slate-300';
@@ -2135,15 +2135,15 @@ export default function App() {
                                            item.status === 'busted' ? '已破' :
                                            item.status === 'passed' ? '已过' : '活跃';
                           const payout = item.marketPrice > 0 ? (100 / item.marketPrice * 100 - 100) : 0;
-                          const payoutClass = payout > 100 ? 'text-emerald-400' : payout > 50 ? 'text-violet-400' : 'text-slate-300';
+                          const payoutClass = payout > 100 ? 'text-emerald-400' : payout > 50 ? 'text-teal-400' : 'text-slate-300';
                           const isPositive = item.trueProb > item.marketPrice;
                           const trueProbClass = isPositive ? 'text-emerald-400' : 'text-rose-400';
                           const profitLoss = item.trueProb - item.marketPrice;
                           const plClass = profitLoss > 0 ? 'text-emerald-400' : profitLoss < 0 ? 'text-rose-400' : 'text-slate-400';
 
                           return (
-                            <tr key={item.range} className={`border-b border-slate-700/50/60 hover:bg-slate-800/30 ${item.isCenter ? 'bg-violet-500/5' : ''}`}>
-                              <td className={`py-3 px-3 font-semibold font-mono ${item.isCenter ? 'text-violet-300' : 'text-slate-300'}`}>
+                            <tr key={item.range} className={`border-b border-slate-700/50/60 hover:bg-slate-800/30 ${item.isCenter ? 'bg-teal-500/5' : ''}`}>
+                              <td className={`py-3 px-3 font-semibold font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-300'}`}>
                                 {item.range}
                               </td>
                               <td className="py-3 px-3 text-right text-slate-300 font-mono">{item.marketPrice.toFixed(1)}%</td>
@@ -2179,7 +2179,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <Gauge className="w-5 h-5 text-violet-400" />
+                        <Gauge className="w-5 h-5 text-teal-400" />
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-white">目标区间时速倒推雷达</h2>
@@ -2194,25 +2194,25 @@ export default function App() {
                       const borderColor = item.difficulty === 'impossible' ? 'border-rose-500/30' :
                                          item.difficulty === 'easy' ? 'border-emerald-500/30' :
                                          item.difficulty === 'medium' ? 'border-amber-500/30' :
-                                         'border-violet-500/30';
+                                         'border-teal-500/30';
                       const badgeColor = item.difficulty === 'impossible' ? 'bg-rose-500/20 text-rose-300' :
                                         item.difficulty === 'easy' ? 'bg-emerald-500/20 text-emerald-300' :
                                         item.difficulty === 'medium' ? 'bg-amber-500/20 text-amber-300' :
-                                        'bg-violet-500/20 text-violet-300';
+                                        'bg-teal-500/20 text-teal-300';
                       const label = item.difficulty === 'impossible' ? '需加速' :
                                    item.difficulty === 'easy' ? '轻松' :
                                    item.difficulty === 'medium' ? '中等' : '困难';
 
                       return (
-                        <div key={idx} className={`p-4 rounded-xl border bg-slate-800/40 ${borderColor} ${item.isCenter ? 'ring-1 ring-violet-500/40' : ''}`}>
+                        <div key={idx} className={`p-4 rounded-xl border bg-slate-800/40 ${borderColor} ${item.isCenter ? 'ring-1 ring-teal-500/40' : ''}`}>
                           {/* Header: range + badges */}
                           <div className="flex items-center justify-between mb-3">
-                            <span className={`font-bold text-sm font-mono ${item.isCenter ? 'text-violet-300' : 'text-slate-200'}`}>
+                            <span className={`font-bold text-sm font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-200'}`}>
                               {item.range}
                             </span>
                             <div className="flex gap-1">
                               {item.isCenter && (
-                                <span className="px-1.5 py-0.5 bg-violet-500/20 text-violet-300 text-xs rounded font-semibold">中心</span>
+                                <span className="px-1.5 py-0.5 bg-teal-500/20 text-teal-300 text-xs rounded font-semibold">中心</span>
                               )}
                               <span className={`px-1.5 py-0.5 text-xs rounded font-semibold ${badgeColor}`}>{label}</span>
                             </div>
@@ -2233,7 +2233,7 @@ export default function App() {
                           <div className="space-y-1.5 text-xs">
                             <div className="flex justify-between">
                               <span className="text-slate-400">所需时速</span>
-                              <span className="text-violet-400 font-mono">
+                              <span className="text-teal-400 font-mono">
                                 {item.minVelocity === Infinity ? '∞' : item.minVelocity.toFixed(2)}
                                 <span className="text-slate-400 mx-0.5">~</span>
                                 {item.maxVelocity === Infinity ? '∞' : item.maxVelocity.toFixed(2)}/h
@@ -2241,7 +2241,7 @@ export default function App() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-400">真实概率</span>
-                              <span className="text-violet-400 font-bold font-mono">{item.trueProb.toFixed(1)}%</span>
+                              <span className="text-teal-400 font-bold font-mono">{item.trueProb.toFixed(1)}%</span>
                             </div>
                           </div>
                         </div>
@@ -2260,8 +2260,8 @@ export default function App() {
                         <span className="text-amber-400">中等</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded bg-violet-400"></div>
-                        <span className="text-violet-400">较难</span>
+                        <div className="w-2 h-2 rounded bg-teal-400"></div>
+                        <span className="text-teal-400">较难</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded bg-rose-400"></div>
@@ -2275,7 +2275,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <Target className="w-4 h-4 text-violet-400" />
+                        <Target className="w-4 h-4 text-teal-400" />
                       </div>
                       仓位分配策略建议
                     </h2>
@@ -2293,19 +2293,19 @@ export default function App() {
                     return (
                       <div className="space-y-4">
                         {centerItem && (
-                          <div className="p-4 bg-violet-500/10 border border-violet-500/20 rounded-xl">
+                          <div className="p-4 bg-teal-500/10 border border-teal-500/20 rounded-xl">
                             <div className="flex items-center gap-3 mb-4">
-                              <span className="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-full text-sm font-semibold">核心仓位</span>
-                              <span className="text-violet-200 font-bold text-lg font-mono">{centerItem.range}</span>
+                              <span className="px-3 py-1 bg-teal-500/20 text-teal-300 rounded-full text-sm font-semibold">核心仓位</span>
+                              <span className="text-teal-200 font-bold text-lg font-mono">{centerItem.range}</span>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-violet-300 font-mono">{centerRatio.toFixed(0)}%</p>
+                                <p className="text-2xl font-bold text-teal-300 font-mono">{centerRatio.toFixed(0)}%</p>
                                 <p className="text-xs text-slate-400">仓位比例</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
-                                <p className="text-2xl font-bold text-violet-300 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
+                                <p className="text-2xl font-bold text-teal-300 font-mono">{centerItem.trueProb.toFixed(1)}%</p>
                                 <p className="text-xs text-slate-400">真实概率</p>
                               </div>
                               <div className="text-center p-3 bg-slate-800/60 rounded-lg">
@@ -2332,10 +2332,10 @@ export default function App() {
                           <h3 className="text-sm font-semibold text-slate-300 mb-3">下注区间参考</h3>
                           <div className="space-y-2">
                             {intervalAnalysis.slice(0, 8).map(item => item && (
-                              <div key={item.range} className={`flex items-center justify-between p-2 rounded-lg ${item.isCenter ? 'bg-violet-500/10 border border-violet-500/30' : 'bg-slate-800/40'}`}>
-                                <span className={`font-medium font-mono ${item.isCenter ? 'text-violet-300' : 'text-slate-300'}`}>
+                              <div key={item.range} className={`flex items-center justify-between p-2 rounded-lg ${item.isCenter ? 'bg-teal-500/10 border border-teal-500/30' : 'bg-slate-800/40'}`}>
+                                <span className={`font-medium font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-300'}`}>
                                   {item.range}
-                                  {item.isCenter && <span className="ml-2 text-xs bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded">推荐</span>}
+                                  {item.isCenter && <span className="ml-2 text-xs bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded">推荐</span>}
                                 </span>
                                 <div className="flex items-center gap-4 text-sm">
                                   <span className="text-slate-300 font-mono">赔率: {item.marketPrice.toFixed(1)}%</span>
@@ -2371,7 +2371,7 @@ export default function App() {
                 <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
                   <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                      <Activity className="w-4 h-4 text-violet-400" />
+                      <Activity className="w-4 h-4 text-teal-400" />
                     </div>
                     泊松概率模型
                   </h2>
@@ -2388,13 +2388,13 @@ export default function App() {
                       <span className="text-sm text-slate-400">剩余时间</span>
                       <span className="text-sm font-bold text-slate-200 font-mono">{(T / 24).toFixed(1)} 天</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                    <div className="flex justify-between items-center p-3 bg-teal-500/10 rounded-lg border border-teal-500/20">
                       <span className="text-sm text-slate-400">预期落点 μ</span>
-                      <span className="text-lg font-bold text-violet-300 font-mono">{probabilityModel.mu.toFixed(0)} 条</span>
+                      <span className="text-lg font-bold text-teal-300 font-mono">{probabilityModel.mu.toFixed(0)} 条</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-violet-400/15">
+                    <div className="flex justify-between items-center p-3 bg-slate-800/50 rounded-lg border border-teal-400/15">
                       <span className="text-sm text-slate-400">预期剩余 λ</span>
-                      <span className="text-sm font-bold text-violet-400 font-mono">{probabilityModel.E_rem.toFixed(1)} 条</span>
+                      <span className="text-sm font-bold text-teal-400 font-mono">{probabilityModel.E_rem.toFixed(1)} 条</span>
                     </div>
                   </div>
                   <div className="mt-4 p-3 bg-slate-800/30 rounded-lg text-xs text-slate-500 font-mono">
@@ -2406,7 +2406,7 @@ export default function App() {
                   <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
                     <h2 className="text-base font-semibold text-white mb-1 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <BarChart3 className="w-4 h-4 text-violet-400" />
+                        <BarChart3 className="w-4 h-4 text-teal-400" />
                       </div>
                       分布模型对比
                     </h2>
@@ -2424,12 +2424,12 @@ export default function App() {
                             key={item.range}
                             className={`px-3 py-2 rounded-lg text-xs ${
                               item.isCenter
-                                ? 'bg-violet-500/5 border border-violet-500/20'
+                                ? 'bg-teal-500/5 border border-teal-500/20'
                                 : 'bg-slate-800/40'
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`font-bold font-mono ${item.isCenter ? 'text-violet-300' : 'text-slate-200'}`}>
+                              <span className={`font-bold font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-200'}`}>
                                 {item.range}
                               </span>
                               <span className="text-slate-400 text-xs font-mono">
@@ -2437,8 +2437,8 @@ export default function App() {
                               </span>
                             </div>
                             <div className="flex gap-3 items-center">
-                              <span className="text-violet-400 font-medium font-mono">泊松 {poissonVal.toFixed(1)}%</span>
-                              <span className="text-violet-400 font-medium font-mono">正态 {normalVal.toFixed(1)}%</span>
+                              <span className="text-teal-400 font-medium font-mono">泊松 {poissonVal.toFixed(1)}%</span>
+                              <span className="text-teal-400 font-medium font-mono">正态 {normalVal.toFixed(1)}%</span>
                               <span className={`ml-auto font-semibold font-mono ${
                                 delta > 1 ? 'text-emerald-400'
                                 : delta < -1 ? 'text-rose-400'
@@ -2467,7 +2467,7 @@ export default function App() {
                       {currentTracking.stats.daily.slice(-7).reverse().map((day, i) => (
                         <div key={day.date || i} className="flex items-center justify-between py-2 border-b border-slate-700/50/60 last:border-0">
                           <span className="text-sm text-slate-400">{formatDate(day.date)}</span>
-                          <span className="text-sm font-semibold text-violet-400 font-mono">{day.count}</span>
+                          <span className="text-sm font-semibold text-teal-400 font-mono">{day.count}</span>
                         </div>
                       ))}
                     </div>
@@ -2478,7 +2478,7 @@ export default function App() {
                   href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full p-4 bg-violet-600 hover:bg-violet-500 rounded-xl text-center font-semibold text-white transition-all"
+                  className="block w-full p-4 bg-violet-600 hover:bg-teal-500 rounded-xl text-center font-semibold text-white transition-all"
                 >
                   <ExternalLink className="w-4 h-4 inline mr-2" />
                   进入 Polymarket 下注
@@ -2704,7 +2704,7 @@ ${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
           <div className="flex gap-2">
             <button
               onClick={openTelegram}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors"
             >
               <Send className="w-4 h-4" />
               Telegram
@@ -2728,7 +2728,7 @@ ${marketUrl} #Polymarket`.replace(/\n{3,}/g, '\n\n').trim();
           className={`w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl font-semibold transition-all text-base ${
             copied
               ? 'bg-emerald-600 text-white'
-              : 'bg-violet-600 hover:bg-violet-500 text-white'
+              : 'bg-violet-600 hover:bg-teal-500 text-white'
           }`}
         >
           {copied ? (

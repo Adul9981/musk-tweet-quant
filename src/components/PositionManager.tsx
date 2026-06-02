@@ -125,7 +125,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
           <div className={`h-1 bg-gradient-to-r ${totalPnl >= 0 ? 'from-emerald-500 to-teal-500' : 'from-rose-500 to-pink-500'}`} />
           <div className="p-6">
             <h2 className="text-base font-bold text-white flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
                 <Briefcase className="w-4 h-4 text-white" />
               </div>
               持仓汇总
@@ -135,9 +135,9 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-medium">总投入</p>
                 <p className="text-2xl font-bold text-slate-100 font-mono">${totalInvested.toFixed(0)}</p>
               </div>
-              <div className="text-center p-4 bg-sky-950/60 rounded-xl border border-sky-500/30">
+              <div className="text-center p-4 bg-emerald-950/60 rounded-xl border border-emerald-500/30">
                 <p className="text-xs text-slate-400 mb-2 uppercase tracking-wider font-medium">当前估值</p>
-                <p className="text-2xl font-bold text-sky-300 font-mono">${totalValue.toFixed(0)}</p>
+                <p className="text-2xl font-bold text-emerald-300 font-mono">${totalValue.toFixed(0)}</p>
                 <p className="text-xs text-slate-400 mt-1">按市价折算</p>
               </div>
               <div className={`text-center p-4 rounded-xl border ${
@@ -165,14 +165,14 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
         <div className="flex items-center justify-between mb-4 p-6 pb-0">
           <h2 className="text-base font-bold text-white flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-sky-400" />
+              <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
             记录持仓
           </h2>
           {!isFormOpen && (
             <button
               onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
               添加仓位
@@ -189,7 +189,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                 <select
                   value={selectedRange}
                   onChange={e => handleRangeSelect(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors"
+                  className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                 >
                   <option value="">-- 选择区间 --</option>
                   {rangeOptions.map(opt => (
@@ -212,7 +212,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                     min="0.1"
                     max="99.9"
                     step="0.1"
-                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors"
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none">%</span>
                 </div>
@@ -235,7 +235,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                     placeholder="如 100"
                     min="1"
                     step="1"
-                    className="w-full pl-7 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors"
+                    className="w-full pl-7 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
                 {entryPrice && amount && !isNaN(parseFloat(entryPrice)) && !isNaN(parseFloat(amount)) && parseFloat(entryPrice) > 0 && (
@@ -250,7 +250,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
               <button
                 onClick={handleAdd}
                 disabled={!canSubmit}
-                className="flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 确认添加
@@ -340,7 +340,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-slate-500">{g.totalShares.toFixed(0)}</td>
                       <td className="py-3 px-3 text-right font-mono text-slate-400">${g.totalAmount.toFixed(0)}</td>
-                      <td className="py-3 px-3 text-right font-mono text-sky-400">
+                      <td className="py-3 px-3 text-right font-mono text-emerald-400">
                         {g.totalValue > 0 ? `$${g.totalValue.toFixed(1)}` : <span className="text-slate-600">—</span>}
                       </td>
                       <td className="py-3 px-3 text-right">
@@ -390,7 +390,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
           )}
 
           {/* Payout projection */}
-          <div className="mt-4 p-4 bg-sky-500/5 rounded-xl border border-sky-500/10">
+          <div className="mt-4 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
             <p className="text-xs text-slate-500 mb-3 font-medium">若该区间命中，单笔收益（各区间互斥，只有一个兑现）</p>
             <div className="space-y-2">
               {merged.map(g => {
@@ -405,7 +405,7 @@ export function PositionManager({ positions, onAdd, onDelete, rangeOptions, curr
                         <span className="text-slate-400"> (+${netGain.toFixed(0)})</span>
                       </span>
                       <span className="text-slate-400">
-                        模型概率 <span className={`font-semibold font-mono ${g.modelProb >= 20 ? 'text-sky-400' : g.modelProb >= 5 ? 'text-amber-400' : 'text-rose-400'}`}>
+                        模型概率 <span className={`font-semibold font-mono ${g.modelProb >= 20 ? 'text-emerald-400' : g.modelProb >= 5 ? 'text-amber-400' : 'text-rose-400'}`}>
                           {g.modelProb.toFixed(1)}%
                         </span>
                       </span>

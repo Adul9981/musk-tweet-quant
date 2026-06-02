@@ -49,9 +49,9 @@ const SESSIONS: SessionDef[] = [
     hours: [20, 21, 22, 23, 0, 1, 2, 3],
     desc: '美国上午/下午，中等活跃，0.8–1.8条/h',
     action: '可建仓 / 补仓 / 评估期末NO机会',
-    color: 'text-sky-300',
-    bg: 'bg-sky-950/30',
-    border: 'border-sky-500/30',
+    color: 'text-emerald-300',
+    bg: 'bg-emerald-950/30',
+    border: 'border-emerald-500/30',
   },
   {
     label: '💤 入睡低谷期',
@@ -69,9 +69,9 @@ const SESSIONS: SessionDef[] = [
     hours: [4, 5, 6, 7, 8, 9, 10, 11],
     desc: '美国傍晚/晚上，偏低 0.4–0.8条/h',
     action: '等待 / 低价建仓窗口（价格往往在此最低）',
-    color: 'text-violet-300',
-    bg: 'bg-violet-950/20',
-    border: 'border-violet-500/20',
+    color: 'text-teal-300',
+    bg: 'bg-teal-950/20',
+    border: 'border-teal-500/20',
   },
 ];
 
@@ -94,10 +94,10 @@ const PHASE_INFO: Record<Phase, {
   },
   entry: {
     label: '⭐ 最佳入场窗口',
-    color: 'text-sky-300',
-    bg: 'bg-sky-900/40',
-    border: 'border-sky-500/30',
-    accent: 'from-sky-500 to-blue-500',
+    color: 'text-emerald-300',
+    bg: 'bg-emerald-950/40',
+    border: 'border-emerald-500/30',
+    accent: 'from-emerald-500 to-emerald-500',
     desc: '距到期 2–2.5天，铁律入场时机 — 主仓(50-70%) + 保护仓(20-30%下方1档) + 可选高赔率仓(≤10%)',
   },
   hold: {
@@ -236,12 +236,12 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
 
       add(mainRange, mainAmt,
         `VR=${mainRange.vr.toFixed(2)} — 价值比最高区间，主仓 55%（铁律：主仓集中，不分散）`,
-        '主仓', 'text-sky-200', 'bg-sky-500/25');
+        '主仓', 'text-emerald-200', 'bg-emerald-500/25');
 
       if (protectRange && protectRange.range !== mainRange.range) {
         add(protectRange, protAmt,
           `VR=${protectRange.vr.toFixed(2)} — 中心下方1档，系统性偏高+0.3档，保护仓`,
-          '保护仓', 'text-violet-200', 'bg-violet-500/25');
+          '保护仓', 'text-teal-200', 'bg-teal-500/25');
       }
 
       if (highOddsRange) {
@@ -368,7 +368,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
 
   if (!center) {
     return (
-      <div className="rounded-2xl p-6 border border-slate-700/50 bg-gradient-to-br from-slate-900 to-[#162538] text-center py-12">
+      <div className="rounded-2xl p-6 border border-slate-700/50 bg-gradient-to-br from-[#040a06] to-[#0a1a0d] text-center py-12">
         <Target className="w-8 h-8 mx-auto mb-3 text-slate-600 opacity-40" />
         <p className="text-slate-500 text-sm">等待市场数据加载...</p>
       </div>
@@ -379,7 +379,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
   const totalBuy = buyRecs.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-xl">
+    <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-[#040a06] via-[#0a1a0d] to-[#040a06] overflow-hidden shadow-xl">
       {/* 顶部渐变色条 */}
       <div className={`h-1 bg-gradient-to-r ${info.accent}`} />
 
@@ -404,7 +404,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                 onChange={e => setInputVal(e.target.value)}
                 onBlur={saveCapital}
                 onKeyDown={e => { if (e.key === 'Enter') saveCapital(); if (e.key === 'Escape') setEditing(false); }}
-                className="w-28 px-2 py-1.5 bg-slate-800 border border-sky-500 rounded-lg text-slate-200 text-sm focus:outline-none font-mono"
+                className="w-28 px-2 py-1.5 bg-slate-800 border border-emerald-500 rounded-lg text-slate-200 text-sm focus:outline-none font-mono"
                 autoFocus
               />
             </div>
@@ -439,9 +439,9 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 {currentSession.level === 'peak' && <Flame className="w-4 h-4 text-orange-400" />}
-                {currentSession.level === 'active' && <Zap className="w-4 h-4 text-sky-400" />}
+                {currentSession.level === 'active' && <Zap className="w-4 h-4 text-emerald-400" />}
                 {currentSession.level === 'dead' && <Moon className="w-4 h-4 text-slate-400" />}
-                {currentSession.level === 'low' && <Minus className="w-4 h-4 text-violet-400" />}
+                {currentSession.level === 'low' && <Minus className="w-4 h-4 text-teal-400" />}
                 <span className={`text-xs font-bold ${currentSession.color}`}>{currentSession.label}</span>
               </div>
               <span className="text-xs text-slate-500 font-mono">BJ {bjHour?.toString().padStart(2,'0')}:xx</span>
@@ -491,14 +491,14 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
           </div>
           <div className="text-right shrink-0 pl-4 border-l border-slate-700/50">
             <p className="text-xs text-slate-300 mb-0.5 uppercase tracking-wider font-medium">预测落点 µ</p>
-            <p className="text-2xl font-bold text-sky-300 font-mono">~{Math.round(mu)}</p>
+            <p className="text-2xl font-bold text-emerald-300 font-mono">~{Math.round(mu)}</p>
             <p className="text-xs text-slate-300 font-mono">{center.range}  {center.price.toFixed(1)}¢</p>
           </div>
         </div>
 
         {/* ── VR 入场条件检查（entry 期显示）── */}
         {phase === 'entry' && mainRange && (
-          <div className={`rounded-xl p-3.5 border ${mainVR >= 1.2 ? 'border-emerald-500/40 bg-emerald-950/30' : mainVR >= 1.0 ? 'border-sky-500/30 bg-sky-950/20' : 'border-red-500/40 bg-red-950/20'}`}>
+          <div className={`rounded-xl p-3.5 border ${mainVR >= 1.2 ? 'border-emerald-500/40 bg-emerald-950/30' : mainVR >= 1.0 ? 'border-emerald-500/30 bg-emerald-950/20' : 'border-red-500/40 bg-red-950/20'}`}>
             <p className="text-xs font-bold text-slate-300 mb-2 uppercase tracking-wider">入场条件检查</p>
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center gap-2">
@@ -510,7 +510,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
               <div className="flex items-center gap-2">
                 <span className={mainVR >= 1.0 ? 'text-emerald-400' : 'text-red-400'}>{mainVR >= 1.0 ? '✅' : '❌'}</span>
                 <span className="text-slate-300">
-                  主仓 VR = <span className={`font-mono font-bold ${mainVR >= 1.2 ? 'text-emerald-400' : mainVR >= 1.0 ? 'text-sky-400' : 'text-red-400'}`}>{mainVR.toFixed(2)}</span>
+                  主仓 VR = <span className={`font-mono font-bold ${mainVR >= 1.2 ? 'text-emerald-400' : mainVR >= 1.0 ? 'text-emerald-400' : 'text-red-400'}`}>{mainVR.toFixed(2)}</span>
                   <span className="text-slate-500 ml-1">（≥1.0可入 / ≥1.2理想）</span>
                 </span>
               </div>
@@ -538,8 +538,8 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <div className="space-y-2">
               {buyRecs.map((rec, i) => (
                 <div key={i} className={`rounded-xl p-3.5 border flex items-center justify-between ${
-                  rec.tag === '主仓' ? 'bg-sky-950/60 border-sky-500/25' :
-                  rec.tag === '保护仓' ? 'bg-violet-950/60 border-violet-500/25' :
+                  rec.tag === '主仓' ? 'bg-emerald-950/60 border-emerald-500/25' :
+                  rec.tag === '保护仓' ? 'bg-teal-950/60 border-teal-500/25' :
                   rec.tag === '高赔率' ? 'bg-yellow-950/50 border-yellow-500/20' :
                   rec.tag === '终盘加仓' ? 'bg-rose-950/60 border-rose-500/25' :
                   'bg-slate-800/60 border-slate-700/40'
@@ -633,7 +633,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                   <p className="text-sm font-bold text-white font-mono mb-1">{extraRange.range}</p>
                   <p className="text-xs text-slate-300 leading-relaxed">
                     市价 <span className="text-yellow-300 font-bold">{extraRange.price.toFixed(1)}¢</span>，
-                    模型概率 <span className="text-sky-300 font-bold">{extraRange.realProb.toFixed(1)}%</span>，
+                    模型概率 <span className="text-emerald-300 font-bold">{extraRange.realProb.toFixed(1)}%</span>，
                     VR = <span className="text-yellow-300 font-bold">{extraRange.vr.toFixed(2)}</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-1">用主仓利润的5-10%小仓位博超额赔率</p>
@@ -653,10 +653,10 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
             <Shield className="w-6 h-6 mx-auto mb-2 text-slate-500 opacity-60" />
             <p className="text-sm text-slate-300 font-semibold">当前处于观望期</p>
             <p className="text-xs text-slate-400 mt-1">
-              距到期 <span className="text-sky-400 font-bold">{(remainingDays * 24).toFixed(0)} 小时</span>，
+              距到期 <span className="text-emerald-400 font-bold">{(remainingDays * 24).toFixed(0)} 小时</span>，
               µ不确定性约 <span className="text-amber-400 font-bold">±35条</span>
             </p>
-            <p className="text-xs text-slate-400 mt-1">到期前 <span className="text-sky-400 font-bold">2–2.5天</span>（约 {Math.round(remainingDays * 24 - 60)} 小时后）开始入场</p>
+            <p className="text-xs text-slate-400 mt-1">到期前 <span className="text-emerald-400 font-bold">2–2.5天</span>（约 {Math.round(remainingDays * 24 - 60)} 小时后）开始入场</p>
           </div>
         )}
 
@@ -678,7 +678,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
         {/* ── 三个强制检查点时间表 ── */}
         <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-700/40">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <Zap className="w-3 h-3 text-sky-400" />每日三个强制检查点（北京时间）
+            <Zap className="w-3 h-3 text-emerald-400" />每日三个强制检查点（北京时间）
           </h3>
           <div className="space-y-3">
             {[
@@ -691,7 +691,7 @@ export function RecommendationPanel({ mu, remainingDays, analysisData, positions
                   ? '观望 — 距到期仍 > 2.5天，不入场'
                   : '检查仓位状态，评估是否需要补仓',
                 active: phase === 'entry',
-                color: 'from-sky-500 to-blue-500',
+                color: 'from-emerald-500 to-emerald-500',
               },
               {
                 time: 'BJ 17:30',

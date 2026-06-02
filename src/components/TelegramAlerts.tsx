@@ -485,13 +485,13 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
             onClick={() => setDraft(d => ({ ...d, mode: 'telegram' }))}
             className={`p-4 rounded-xl border-2 text-left transition-all ${
               draft.mode === 'telegram'
-                ? 'border-sky-500 bg-sky-500/10'
+                ? 'border-emerald-500 bg-emerald-500/10'
                 : 'border-slate-700 bg-slate-800/40 hover:border-slate-600'
             }`}
           >
             <div className="flex items-center gap-2 mb-2">
-              <MessageCircle className={`w-5 h-5 ${draft.mode === 'telegram' ? 'text-sky-400' : 'text-slate-400'}`} />
-              <span className={`font-bold text-sm ${draft.mode === 'telegram' ? 'text-sky-300' : 'text-slate-300'}`}>
+              <MessageCircle className={`w-5 h-5 ${draft.mode === 'telegram' ? 'text-emerald-400' : 'text-slate-400'}`} />
+              <span className={`font-bold text-sm ${draft.mode === 'telegram' ? 'text-emerald-300' : 'text-slate-300'}`}>
                 Telegram Bot
               </span>
               <span className="text-xs bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded font-semibold">高级</span>
@@ -514,9 +514,9 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
                 content: (
                   <div className="flex gap-3 mt-1">
                     <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noreferrer"
-                       className="text-xs text-sky-400 underline">iOS 下载</a>
+                       className="text-xs text-emerald-400 underline">iOS 下载</a>
                     <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noreferrer"
-                       className="text-xs text-sky-400 underline">Android 下载</a>
+                       className="text-xs text-emerald-400 underline">Android 下载</a>
                   </div>
                 ),
               },
@@ -562,7 +562,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
       {/* Telegram config */}
       {draft.mode === 'telegram' && (
         <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] p-6 space-y-4">
-          <p className="text-xs text-slate-300 p-3 bg-sky-500/10 rounded-xl border border-sky-500/20">
+          <p className="text-xs text-slate-300 p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
             💡 <b>不需要 Cloudflare</b>：只填 Bot Token + Chat ID 即可直接发送。Worker URL 可留空。
           </p>
 
@@ -576,7 +576,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               value={draft.botToken}
               onChange={e => setDraft(d => ({ ...d, botToken: e.target.value.trim() }))}
               placeholder="从 @BotFather 获取，格式：123456789:ABCdef..."
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono"
             />
           </div>
 
@@ -591,7 +591,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               value={draft.chatId}
               onChange={e => setDraft(d => ({ ...d, chatId: e.target.value.trim() }))}
               placeholder="1899924436"
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono"
             />
           </div>
 
@@ -605,7 +605,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
               value={draft.groupChatId}
               onChange={e => setDraft(d => ({ ...d, groupChatId: e.target.value.trim() }))}
               placeholder="负数，如 -1001234567890（发消息到群后从 getUpdates 获取）"
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono placeholder:text-slate-600"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono placeholder:text-slate-600"
             />
             {draft.groupChatId && (
               <p className="mt-1 text-xs text-emerald-400">✓ 预警将同时发到私聊 + 群组</p>
@@ -623,7 +623,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
                 value={draft.workerUrl}
                 onChange={e => setDraft(d => ({ ...d, workerUrl: e.target.value.trim() }))}
                 placeholder="https://xxx.workers.dev（不填也可以）"
-                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-sky-500 transition-colors font-mono"
+                className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 text-sm focus:outline-none focus:border-emerald-500 transition-colors font-mono"
               />
             </div>
           </details>
@@ -647,7 +647,7 @@ export function TelegramAlerts({ config, onSave, alertInput: _alertInput }: Prop
 
         <div className="flex items-center gap-3">
           <button onClick={handleSave} disabled={!isReady}
-            className="flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors">
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors">
             保存配置
           </button>
           <button onClick={handleTest} disabled={!isReady || testing}

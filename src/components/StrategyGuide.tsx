@@ -9,10 +9,10 @@ export function StrategyGuide() {
     <div className="space-y-4">
       {/* Header */}
       <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-xl">
-        <div className="h-1 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500" />
+        <div className="h-1 bg-gradient-to-r from-emerald-500 via-emerald-500 to-teal-500" />
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -20,9 +20,9 @@ export function StrategyGuide() {
               <p className="text-xs text-slate-500 mt-0.5">简化版 · 只讲操作，不讲数学</p>
             </div>
           </div>
-          <div className="p-4 bg-sky-950/60 rounded-xl border border-sky-500/20">
+          <div className="p-4 bg-emerald-950/60 rounded-xl border border-emerald-500/20">
             <p className="text-sm text-slate-300 leading-relaxed">
-              <span className="text-sky-300 font-bold">核心思路：</span>
+              <span className="text-emerald-300 font-bold">核心思路：</span>
               中心落点区间带来<span className="text-emerald-300 font-semibold">稳定基础收益</span>，
               最佳盈亏比区间带来<span className="text-yellow-300 font-semibold">超额收益</span>，
               翼仓做保险按时减仓——
@@ -49,7 +49,7 @@ export function StrategyGuide() {
               <tbody>
                 <tr className="border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors">
                   <td className="py-3 px-3">
-                    <p className="font-bold text-sky-300">倒数第三天上午</p>
+                    <p className="font-bold text-emerald-300">倒数第三天上午</p>
                     <p className="text-xs text-slate-400 mt-0.5">（距到期 2.5–3天）</p>
                   </td>
                   <td className="py-3 px-3 text-slate-300">中心区间 60% + 上翼 28% + 下翼 12%</td>
@@ -79,10 +79,10 @@ export function StrategyGuide() {
                   <td className="py-3 px-3 text-right font-mono font-bold text-yellow-400">$200–300</td>
                   <td className="py-3 px-3 text-slate-400 text-xs">用中心稳定收益的一部分博超额</td>
                 </tr>
-                <tr className="border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors bg-violet-500/5">
-                  <td className="py-3 px-3 font-bold text-violet-300">任意时间（机会单）</td>
+                <tr className="border-b border-slate-800/60 hover:bg-slate-800/20 transition-colors bg-teal-500/5">
+                  <td className="py-3 px-3 font-bold text-teal-300">任意时间（机会单）</td>
                   <td className="py-3 px-3 text-slate-300">中心附近区间价格跌到 8% 以下时少量买入</td>
-                  <td className="py-3 px-3 text-right font-mono font-bold text-violet-400">$50–100</td>
+                  <td className="py-3 px-3 text-right font-mono font-bold text-teal-400">$50–100</td>
                   <td className="py-3 px-3 text-slate-400 text-xs">低价保险，扩大安全边界</td>
                 </tr>
                 <tr>
@@ -163,7 +163,7 @@ export function StrategyGuide() {
 
           <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/40 text-xs">
             <p className="font-bold text-slate-200 mb-1">卖出后它反而涨了，怎么办？</p>
-            <p className="text-slate-400 leading-relaxed">卖出翼仓之后翼仓涨了——这不是错误，这是正确的风险管理。预测市场的利润来自<span className="text-sky-300">多次操作的平均收益</span>，不是某一次押对。翼仓归零的次数远多于中奖的次数。</p>
+            <p className="text-slate-400 leading-relaxed">卖出翼仓之后翼仓涨了——这不是错误，这是正确的风险管理。预测市场的利润来自<span className="text-emerald-300">多次操作的平均收益</span>，不是某一次押对。翼仓归零的次数远多于中奖的次数。</p>
           </div>
         </div>
       </Section>
@@ -180,12 +180,12 @@ export function StrategyGuide() {
             {
               title: '马斯克今天发推速度突然很慢（速率偏低预警）',
               action: '延迟卖出下翼，观察是否持续。若持续2小时以上，考虑补买下翼低价保险。',
-              color: 'border-blue-500/40 bg-blue-950/30',
+              color: 'border-emerald-500/40 bg-blue-950/30',
             },
             {
               title: '预测落点（µ）在一天内移动超过一个区间（20条）',
               action: '先不加仓，等落点稳定2小时以上，再重新确认中心区间后执行计划。',
-              color: 'border-violet-500/40 bg-violet-950/30',
+              color: 'border-teal-500/40 bg-teal-950/30',
             },
             {
               title: '中心区间价格跌到入场价的40%以下，且模型概率也很低',
@@ -205,7 +205,7 @@ export function StrategyGuide() {
       </Section>
 
       {/* ── Section 4: 心理备忘 ── */}
-      <Section id="mindset" title="心理备忘" icon={<Shield className="w-4 h-4 text-sky-400" />} open={openSection === 'mindset'} onToggle={() => toggle('mindset')} accent="from-sky-500 to-indigo-500">
+      <Section id="mindset" title="心理备忘" icon={<Shield className="w-4 h-4 text-emerald-400" />} open={openSection === 'mindset'} onToggle={() => toggle('mindset')} accent="from-emerald-500 to-teal-500">
         <div className="space-y-3">
           {[
             {
@@ -226,7 +226,7 @@ export function StrategyGuide() {
             },
           ].map((item, i) => (
             <div key={i} className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-              <p className="text-sm font-bold text-sky-300 mb-2">Q: {item.q}</p>
+              <p className="text-sm font-bold text-emerald-300 mb-2">Q: {item.q}</p>
               <p className="text-xs text-slate-400 leading-relaxed">A: {item.a}</p>
             </div>
           ))}
@@ -235,15 +235,15 @@ export function StrategyGuide() {
 
       {/* ── Summary card ── */}
       <div className="rounded-2xl border border-slate-700/60 bg-gradient-to-br from-slate-900 via-[#162538] to-[#0f1a28] overflow-hidden shadow-xl">
-        <div className="h-0.5 bg-gradient-to-r from-sky-500 via-emerald-500 via-amber-500 to-rose-500" />
+        <div className="h-0.5 bg-gradient-to-r from-emerald-500 via-emerald-500 via-amber-500 to-rose-500" />
         <div className="p-5">
           <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-sky-400" />
+            <Clock className="w-4 h-4 text-emerald-400" />
             一张纸总结（以北京时间24:00到期为基准）
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
             {[
-              { label: '倒数第三天上午', sublabel: '距到期2.5–3天', value: '第一次建仓',  color: 'text-sky-300',    bg: 'bg-sky-950/60 border-sky-500/30', dot: 'bg-sky-500' },
+              { label: '倒数第三天上午', sublabel: '距到期2.5–3天', value: '第一次建仓',  color: 'text-emerald-300',    bg: 'bg-emerald-950/60 border-emerald-500/30', dot: 'bg-emerald-500' },
               { label: '倒数第二天',     sublabel: '距到期1.5–2.5天', value: '主力加仓中心', color: 'text-emerald-300', bg: 'bg-emerald-950/60 border-emerald-500/30', dot: 'bg-emerald-500' },
               { label: '最后一天上午',   sublabel: '距到期1–1.5天',  value: '翼减+超额',  color: 'text-yellow-300',  bg: 'bg-yellow-950/50 border-yellow-500/30', dot: 'bg-yellow-500' },
               { label: '最后一天晚上',   sublabel: '距到期0.5–1天',  value: '翼仓继续减',  color: 'text-amber-300',   bg: 'bg-amber-950/50 border-amber-500/30', dot: 'bg-amber-500' },
