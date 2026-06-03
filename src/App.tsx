@@ -1697,16 +1697,23 @@ export default function App() {
                 bjH < 6               ? { emoji:'📈', text:'美国下午，发推稳定' } :
                                         { emoji:'💤', text:'发推偏少时段，等待即可' };
 
-              // 找最佳中心仓区间（VR最高，且VR≥1.0）
-              const centerCandidates = rangeSignals.filter(r => r.vr >= 1.0);
-              const centerRange = centerCandidates.length > 0
-                ? centerCandidates.reduce((a, b) => a.vr > b.vr ? a : b)
-                : null;
+              // 中心落点仓：µ落在哪个区间就选哪个
+              const centerRange = rangeSignals.find(r =>
+                (r.parsed?.min ?? 0) <= mu && mu <= (r.parsed?.max ?? 0)
+              ) ?? (rangeSignals.length > 0
+                ? rangeSignals.reduce((a, b) =>
+                    Math.abs(((a.parsed?.min??0)+(a.parsed?.max??0))/2 - mu) <
+                    Math.abs(((b.parsed?.min??0)+(b.parsed?.max??0))/2 - mu) ? a : b)
+                : null);
 
-              // 保护仓：中心仓下方1档
-              const protectRange = centerRange
-                ? rangeSignals.find(r => (r.parsed?.min ?? 0) < (centerRange.parsed?.min ?? 0) &&
-                    (r.parsed?.max ?? 0) <= (centerRange.parsed?.min ?? 0))
+              // 保护仓：中心区间上方1档 + 下方1档
+              const centerMin = centerRange?.parsed?.min ?? 0;
+              const centerMax = centerRange?.parsed?.max ?? 0;
+              const protectBelow = centerRange
+                ? rangeSignals.find(r => (r.parsed?.max ?? 0) < centerMin)
+                : null;
+              const protectAbove = centerRange
+                ? rangeSignals.find(r => (r.parsed?.min ?? 0) > centerMax)
                 : null;
 
               // 期末NO埋伏候选（NO价格≤15¢，距区间上沿≥20条）
@@ -1743,32 +1750,51 @@ export default function App() {
                   {!isEndgame && (
                     <div className="space-y-2">
                       {centerRange ? (
-                        <div className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-500">🎯 中心落点仓</span>
-                            <span className="font-mono text-sm font-bold text-white">{centerRange.range}</span>
+                        <>
+                          {/* 保护仓上方 */}
+                          {protectAbove && (
+                            <div className="flex items-center justify-between rounded-xl bg-slate-800/40 px-3 py-2 border border-slate-700/30">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-500">🛡️ 保护仓↑</span>
+                                <span className="font-mono text-sm font-bold text-slate-300">{protectAbove.range}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-slate-400">YES {protectAbove.price.toFixed(0)}¢</span>
+                                <span className={`text-xs font-bold font-mono ${protectAbove.vr >= 1.0 ? 'text-emerald-400' : 'text-slate-500'}`}>VR {protectAbove.vr.toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-500">{isLight ? '$30–50' : '$50–70'}</span>
+                              </div>
+                            </div>
+                          )}
+                          {/* 中心落点仓 */}
+                          <div className="flex items-center justify-between rounded-xl bg-slate-900/60 px-3 py-2 border border-emerald-700/30">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-emerald-500">🎯 中心落点仓</span>
+                              <span className="font-mono text-sm font-bold text-white">{centerRange.range}</span>
+                              <span className="text-[10px] text-slate-500">µ≈{Math.round(mu)}条</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-slate-300">YES {centerRange.price.toFixed(0)}¢</span>
+                              <span className={`text-xs font-bold font-mono ${centerRange.vr >= 1.5 ? 'text-emerald-400' : centerRange.vr >= 1.0 ? 'text-amber-400' : 'text-slate-500'}`}>VR {centerRange.vr.toFixed(2)}</span>
+                              <span className="text-[10px] text-slate-500">{isLight ? '$80–130' : '$170–210'}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-slate-300">YES {centerRange.price.toFixed(0)}¢</span>
-                            <span className={`text-xs font-bold font-mono ${centerRange.vr >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>VR {centerRange.vr.toFixed(2)}</span>
-                            <span className="text-[10px] text-slate-500">{isLight ? '$80–130' : '$170–210'}</span>
-                          </div>
-                        </div>
+                          {/* 保护仓下方 */}
+                          {protectBelow && (
+                            <div className="flex items-center justify-between rounded-xl bg-slate-800/40 px-3 py-2 border border-slate-700/30">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-500">🛡️ 保护仓↓</span>
+                                <span className="font-mono text-sm font-bold text-slate-300">{protectBelow.range}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-slate-400">YES {protectBelow.price.toFixed(0)}¢</span>
+                                <span className={`text-xs font-bold font-mono ${protectBelow.vr >= 1.0 ? 'text-emerald-400' : 'text-slate-500'}`}>VR {protectBelow.vr.toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-500">{isLight ? '$30–50' : '$50–70'}</span>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <p className="text-xs text-slate-500 px-1">暂无VR≥1.0的区间，等待价格回落</p>
-                      )}
-                      {protectRange && (
-                        <div className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-slate-500">🛡️ 保护仓</span>
-                            <span className="font-mono text-sm font-bold text-slate-200">{protectRange.range}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-slate-300">YES {protectRange.price.toFixed(0)}¢</span>
-                            <span className={`text-xs font-bold font-mono ${protectRange.vr >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>VR {protectRange.vr.toFixed(2)}</span>
-                            <span className="text-[10px] text-slate-500">{isLight ? '$50–80' : '$90–120'}</span>
-                          </div>
-                        </div>
+                        <p className="text-xs text-slate-500 px-1">暂无µ对应区间数据</p>
                       )}
                     </div>
                   )}
