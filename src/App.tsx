@@ -1679,7 +1679,145 @@ export default function App() {
               </div>
             </div>
 
-            {/* 入场信号条已移除，待重新设计后恢复 */}
+            {/* ── 入场信号卡片 ── */}
+            {(() => {
+              // 阶段判断
+              const isEndgame  = totalRemainingH <= 36;   // 最后1.5天
+              const isMain     = totalRemainingH > 36 && totalRemainingH <= 48; // 第1–2天主力
+              const isLight    = totalRemainingH > 48 && totalRemainingH <= 72; // 第3天轻仓
+              const tooEarly   = totalRemainingH > 72;
+              const tooLate    = totalRemainingH < 6 && !isEndgame;
+              if (tooEarly || tooLate) return null;
+
+              // 时段简单描述
+              const timeLabel =
+                bjH >= 11 && bjH < 17 ? { emoji:'🔥', text:'现在是马斯克最活跃的时段，价格变动快' } :
+                bjH >= 17 && bjH < 20 ? { emoji:'😴', text:'马斯克通常已入睡，发推很少，适合冷静评估' } :
+                bjH >= 20             ? { emoji:'⚡', text:'美国上午开始，马斯克可能重新活跃' } :
+                bjH < 6               ? { emoji:'📈', text:'美国下午，发推稳定' } :
+                                        { emoji:'💤', text:'发推偏少时段，等待即可' };
+
+              // 找最佳中心仓区间（VR最高，且VR≥1.0）
+              const centerCandidates = rangeSignals.filter(r => r.vr >= 1.0);
+              const centerRange = centerCandidates.length > 0
+                ? centerCandidates.reduce((a, b) => a.vr > b.vr ? a : b)
+                : null;
+
+              // 保护仓：中心仓下方1档
+              const protectRange = centerRange
+                ? rangeSignals.find(r => (r.parsed?.min ?? 0) < (centerRange.parsed?.min ?? 0) &&
+                    (r.parsed?.max ?? 0) <= (centerRange.parsed?.min ?? 0))
+                : null;
+
+              // 期末NO埋伏候选（NO价格≤15¢，距区间上沿≥20条）
+              const noAmbush = isEndgame ? rangeSignals.filter(r => {
+                const noP = r.noPrice;
+                const distToTop = (r.parsed?.max ?? 0) - currentTweetCount;
+                return noP > 0 && noP <= 15 && distToTop >= 20 && distToTop <= 80;
+              }) : [];
+
+              // YES联动候选（距上沿≤15条，YES价格≤15¢）
+              const yesSwing = isEndgame ? rangeSignals.filter(r => {
+                const distToTop = (r.parsed?.max ?? 0) - currentTweetCount;
+                return r.price > 0 && r.price <= 15 && distToTop >= 0 && distToTop <= 15;
+              }) : [];
+
+              const phaseLabel = isEndgame
+                ? { emoji:'🔴', title:'最后1.5天 · 博弈高倍价差', color:'text-rose-400', border:'border-rose-500/30', bg:'bg-rose-500/6' }
+                : isMain
+                ? { emoji:'🟢', title:'主力建仓窗口（第1–2天）', color:'text-emerald-400', border:'border-emerald-500/30', bg:'bg-emerald-500/6' }
+                : { emoji:'🟡', title:'轻仓布局（第3天）', color:'text-amber-400', border:'border-amber-500/30', bg:'bg-amber-500/6' };
+
+              return (
+                <div className={`rounded-2xl p-4 border ${phaseLabel.border} ${phaseLabel.bg} space-y-3`}>
+                  {/* 标题 + 时段 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{phaseLabel.emoji}</span>
+                      <span className={`text-xs font-bold ${phaseLabel.color}`}>{phaseLabel.title}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500">{timeLabel.emoji} {timeLabel.text}</span>
+                  </div>
+
+                  {/* 普通建仓阶段：中心仓 + 保护仓 */}
+                  {!isEndgame && (
+                    <div className="space-y-2">
+                      {centerRange ? (
+                        <div className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500">🎯 中心落点仓</span>
+                            <span className="font-mono text-sm font-bold text-white">{centerRange.range}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-300">YES {centerRange.price.toFixed(0)}¢</span>
+                            <span className={`text-xs font-bold font-mono ${centerRange.vr >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>VR {centerRange.vr.toFixed(2)}</span>
+                            <span className="text-[10px] text-slate-500">{isLight ? '$80–130' : '$170–210'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 px-1">暂无VR≥1.0的区间，等待价格回落</p>
+                      )}
+                      {protectRange && (
+                        <div className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500">🛡️ 保护仓</span>
+                            <span className="font-mono text-sm font-bold text-slate-200">{protectRange.range}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-slate-300">YES {protectRange.price.toFixed(0)}¢</span>
+                            <span className={`text-xs font-bold font-mono ${protectRange.vr >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>VR {protectRange.vr.toFixed(2)}</span>
+                            <span className="text-[10px] text-slate-500">{isLight ? '$50–80' : '$90–120'}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 期末博弈阶段 */}
+                  {isEndgame && (
+                    <div className="space-y-2">
+                      {noAmbush.length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-rose-400 font-semibold mb-1.5">NO埋伏机会 · 目标10¢→100¢</p>
+                          {noAmbush.map(r => (
+                            <div key={r.range} className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-bold text-white">{r.range}</span>
+                                <span className="text-[10px] text-slate-500">距上沿 {(r.parsed?.max ?? 0) - currentTweetCount}条</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-300">NO <span className="text-rose-300 font-bold font-mono">{r.noPrice.toFixed(0)}¢</span></span>
+                                <span className="text-xs text-amber-300 font-mono font-bold">最高 {r.noPrice > 0 ? Math.round(100/r.noPrice) : 0}x</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {yesSwing.length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-emerald-400 font-semibold mb-1.5">YES联动机会 · 目标20¢→80¢</p>
+                          {yesSwing.map(r => (
+                            <div key={r.range} className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-bold text-white">{r.range}</span>
+                                <span className="text-[10px] text-slate-500">距上沿 {(r.parsed?.max ?? 0) - currentTweetCount}条</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-300">YES <span className="text-emerald-300 font-bold font-mono">{r.price.toFixed(0)}¢</span></span>
+                                <span className="text-xs text-amber-300 font-mono font-bold">最高 {r.price > 0 ? Math.round(100/r.price) : 0}x</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {noAmbush.length === 0 && yesSwing.length === 0 && (
+                        <p className="text-xs text-slate-500 px-1">暂无符合条件的期末博弈机会，持续观察中</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* ── 彩票仓提示（YES ≤ 2¢ 且在µ射程内）── */}
             {lotterySignals.length > 0 && (
