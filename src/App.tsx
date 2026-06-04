@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
   BarChart3,
@@ -711,10 +711,18 @@ export default function App() {
       .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
   }, [trackings]);
 
+  // When markets reload, try to keep the same market selected by slug.
+  // Only fall back to index 0 if the previously selected market is gone.
+  const prevSelectedSlugRef = React.useRef<string>('');
   useEffect(() => {
-    if (activeMarkets.length > 0) {
-      setSelectedMarketIndex(0);
+    if (activeMarkets.length === 0) return;
+    const prevSlug = prevSelectedSlugRef.current;
+    if (prevSlug) {
+      const idx = activeMarkets.findIndex(m => m.slug === prevSlug);
+      if (idx >= 0) { setSelectedMarketIndex(idx); return; }
     }
+    setSelectedMarketIndex(0);
+    prevSelectedSlugRef.current = activeMarkets[0]?.slug ?? '';
   }, [activeMarkets]);
 
   const currentMarket = activeMarkets[selectedMarketIndex] || activeMarkets[0];
@@ -1044,6 +1052,7 @@ export default function App() {
 
   const handleSelectMarket = (index: number) => {
     setSelectedMarketIndex(index);
+    prevSelectedSlugRef.current = activeMarkets[index]?.slug ?? '';
   };
 
   // ── Position management handlers ──────────────────────────────────────────
