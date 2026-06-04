@@ -2093,8 +2093,8 @@ export default function App() {
                   bjHour={getBJHourNow()}
                 />
 
-                {/* ── 马斯克节奏面板 v3 ── */}
-                {(() => {
+                {/* ── 马斯克节奏面板 v3 已移除（首页已有）── */}
+                {false && (() => {
                   const bjH     = getBJHourNow();
                   const todayH  = todayHourly; // reactive — from heatmapData state
                   const paceScale   = R > 0 ? R / 43.4 : 1;

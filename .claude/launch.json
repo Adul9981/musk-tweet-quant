@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "theme-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "4321", "-s", "theme-preview"],
+      "port": 4321
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5173"],
+      "port": 5173
+    }
+  ]
+}

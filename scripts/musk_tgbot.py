@@ -156,7 +156,47 @@ def get_active_market(mdata):
     return active[0] if active else (all_m[0] if all_m else None)
 
 def fetch_tracking_stats():
-    """获取当前追踪统计数据"""
+    """获取当前追踪统计数据，优先使用 polystrike.xyz"""
+    # ── 主源：polystrike.xyz ──────────────────────────────────────────
+    try:
+        ps = fetch_json('https://polystrike.xyz/api/v1/meta/elon')
+        if ps and isinstance(ps, list):
+            now_utc = datetime.now(timezone.utc)
+            best = None
+            for m in ps:
+                try:
+                    end_ts = m.get('end_ts', 0) / 1000
+                    start_ts = m.get('start_ts', 0) / 1000
+                    e_utc = datetime.fromtimestamp(end_ts, tz=timezone.utc)
+                    s_utc = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+                    hrs_rem = max(0, (e_utc - now_utc).total_seconds() / 3600)
+                    if hrs_rem <= 0:
+                        continue
+                    total = m.get('real_counter', 0) or m.get('oracle_counter', 0) or 0
+                    elapsed_days = max(1, (now_utc - s_utc).total_seconds() / 86400)
+                    pace = round(total / elapsed_days)
+                    total_hrs = max(1, (e_utc - s_utc).total_seconds() / 3600)
+                    # 选剩余时间最短的活跃市场
+                    if best is None or hrs_rem < best['hours_rem']:
+                        best = {
+                            'total':       total,
+                            'pace':        pace,
+                            'days_rem':    hrs_rem / 24,
+                            'hours_rem':   hrs_rem,
+                            'total_hours': total_hrs,
+                            'daily':       [],
+                            'end_date':    e_utc.isoformat(),
+                            'period_id':   f"{s_utc.date()}_{e_utc.date()}",
+                            'source':      'polystrike',
+                        }
+                except Exception:
+                    continue
+            if best:
+                return best
+    except Exception:
+        pass
+
+    # ── 备源：xtracker.polymarket.com ────────────────────────────────
     data = fetch_json(XTRACKER)
     if not data.get('success') or not data.get('data'):
         return None
@@ -167,23 +207,19 @@ def fetch_tracking_stats():
             e = datetime.fromisoformat(t['endDate'].replace('Z', ''))
             if not (5 <= (e - s).days <= 8):
                 continue
-
             stats_url = f"https://xtracker.polymarket.com/api/trackings/{t['id']}?includeStats=true"
             sd = fetch_json(stats_url)
             if not (sd.get('success') and sd.get('data', {}).get('stats')):
                 continue
-
             raw = sd['data']['stats']
             now_utc = datetime.now(timezone.utc)
             e_utc = e.replace(tzinfo=timezone.utc)
             s_utc = s.replace(tzinfo=timezone.utc)
-
             hrs_rem   = max(0, (e_utc - now_utc).total_seconds() / 3600)
             total_hrs = max(1,  (e_utc - s_utc).total_seconds() / 3600)
             elapsed   = raw.get('daysElapsed', 1) or 1
             total     = raw.get('total', 0)
             pace      = round(total / elapsed) if elapsed > 0 else DAILY_AVG
-
             return {
                 'total':      total,
                 'pace':       pace,
@@ -193,10 +229,10 @@ def fetch_tracking_stats():
                 'daily':      raw.get('daily', []),
                 'end_date':   t['endDate'],
                 'period_id':  f"{t['startDate'][:10]}_{t['endDate'][:10]}",
+                'source':     'xtracker',
             }
         except Exception:
             continue
-
     return None
 
 # ── µ 计算（保持与 musk_engine.py 算法一致）──────────────────────────────────
@@ -1012,15 +1048,249 @@ def cmd_check():
             pass
 
 
+def window_endgame_alert():
+    """
+    期末高赔率播报：T-48h（最后2天）和 T-24h（最后1天）各触发一次。
+    通报中心落点 + 附近高赔率机会（NO低价埋伏、YES联动）。
+    """
+    try:
+        mdata    = fetch_market_data()
+        market   = get_active_market(mdata)
+        if not market:
+            return
+        stats    = fetch_tracking_stats()
+        if not stats:
+            return
+        mu_a     = compute_mu(stats)
+        analysis = analyze_ranges(market, mu_a)
+        state    = load_state()
+
+        hrs_rem   = stats['hours_rem']
+        period_id = stats.get('period_id', 'unknown')
+
+        # 新周期重置
+        if state.get('period_id') != period_id:
+            reset_expiry_alerts(state)
+            state['period_id'] = period_id
+
+        # T-48h（最后2天）或 T-24h（最后1天），每期各只发一次
+        if 44 <= hrs_rem <= 52:
+            alert_key = f'endgame_48h_{period_id}'
+            label = '最后2天'
+        elif 21 <= hrs_rem <= 27:
+            alert_key = f'endgame_24h_{period_id}'
+            label = '最后1天'
+        else:
+            return
+
+        if not can_alert(state, alert_key, 99 * 9999):
+            return
+
+        # 中心落点
+        center = next((a for a in analysis if a['is_center']), None)
+        if not center and analysis:
+            center = min(analysis, key=lambda x: abs((x['parsed'][0]+x['parsed'][1])/2 - mu_a))
+
+        sorted_a = sorted(analysis, key=lambda x: x['parsed'][0])
+        cidx     = next((i for i, a in enumerate(sorted_a) if center and a['range'] == center['range']), None)
+
+        # 中心区间上下各2档
+        nearby = sorted_a[max(0, cidx-2):cidx+3] if cidx is not None else sorted_a
+
+        # 高赔率机会：NO价格≤20¢ 或 YES价格≤15¢，在附近区间内
+        no_opps  = [a for a in nearby if (100 - a['price']) <= 20 and a['price'] > 0]
+        yes_opps = [a for a in nearby if a['price'] <= 15 and a['price'] > 0]
+
+        # 格式化附近区间表
+        rows = []
+        for a in nearby:
+            no_p   = 100 - a['price']
+            marker = ' ◀ 中心' if a['is_center'] else ''
+            no_tag = f'  🔴NO {no_p:.0f}¢' if no_p <= 20 else ''
+            yes_tag = f'  🟢YES {a["price"]:.0f}¢' if a['price'] <= 15 else ''
+            rows.append(f"{a['range']}  YES {a['price']:.0f}¢  NO {no_p:.0f}¢  VR {a['vr']:.2f}{no_tag}{yes_tag}{marker}")
+        table = '\n'.join(rows)
+
+        # 高赔率提示
+        opps_lines = []
+        for a in no_opps:
+            no_p = 100 - a['price']
+            mx = round(100 / no_p) if no_p > 0 else 0
+            opps_lines.append(f"🔴 {a['range']} NO {no_p:.0f}¢ → 最高{mx}x（押推文突破该区间上沿）")
+        for a in yes_opps:
+            if a not in no_opps:
+                mx = round(100 / a['price']) if a['price'] > 0 else 0
+                opps_lines.append(f"🟢 {a['range']} YES {a['price']:.0f}¢ → 最高{mx}x（押推文落在该区间）")
+        opps_str = '\n'.join(opps_lines) if opps_lines else '暂无明显高赔率机会'
+
+        send_tg(
+            f"🎯 *期末落点播报 · {label}（距到期约{hrs_rem:.0f}小时）*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"当前推文：{stats['total']}条  预测落点：~{mu_a:.0f}条\n\n"
+            f"📊 *中心落点附近区间*\n{table}\n\n"
+            f"⚡ *高赔率机会*\n{opps_str}\n\n"
+            f"💡 最后1.5天内可博高倍价差\n"
+            f"• NO低价埋伏：价格≤15¢，距上沿≥20条\n"
+            f"• YES联动：距上沿≤15条，速率活跃时入"
+        )
+        mark_alert(state, alert_key)
+        save_state(state)
+    except Exception as e:
+        print(f"[ENDGAME-ALERT-ERROR] {e}")
+
+
+def window_entry_alert():
+    """
+    入场时机提醒：距到期进入 60–78h 区间（第3天到2.5天），每期只发一次。
+    告诉用户现在可以开始轻仓布局，中心落点在哪，VR如何。
+    """
+    try:
+        mdata    = fetch_market_data()
+        market   = get_active_market(mdata)
+        if not market:
+            return
+        stats    = fetch_tracking_stats()
+        if not stats:
+            return
+        mu_a     = compute_mu(stats)
+        analysis = analyze_ranges(market, mu_a)
+        state    = load_state()
+
+        hrs_rem  = stats['hours_rem']
+        # 只在 60–78h 窗口内触发，每期只发一次
+        if not (60 <= hrs_rem <= 78):
+            return
+        period_id = stats.get('period_id', 'unknown')
+        alert_key = f'entry_alert_{period_id}'
+        if not can_alert(state, alert_key, 99 * 9999):
+            return
+
+        # 中心落点仓（µ所在区间）
+        center = next((a for a in analysis if a['is_center']), None)
+        if not center and analysis:
+            center = min(analysis, key=lambda x: abs((x['parsed'][0]+x['parsed'][1])/2 - mu_a))
+
+        # 上下保护仓
+        sorted_a   = sorted(analysis, key=lambda x: x['parsed'][0])
+        cidx       = next((i for i, a in enumerate(sorted_a) if center and a['range'] == center['range']), None)
+        protect_up = sorted_a[cidx + 1] if cidx is not None and cidx + 1 < len(sorted_a) else None
+        protect_dn = sorted_a[cidx - 1] if cidx is not None and cidx > 0 else None
+
+        c_str = f"{center['range']}  YES {center['price']:.0f}¢  VR {center['vr']:.2f}" if center else '数据不足'
+        pu_str = f"{protect_up['range']}  YES {protect_up['price']:.0f}¢  VR {protect_up['vr']:.2f}" if protect_up else '—'
+        pd_str = f"{protect_dn['range']}  YES {protect_dn['price']:.0f}¢  VR {protect_dn['vr']:.2f}" if protect_dn else '—'
+
+        send_tg(
+            f"🟡 *入场窗口开始 · 距到期约{hrs_rem:.0f}小时（第3天）*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"当前推文：{stats['total']}条  预测落点：~{mu_a:.0f}条\n\n"
+            f"🎯 *中心落点仓*\n{c_str}\n\n"
+            f"🛡️ *保护仓↑*\n{pu_str}\n\n"
+            f"🛡️ *保护仓↓*\n{pd_str}\n\n"
+            f"💡 *建议*\n"
+            f"• 现在可以轻仓布局（$80–130），不要满仓\n"
+            f"• 距到期第1–2天再补主力仓（$170–210）\n"
+            f"• µ误差仍有±35条，保护仓上下各配一档"
+        )
+        mark_alert(state, alert_key)
+        save_state(state)
+    except Exception as e:
+        print(f"[ENTRY-ALERT-ERROR] {e}")
+
+
+def window_session_pace():
+    """
+    活跃时段节奏播报：BJ 11:00（深夜会话开始）和 BJ 20:00（上午会话开始）触发。
+    检测当前会话节奏偏热或偏冷，告知对哪些区间有影响。
+    """
+    try:
+        mdata    = fetch_market_data()
+        market   = get_active_market(mdata)
+        if not market:
+            return
+        stats    = fetch_tracking_stats()
+        if not stats:
+            return
+        mu_a     = compute_mu(stats)
+        analysis = analyze_ranges(market, mu_a)
+        state    = load_state()
+
+        bj       = bj_now()
+        bj_h     = bj.hour
+        total    = stats['total']
+
+        # 判断当前是哪个会话
+        if bj_h == 11:
+            sess_name = '深夜会话'
+            sess_avg  = 14.3   # 整场历史均值
+            # 取快照：记录会话开始时推文数
+            state['session_snap_night'] = total
+            state['session_snap_night_ts'] = bj.isoformat()
+            save_state(state)
+            send_tg(
+                f"🌙 *深夜会话开始（北京时间11点）*\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"当前推文：{total}条  预测落点：~{mu_a:.0f}条\n"
+                f"深夜会话历史均值：约{sess_avg:.0f}条\n\n"
+                f"📊 *接下来2小时的节奏决定今日落点*\n\n"
+                f"🔥 *如果发推偏多（>7条/h）*\n"
+                f"→ µ上移，{_ranges_above(analysis, mu_a)} 等高区间的NO开始有价值\n"
+                f"→ 持有低区间YES需注意止盈\n\n"
+                f"❄️ *如果持续沉默（<2条/h，超1小时）*\n"
+                f"→ µ可能下移，{_ranges_below(analysis, mu_a)} 等低区间YES更安全\n"
+                f"→ 高区间YES持仓需重新评估\n\n"
+                f"💡 BJ 13点前是今天价格最低洼的建仓窗口"
+            )
+        elif bj_h == 20:
+            sess_name = '上午会话'
+            sess_avg  = 10.9
+            state['session_snap_morning'] = total
+            state['session_snap_morning_ts'] = bj.isoformat()
+            save_state(state)
+            send_tg(
+                f"🏙️ *上午会话开始（北京时间20点）*\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"当前推文：{total}条  预测落点：~{mu_a:.0f}条\n"
+                f"上午会话历史均值：约{sess_avg:.0f}条\n\n"
+                f"📊 *这是今天第二个活跃窗口（历史频率64%）*\n\n"
+                f"🔥 *如果发推偏多（>5条/h）*\n"
+                f"→ µ上移，{_ranges_above(analysis, mu_a)} 等高区间的NO开始有价值\n"
+                f"→ 持有低区间YES需注意止盈\n\n"
+                f"❄️ *如果持续沉默（<1条/h，超1小时）*\n"
+                f"→ 今日节奏偏冷，µ可能下移\n"
+                f"→ {_ranges_below(analysis, mu_a)} 等低区间YES相对安全\n\n"
+                f"💡 深夜会话后有66%概率还有上午会话，今晚大概率不是最后一波"
+            )
+    except Exception as e:
+        print(f"[SESSION-PACE-ERROR] {e}")
+
+
+def _ranges_above(analysis, mu_a, n=2):
+    """返回µ上方n个区间名称字符串"""
+    above = [a['range'] for a in sorted(analysis, key=lambda x: x['parsed'][0])
+             if a['parsed'][0] > mu_a]
+    return '、'.join(above[:n]) if above else '上方区间'
+
+
+def _ranges_below(analysis, mu_a, n=2):
+    """返回µ下方n个区间名称字符串"""
+    below = [a['range'] for a in sorted(analysis, key=lambda x: x['parsed'][0], reverse=True)
+             if a['parsed'][1] < mu_a]
+    return '、'.join(below[:n]) if below else '下方区间'
+
+
 # ── 主入口 ────────────────────────────────────────────────────────────────────
 
 WINDOW_DISPATCH = {
-    'prebuild':   window_prebuild,
-    'peak_check': window_peak_check,
-    'peak_end':   window_peak_end,
-    'deadzone':   window_deadzone,
-    'morning_pre': window_morning_pre,
-    'morning':    window_morning,
+    'prebuild':     window_prebuild,
+    'peak_check':   window_peak_check,
+    'peak_end':     window_peak_end,
+    'deadzone':     window_deadzone,
+    'morning_pre':  window_morning_pre,
+    'morning':      window_morning,
+    'entry_alert':   window_entry_alert,   # 入场时机提醒（T-72h~60h）
+    'session_pace':  window_session_pace,  # 活跃时段节奏播报（BJ 11/20点）
+    'endgame_alert': window_endgame_alert, # 期末高赔率播报（T-48h和T-24h）
 }
 
 
