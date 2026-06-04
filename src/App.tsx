@@ -2075,103 +2075,54 @@ export default function App() {
                   );
                 })()}
 
-                <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-teal-400" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-white">盘口价值比分析</h2>
-                        <p className="text-xs text-slate-400">基于泊松分布 · 简单 μ = {mu.toFixed(1)} · 最佳 μ = {bestMu}</p>
-                      </div>
+                <section className="bg-[#13152e] rounded-2xl p-5 border border-slate-700/60">
+                  {/* 标题行 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-base font-semibold text-white">盘口价值比</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">µ = {bestMu} · 当前 {currentTweetCount} 条 · 剩余 {remainingDays}d</p>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <Clock className="w-3 h-3" />
-                      {lastUpdated && new Date(lastUpdated).toLocaleTimeString('zh-CN')}
-                    </div>
+                    <span className="text-xs text-slate-500 font-mono">
+                      {lastUpdated && new Date(lastUpdated).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="text-center p-4 bg-teal-500/10 rounded-xl border border-teal-400/30">
-                      <p className="text-2xl font-bold text-teal-300 font-mono">{currentTweetCount}</p>
-                      <p className="text-xs text-slate-400">当前推文</p>
-                    </div>
-                    <div className="text-center p-4 bg-teal-500/10 rounded-xl border border-teal-400/30">
-                      <p className="text-2xl font-bold text-teal-300 font-mono">{apiPace.toFixed(1)}</p>
-                      <p className="text-xs text-slate-400">日均时速</p>
-                    </div>
-                    <div className="text-center p-4 bg-amber-500/10 rounded-xl border border-amber-400/30">
-                      <p className="text-2xl font-bold text-amber-300 font-mono">{E_rem.toFixed(0)}</p>
-                      <p className="text-xs text-slate-400">预期剩余</p>
-                    </div>
-                    <div className="text-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-400/30">
-                      <p className="text-2xl font-bold text-emerald-300 font-mono">{remainingDays}d</p>
-                      <p className="text-xs text-slate-400">剩余时间</p>
-                    </div>
-                  </div>
-
+                  {/* 表格 */}
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-700/50">
-                          <th className="text-left py-3 px-3 text-xs font-semibold text-slate-400 uppercase">区间</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">赔率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">真实概率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">回报率</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">盈亏</th>
-                          <th className="text-right py-3 px-3 text-xs font-semibold text-slate-400 uppercase">状态</th>
+                          <th className="text-left py-2 px-2 text-xs text-slate-500 font-medium">区间</th>
+                          <th className="text-right py-2 px-2 text-xs text-slate-500 font-medium">盘口价</th>
+                          <th className="text-right py-2 px-2 text-xs text-slate-500 font-medium">模型概率</th>
+                          <th className="text-right py-2 px-2 text-xs text-slate-500 font-medium">VR</th>
                         </tr>
                       </thead>
                       <tbody>
                         {intervalAnalysis.slice(0, 12).map((item) => {
                           if (!item) return null;
-                          const statusClass = item.isCenter ? 'bg-teal-500/20 text-teal-300' :
-                                             item.status === 'busted' ? 'bg-rose-500/15 text-rose-400' :
-                                             item.status === 'passed' ? 'bg-emerald-500/15 text-emerald-400' :
-                                             'bg-slate-800 text-slate-300';
-                          const statusText = item.isCenter ? '中心' :
-                                           item.status === 'busted' ? '已破' :
-                                           item.status === 'passed' ? '已过' : '活跃';
-                          const payout = item.marketPrice > 0 ? (100 / item.marketPrice * 100 - 100) : 0;
-                          const payoutClass = payout > 100 ? 'text-emerald-400' : payout > 50 ? 'text-teal-400' : 'text-slate-300';
-                          const isPositive = item.trueProb > item.marketPrice;
-                          const trueProbClass = isPositive ? 'text-emerald-400' : 'text-rose-400';
-                          const profitLoss = item.trueProb - item.marketPrice;
-                          const plClass = profitLoss > 0 ? 'text-emerald-400' : profitLoss < 0 ? 'text-rose-400' : 'text-slate-400';
-
+                          const vr = item.marketPrice > 0 ? item.trueProb / item.marketPrice : 0;
+                          const vrClass = vr >= 1.2 ? 'text-emerald-400 font-bold' : vr >= 1.0 ? 'text-teal-400 font-semibold' : 'text-slate-500';
+                          const vrLabel = vr >= 1.2 ? `${vr.toFixed(2)} ✓` : vr >= 1.0 ? vr.toFixed(2) : vr.toFixed(2);
+                          const rowBg = item.isCenter ? 'bg-teal-500/8' : '';
                           return (
-                            <tr key={item.range} className={`border-b border-slate-700/50/60 hover:bg-slate-800/30 ${item.isCenter ? 'bg-teal-500/5' : ''}`}>
-                              <td className={`py-3 px-3 font-semibold font-mono ${item.isCenter ? 'text-teal-300' : 'text-slate-300'}`}>
+                            <tr key={item.range} className={`border-b border-slate-700/30 hover:bg-slate-800/30 ${rowBg}`}>
+                              <td className={`py-2.5 px-2 font-mono font-semibold ${item.isCenter ? 'text-teal-300' : item.status === 'busted' ? 'text-slate-600' : 'text-slate-300'}`}>
                                 {item.range}
+                                {item.isCenter && <span className="ml-1.5 text-xs bg-teal-500/20 text-teal-400 px-1.5 py-0.5 rounded">µ</span>}
                               </td>
-                              <td className="py-3 px-3 text-right text-slate-300 font-mono">{item.marketPrice.toFixed(1)}%</td>
-                              <td className={`py-3 px-3 text-right font-semibold font-mono ${trueProbClass}`}>{item.trueProb.toFixed(1)}%</td>
-                              <td className={`py-3 px-3 text-right font-semibold font-mono ${payoutClass}`}>
-                                {payout > 0 ? '+' : ''}{payout.toFixed(0)}%
+                              <td className="py-2.5 px-2 text-right font-mono text-slate-400">{item.marketPrice.toFixed(1)}¢</td>
+                              <td className={`py-2.5 px-2 text-right font-mono ${item.trueProb > item.marketPrice ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                {item.trueProb.toFixed(1)}%
                               </td>
-                              <td className={`py-3 px-3 text-right font-semibold font-mono ${plClass}`}>
-                                {profitLoss > 0 ? '+' : ''}{profitLoss.toFixed(1)}%
-                              </td>
-                              <td className="py-3 px-3 text-right">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
-                                  {statusText}
-                                </span>
-                              </td>
+                              <td className={`py-2.5 px-2 text-right font-mono ${vrClass}`}>{vrLabel}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
                   </div>
-
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400 p-3 bg-slate-800/40 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <span>真实概率 &gt; 赔率 = <span className="text-emerald-400 font-medium">盈利</span></span>
-                      <span>真实概率 &lt; 赔率 = <span className="text-rose-400 font-medium">亏损</span></span>
-                    </div>
-                    <span>回报率 = 1/赔率 - 1</span>
-                  </div>
+                  <p className="mt-3 text-xs text-slate-600">VR = 模型概率 ÷ 盘口价，≥1.2 有价值</p>
                 </section>
 
                 <section className="bg-[#13152e] rounded-2xl p-6 border border-slate-700/60">
