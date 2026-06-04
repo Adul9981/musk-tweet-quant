@@ -12,14 +12,13 @@ function aggregateTweets(tweets) {
   cutoffDate.setDate(cutoffDate.getDate() - 30);
 
   for (const tweet of tweets) {
-    const createdAt = new Date(tweet.created_at || tweet.createdAt);
+    const createdAt = new Date(tweet.createdAt || tweet.created_at);
     if (isNaN(createdAt.getTime()) || createdAt < cutoffDate) continue;
 
-    let hour = createdAt.getUTCHours() + 8;
-    const tweetDate = new Date(createdAt);
-    if (hour >= 24) { hour -= 24; tweetDate.setDate(tweetDate.getDate() + 1); }
-
-    const dateStr = `${tweetDate.getFullYear()}-${String(tweetDate.getMonth() + 1).padStart(2, '0')}-${String(tweetDate.getDate()).padStart(2, '0')}`;
+    const bjMs = createdAt.getTime() + 8 * 60 * 60 * 1000;
+    const bjDate = new Date(bjMs);
+    const hour = bjDate.getUTCHours();
+    const dateStr = bjDate.toISOString().split('T')[0];
     const key = `${dateStr}-${hour}`;
     tweetsMap.set(key, (tweetsMap.get(key) || 0) + 1);
   }
@@ -30,78 +29,76 @@ function aggregateTweets(tweets) {
   });
 }
 
-// 数据源 A：xscraper via RapidAPI
+// 数据源 A：xtracker.polymarket.com posts（主力，无需 key）
+async function fetchFromXtracker() {
+  const allPosts = [];
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  let offset = 0;
+  const limit = 100;
+
+  while (offset <= 2000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    let res;
+    try {
+      res = await fetch(
+        `https://xtracker.polymarket.com/api/users/elonmusk/posts?limit=${limit}&offset=${offset}`,
+        { signal: controller.signal }
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!res.ok) throw new Error(`xtracker error: ${res.status}`);
+    const json = await res.json();
+    const posts = json.data || json.posts || json || [];
+    if (!Array.isArray(posts) || posts.length === 0) break;
+
+    let reachedCutoff = false;
+    for (const post of posts) {
+      const ts = new Date(post.createdAt).getTime();
+      if (ts < cutoff) { reachedCutoff = true; break; }
+      allPosts.push(post);
+    }
+    if (reachedCutoff || posts.length < limit) break;
+    offset += limit;
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  if (!allPosts.length) throw new Error('xtracker: no posts returned');
+  return allPosts;
+}
+
+// 数据源 B：RapidAPI xscraper（备用）
 async function fetchFromRapidAPI(RAPIDAPI_KEY, RAPIDAPI_HOST) {
   let allTweets = [];
   let cursor = null;
   let pageCount = 0;
-  const maxPages = 50;
-  let consecutiveEmpty = 0;
-  let retryCount = 0;
-  const maxRetries = 5;
 
-  while (pageCount < maxPages && consecutiveEmpty < 3) {
-    try {
-      const url = cursor
-        ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}&count=100`
-        : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&count=100`;
+  while (pageCount < 20) {
+    const url = cursor
+      ? `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&cursor=${encodeURIComponent(cursor)}&count=100`
+      : `https://${RAPIDAPI_HOST}/user-tweets?username=elonmusk&count=100`;
 
-      const response = await fetch(url, {
-        headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY }
-      });
+    const response = await fetch(url, {
+      headers: { 'x-rapidapi-host': RAPIDAPI_HOST, 'x-rapidapi-key': RAPIDAPI_KEY },
+    });
+    if (!response.ok) throw new Error(`RapidAPI error: ${response.status}`);
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          retryCount++;
-          if (retryCount >= maxRetries) break;
-          await new Promise(r => setTimeout(r, 5000));
-          continue;
-        }
-        throw new Error(`RapidAPI error: ${response.status}`);
-      }
+    const responseData = await response.json();
+    const tweets = Array.isArray(responseData) ? responseData
+      : responseData.data ? (Array.isArray(responseData.data) ? responseData.data : responseData.data.tweets || [])
+      : responseData.tweets || [];
 
-      const responseData = await response.json();
-      let tweets = Array.isArray(responseData) ? responseData
-        : responseData.data ? (Array.isArray(responseData.data) ? responseData.data : responseData.data.tweets || [])
-        : responseData.tweets || [];
-
-      if (!tweets.length) { consecutiveEmpty++; break; }
-      allTweets = [...allTweets, ...tweets];
-      pageCount++;
-      consecutiveEmpty = 0;
-      if (!responseData.cursor) break;
-      cursor = responseData.cursor;
-      await new Promise(r => setTimeout(r, 200));
-    } catch (e) {
-      retryCount++;
-      if (retryCount >= maxRetries) break;
-      await new Promise(r => setTimeout(r, 2000));
-    }
+    if (!tweets.length) break;
+    allTweets = [...allTweets, ...tweets];
+    pageCount++;
+    if (!responseData.cursor) break;
+    cursor = responseData.cursor;
+    await new Promise(r => setTimeout(r, 200));
   }
 
   if (!allTweets.length) throw new Error('RapidAPI: no tweets returned');
-  return { tweets: allTweets, totalTweetCount: allTweets[0]?.user?.legacy?.statuses_count || 0 };
-}
-
-// 数据源 B：twitterapi.io（fallback）
-async function fetchFromTwitterAPIio(TWITTERAPI_KEY) {
-  const allTweets = [];
-  // last_tweets 返回约20条最新推文，适合统计近期小时分布
-  const res = await fetch(
-    'https://api.twitterapi.io/twitter/user/last_tweets?userName=elonmusk',
-    { headers: { 'X-API-Key': TWITTERAPI_KEY } }
-  );
-  if (!res.ok) throw new Error(`twitterapi.io error: ${res.status}`);
-  const data = await res.json();
-  const tweets = data?.data?.tweets || [];
-  if (!tweets.length) throw new Error('twitterapi.io: no tweets returned');
-
-  // twitterapi.io 的 createdAt 格式: "Mon Jun 01 04:58:38 +0000 2026"
-  // 统一 normalize 为 created_at 字段
-  return {
-    tweets: tweets.map(t => ({ created_at: t.createdAt, ...t })),
-    totalTweetCount: 0,
-  };
+  return allTweets;
 }
 
 export default async function handler(req, res) {
@@ -109,9 +106,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+  const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
   const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST;
-  const TWITTERAPI_KEY = process.env.TWITTERAPI_KEY || 'new1_8452e6aed9cd49e9b163a11635102474';
 
   const forceRefresh = req.query.refresh === '1';
   const now = Date.now();
@@ -121,54 +117,45 @@ export default async function handler(req, res) {
     return res.status(200).json({ ...cache.data, fromCache: true, cacheAge: Math.round((now - cache.timestamp) / 1000) });
   }
 
+  let rawTweets = [];
+  let source = '';
+
+  // 主力：xtracker（稳定，无需 key）
   try {
-    let rawTweets = [];
-    let totalTweetCount = 0;
-    let source = '';
+    rawTweets = await fetchFromXtracker();
+    source = 'xtracker';
+    console.log(`[elon-tweets] xtracker: ${rawTweets.length} posts`);
+  } catch (e) {
+    console.warn('[elon-tweets] xtracker failed, trying RapidAPI:', e.message);
+  }
 
-    // 数据源 A：xscraper via RapidAPI
-    if (RAPIDAPI_KEY && RAPIDAPI_HOST) {
-      try {
-        const result = await fetchFromRapidAPI(RAPIDAPI_KEY, RAPIDAPI_HOST);
-        rawTweets = result.tweets;
-        totalTweetCount = result.totalTweetCount;
-        source = 'rapidapi';
-        console.log(`[elon-tweets] RapidAPI: ${rawTweets.length} tweets`);
-      } catch (e) {
-        console.warn('[elon-tweets] RapidAPI failed, trying twitterapi.io:', e.message);
-      }
+  // 备用：RapidAPI
+  if (!rawTweets.length && RAPIDAPI_KEY && RAPIDAPI_HOST) {
+    try {
+      rawTweets = await fetchFromRapidAPI(RAPIDAPI_KEY, RAPIDAPI_HOST);
+      source = 'rapidapi';
+      console.log(`[elon-tweets] RapidAPI fallback: ${rawTweets.length} tweets`);
+    } catch (e) {
+      console.warn('[elon-tweets] RapidAPI also failed:', e.message);
     }
+  }
 
-    // 数据源 B：twitterapi.io fallback
-    if (!rawTweets.length) {
-      const result = await fetchFromTwitterAPIio(TWITTERAPI_KEY);
-      rawTweets = result.tweets;
-      source = 'twitterapi.io';
-      console.log(`[elon-tweets] twitterapi.io fallback: ${rawTweets.length} tweets`);
-    }
-
-    if (!rawTweets.length) throw new Error('All tweet sources failed');
-
-    const cacheData = {
-      tweets: aggregateTweets(rawTweets),
-      totalTweets: totalTweetCount,
-      tweetCount: rawTweets.length,
-      source,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    cache = { data: cacheData, timestamp: now };
-    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate');
-    return res.status(200).json({ ...cacheData, fromCache: false });
-
-  } catch (error) {
-    console.error('[elon-tweets] All sources failed:', error);
-
+  if (!rawTweets.length) {
     if (cache.data) {
       res.setHeader('Cache-Control', 'public, max-age=60');
       return res.status(200).json({ ...cache.data, fromCache: true, stale: true });
     }
-
-    return res.status(500).json({ error: 'Failed to fetch tweets', message: error.message });
+    return res.status(500).json({ error: 'All tweet sources failed' });
   }
+
+  const cacheData = {
+    tweets: aggregateTweets(rawTweets),
+    tweetCount: rawTweets.length,
+    source,
+    lastUpdated: new Date().toISOString(),
+  };
+
+  cache = { data: cacheData, timestamp: now };
+  res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate');
+  return res.status(200).json({ ...cacheData, fromCache: false });
 }
