@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>走势形态对比分析 · 实时 vs 模板</title>
+<title>走势形态预测 · 区间对比分析</title>
+<link rel="icon" type="image/png" href="/polymarket-musk.png" />
+<link rel="apple-touch-icon" href="/polymarket-musk.png" />
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <style>
 :root {
@@ -11,196 +13,236 @@
   --accent: #00d4aa; --accent2: #4cc9f0;
   --red: #ff6b6b; --warn: #ffd700; --muted: #8b9ab0;
   --border: #2a2f3a; --text: #e0e6f0;
-  --orange: #ff9f43; --purple: #a29bfe;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, sans-serif; min-height: 100vh; }
+body { background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, sans-serif; }
 
 header {
   background: linear-gradient(135deg, #020e0a 0%, #001812 50%, #020d18 100%);
-  border-bottom: 2px solid var(--accent);
-  padding: 20px 40px 16px;
+  border-bottom: 2px solid var(--accent); padding: 18px 40px 14px;
 }
-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
-header p  { color: var(--muted); font-size: 0.81rem; margin-top: 4px; }
+header h1 { font-size: 1.45rem; font-weight: 700; color: var(--accent); }
+header p  { color: var(--muted); font-size: 0.79rem; margin-top: 4px; }
 
-main { max-width: 1400px; margin: 0 auto; padding: 24px 24px 60px; }
+main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
 
 /* ── Controls ── */
 .controls {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 20px; margin-bottom: 24px;
+  border-radius: 12px; padding: 12px 18px; margin-bottom: 16px;
 }
 .ctrl-label { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 select {
   background: var(--card2); border: 1px solid var(--border); color: var(--text);
-  padding: 7px 12px; border-radius: 8px; font-size: 0.84rem; min-width: 320px;
-  cursor: pointer;
+  padding: 6px 12px; border-radius: 8px; font-size: 0.83rem; min-width: 300px; cursor: pointer;
 }
 select:focus { outline: none; border-color: var(--accent); }
 .refresh-btn {
-  padding: 7px 16px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--card2); color: var(--muted); cursor: pointer; font-size: 0.82rem;
-  transition: all .2s;
+  padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card2); color: var(--muted); cursor: pointer; font-size: 0.81rem; transition: all .2s;
 }
 .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
 .status-pill {
-  font-size: 0.75rem; padding: 4px 12px; border-radius: 20px;
+  font-size: 0.73rem; padding: 3px 10px; border-radius: 20px;
   background: var(--card2); border: 1px solid var(--border); color: var(--muted);
 }
-.status-pill.ok { border-color: rgba(0,212,170,0.4); color: var(--accent); }
-.status-pill.err { border-color: rgba(255,107,107,0.4); color: var(--red); }
-.status-pill.loading { border-color: rgba(255,215,0,0.4); color: var(--warn); }
+.status-pill.ok      { border-color: rgba(0,212,170,0.4); color: var(--accent); }
+.status-pill.err     { border-color: rgba(255,107,107,0.4); color: var(--red); }
+.status-pill.loading { border-color: rgba(255,215,0,0.4);  color: var(--warn); }
+
+/* ── Tweet Banner ── */
+.tweet-banner {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 20px; margin-bottom: 16px;
+}
+.tb-header {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.tb-header span { color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 0.75rem; }
+.tb-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.tb-stat { display: flex; flex-direction: column; gap: 3px; }
+.tb-val { font-size: 1.35rem; font-weight: 800; line-height: 1; }
+.tb-label { font-size: 0.7rem; color: var(--muted); }
+.tb-divider { width: 1px; height: 40px; background: var(--border); }
+.tb-progress-wrap { flex: 1; min-width: 200px; }
+.tb-progress-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+.tb-progress-bar { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+.tb-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s; }
+.center-badge {
+  padding: 5px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;
+  border: 2px solid var(--accent); color: var(--accent); background: rgba(0,212,170,0.08);
+  white-space: nowrap;
+}
+.tb-note { font-size: 0.75rem; color: var(--muted); align-self: center; }
+
+/* ── Time relevance notice ── */
+.relevance-note {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-radius: 8px; font-size: 0.8rem;
+  margin-bottom: 16px; border-left: 3px solid;
+}
 
 /* ── Range Summary ── */
-.range-summary {
-  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
-}
+.range-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
 .range-chip {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 7px;
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 14px; font-size: 0.82rem;
+  border-radius: 8px; padding: 7px 12px; font-size: 0.8rem;
 }
-.range-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.range-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .range-name { font-weight: 600; }
-.range-price { color: var(--muted); margin-left: 4px; }
+.range-price { color: var(--muted); margin-left: 3px; }
 
 /* ── Section ── */
 .section {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 16px; padding: 0; margin-bottom: 28px; overflow: hidden;
+  border-radius: 16px; margin-bottom: 24px; overflow: hidden;
 }
 .sect-header {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 20px; border-bottom: 1px solid var(--border);
-  background: var(--card2);
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--card2);
 }
 .sect-label {
-  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em;
-  color: var(--bg); background: var(--accent); padding: 3px 9px; border-radius: 5px;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--bg); background: var(--accent); padding: 2px 8px; border-radius: 4px;
 }
 .sect-label.b { background: var(--accent2); }
-.sect-title { font-size: 0.95rem; font-weight: 600; flex: 1; }
-.sect-time { font-size: 0.78rem; color: var(--muted); }
+.sect-title { font-size: 0.93rem; font-weight: 600; flex: 1; }
+.sect-time { font-size: 0.76rem; color: var(--muted); }
 
 /* ── Actual chart ── */
-.actual-wrap { padding: 16px 20px 0; }
-.actual-legend {
-  display: flex; gap: 20px; margin-bottom: 8px;
-}
-.al-item { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; }
-.al-line { width: 24px; height: 3px; border-radius: 2px; }
-.actual-chart { height: 220px; width: 100%; }
+.actual-wrap { padding: 14px 18px 0; }
+.actual-legend { display: flex; gap: 18px; margin-bottom: 7px; }
+.al-item { display: flex; align-items: center; gap: 6px; font-size: 0.79rem; }
+.al-line { width: 22px; height: 3px; border-radius: 2px; }
+.actual-chart { height: 210px; }
 
-/* ── Pattern Badge ── */
+/* ── Match bar ── */
 .match-bar {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 20px; border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.15);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.12);
 }
 .match-label { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
 .pattern-badge {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 700;
-  border: 2px solid;
+  display: flex; align-items: center; gap: 7px;
+  padding: 4px 12px; border-radius: 7px; font-size: 0.83rem; font-weight: 700; border: 2px solid;
 }
-.match-conf { font-size: 0.78rem; color: var(--muted); }
-.conf-bar {
-  width: 80px; height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden;
-}
+.conf-bar { width: 70px; height: 5px; background: var(--card2); border-radius: 3px; overflow: hidden; }
 .conf-fill { height: 100%; border-radius: 3px; transition: width .5s; }
-.match-reason { font-size: 0.78rem; color: var(--muted); flex: 1; }
+.match-reason { font-size: 0.76rem; color: var(--muted); flex: 1; }
 
 /* ── Action Card ── */
 .action-card {
-  margin: 12px 20px; padding: 12px 16px;
-  border-radius: 10px; border-left: 3px solid;
-  font-size: 0.82rem; line-height: 1.6;
+  margin: 10px 18px; padding: 11px 15px;
+  border-radius: 9px; border-left: 3px solid; font-size: 0.81rem; line-height: 1.6;
 }
 .action-card strong {
-  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
-  display: block; margin-bottom: 5px;
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+  display: block; margin-bottom: 4px;
 }
 
 /* ── Template Row ── */
-.tmpl-section { padding: 16px 20px 20px; }
+.tmpl-section { padding: 14px 18px 18px; }
 .tmpl-divider {
-  font-size: 0.72rem; color: var(--muted); margin-bottom: 12px;
-  display: flex; align-items: center; gap: 10px;
+  font-size: 0.71rem; color: var(--muted); margin-bottom: 11px;
+  display: flex; align-items: center; gap: 8px;
 }
-.tmpl-divider::before, .tmpl-divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-.tmpl-row {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
-}
+.tmpl-divider::before, .tmpl-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.tmpl-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; }
 @media (max-width: 1100px) { .tmpl-row { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 700px)  { .tmpl-row { grid-template-columns: repeat(2, 1fr); } }
 
 .tmpl-card {
   border: 2px solid var(--border); border-radius: 10px; overflow: hidden;
-  transition: border-color .2s, box-shadow .2s; cursor: pointer;
-  background: var(--card2);
+  transition: border-color .2s, box-shadow .2s; cursor: pointer; background: var(--card2);
 }
 .tmpl-card:hover { border-color: var(--accent); }
-.tmpl-card.matched { border-color: var(--accent) !important; box-shadow: 0 0 16px rgba(0,212,170,0.25) !important; }
-.tmpl-head {
-  padding: 7px 10px; display: flex; align-items: center; gap: 7px;
-  border-bottom: 1px solid var(--border);
-}
+.tmpl-card.matched { border-color: var(--accent) !important; box-shadow: 0 0 16px rgba(0,212,170,0.22) !important; }
+.tmpl-head { padding: 7px 9px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
 .tmpl-id {
-  width: 22px; height: 22px; border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.78rem; font-weight: 800; flex-shrink: 0;
+  width: 21px; height: 21px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center; font-size: 0.76rem; font-weight: 800; flex-shrink: 0;
 }
 .tmpl-info { flex: 1; min-width: 0; }
-.tmpl-name { font-size: 0.76rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tmpl-freq { font-size: 0.65rem; color: var(--muted); }
-.tmpl-chart { height: 100px; }
-.tmpl-action { padding: 6px 10px; font-size: 0.68rem; color: var(--muted); line-height: 1.5; border-top: 1px solid var(--border); }
+.tmpl-name { font-size: 0.73rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tmpl-freq { font-size: 0.63rem; color: var(--muted); }
+.tmpl-chart { height: 95px; }
+.tmpl-action { padding: 5px 9px; font-size: 0.66rem; color: var(--muted); line-height: 1.5; border-top: 1px solid var(--border); }
 .tmpl-card.matched .tmpl-action { color: var(--text); }
 
-/* ── Loading / Error ── */
+/* ── Spinner / Error ── */
 .loading-box {
   display: flex; align-items: center; justify-content: center;
-  height: 220px; color: var(--muted); font-size: 0.85rem; flex-direction: column; gap: 10px;
+  height: 210px; color: var(--muted); font-size: 0.83rem; flex-direction: column; gap: 10px;
 }
 .spinner {
-  width: 28px; height: 28px; border: 3px solid var(--border);
-  border-top-color: var(--accent); border-radius: 50%;
-  animation: spin .8s linear infinite;
+  width: 26px; height: 26px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .error-box {
   display: flex; align-items: center; justify-content: center;
-  height: 200px; color: var(--muted); font-size: 0.82rem; flex-direction: column; gap: 8px;
+  height: 160px; color: var(--muted); font-size: 0.8rem; flex-direction: column; gap: 7px;
 }
-.error-icon { font-size: 1.8rem; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>走势形态对比分析</h1>
-  <p>实时价格曲线 vs 六种历史形态模板 · 辅助判断当前市场阶段与操作方向</p>
+  <h1>走势形态预测分析</h1>
+  <p>对比当前价格走势与六种历史形态模板 · 预判当前市场最终将走向哪种形态 · 仅显示7天期市场</p>
 </header>
 
 <main>
 
   <div class="controls">
-    <span class="ctrl-label">当前市场：</span>
+    <span class="ctrl-label">当前期：</span>
     <select id="market-sel"><option value="">— 正在加载 —</option></select>
-    <button class="refresh-btn" onclick="refresh()">↺ 刷新</button>
+    <button class="refresh-btn" onclick="refresh()">↺ 刷新数据</button>
     <span id="status-pill" class="status-pill loading">加载中...</span>
   </div>
 
+  <!-- Tweet count banner -->
+  <div class="tweet-banner" id="tweet-banner" style="display:none">
+    <div class="tb-header">📊 当前发推情况 <span id="tb-market-title"></span></div>
+    <div class="tb-row">
+      <div class="tb-stat">
+        <div class="tb-val" id="tb-total" style="color:var(--accent)">—</div>
+        <div class="tb-label">已计推文</div>
+      </div>
+      <div class="tb-stat">
+        <div class="tb-val" id="tb-pace">—</div>
+        <div class="tb-label">条/天</div>
+      </div>
+      <div class="tb-divider"></div>
+      <div class="tb-progress-wrap">
+        <div class="tb-progress-label"><span>已过 <span id="tb-elapsed">—</span> 天</span><span id="tb-total-days">— 天</span></div>
+        <div class="tb-progress-bar"><div class="tb-progress-fill" id="tb-progress-fill" style="width:0%"></div></div>
+      </div>
+      <div class="tb-divider"></div>
+      <div class="tb-stat">
+        <div class="tb-val" id="tb-projected" style="color:var(--warn)">—</div>
+        <div class="tb-label">预测总量（线性）</div>
+      </div>
+      <div>
+        <div class="center-badge" id="tb-center">中心：—</div>
+      </div>
+      <div class="tb-note" id="tb-note"></div>
+    </div>
+  </div>
+
+  <!-- Relevance notice -->
+  <div class="relevance-note" id="relevance-note" style="display:none"></div>
+
+  <!-- Range chips -->
   <div class="range-summary" id="range-summary"></div>
 
   <!-- Section A: Center vs Below -->
-  <div class="section" id="sect-A">
+  <div class="section">
     <div class="sect-header">
       <span class="sect-label">对比 A</span>
       <span class="sect-title" id="title-A">中心区间 vs 下方区间</span>
@@ -211,18 +253,18 @@ select:focus { outline: none; border-color: var(--accent); }
       <div class="actual-chart" id="chart-A"><div class="loading-box"><div class="spinner"></div>获取价格历史...</div></div>
     </div>
     <div class="match-bar" id="match-A">
-      <span class="match-label">形态识别：</span>
-      <span style="color:var(--muted);font-size:0.82rem">等待数据...</span>
+      <span class="match-label">形态预测：</span>
+      <span style="color:var(--muted);font-size:0.81rem">等待数据...</span>
     </div>
     <div class="action-card" id="action-A" style="display:none"></div>
     <div class="tmpl-section">
-      <div class="tmpl-divider">与六种历史模板对比（绿色高亮 = 自动匹配）</div>
+      <div class="tmpl-divider">六种历史形态模板对比（高亮 = 预测走向，基于当前曲线特征）</div>
       <div class="tmpl-row" id="tmpl-A"></div>
     </div>
   </div>
 
   <!-- Section B: Center vs Above -->
-  <div class="section" id="sect-B">
+  <div class="section">
     <div class="sect-header">
       <span class="sect-label b">对比 B</span>
       <span class="sect-title" id="title-B">中心区间 vs 上方区间</span>
@@ -233,12 +275,12 @@ select:focus { outline: none; border-color: var(--accent); }
       <div class="actual-chart" id="chart-B"><div class="loading-box"><div class="spinner"></div>获取价格历史...</div></div>
     </div>
     <div class="match-bar" id="match-B">
-      <span class="match-label">形态识别：</span>
-      <span style="color:var(--muted);font-size:0.82rem">等待数据...</span>
+      <span class="match-label">形态预测：</span>
+      <span style="color:var(--muted);font-size:0.81rem">等待数据...</span>
     </div>
     <div class="action-card" id="action-B" style="display:none"></div>
     <div class="tmpl-section">
-      <div class="tmpl-divider">与六种历史模板对比（绿色高亮 = 自动匹配）</div>
+      <div class="tmpl-divider">六种历史形态模板对比（高亮 = 预测走向，基于当前曲线特征）</div>
       <div class="tmpl-row" id="tmpl-B"></div>
     </div>
   </div>
@@ -246,106 +288,119 @@ select:focus { outline: none; border-color: var(--accent); }
 </main>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-// 模板数据（来自18个真实市场的48小时价格曲线）
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// 六种形态模板数据（基于18个真实市场48h价格曲线）
+// ═══════════════════════════════════════════════════════════════
 const TPL_X = ['-48h','-47h','-46h','-45h','-44h','-43h','-42h','-41h','-40h','-39h','-38h','-37h','-36h','-35h','-34h','-33h','-32h','-31h','-30h','-29h','-28h','-27h','-26h','-25h','-24h','-23h','-22h','-21h','-20h','-19h','-18h','-17h','-16h','-15h','-14h','-13h','-12h','-11h','-10h','-9h','-8h','-7h','-6h','-5h','-4h','-3h','-2h','-1h'];
 
 const TEMPLATES = {
   A: {
-    name: '全程碾压型', freq: '20%',
-    color: '#00d4aa', bg: 'rgba(0,212,170,0.15)',
-    action: '任何时间买入均合理。越早入场成本越低，最后12h仍有机会但绿色已在高位。红色无博弈价值。',
-    signal: '持仓 / 跟进入场', signalColor: '#00d4aa',
+    name:'全程碾压型', freq:'20%', color:'#00d4aa', bg:'rgba(0,212,170,0.15)',
+    signal:'持仓 / 跟进入场',
+    action:'绿色从始至终稳定领先，差距单调扩大。任何时间买入均合理，越早成本越低。红色无博弈价值。',
+    predict:'若当前绿色已全程领先且红色无有效追赶，大概率延续此形态至结算。',
     g:[0.28,0.305,0.325,0.325,0.325,0.325,0.345,0.355,0.347,0.355,0.365,0.375,0.365,0.385,0.365,0.341,0.345,0.395,0.435,0.445,0.455,0.462,0.465,0.475,0.507,0.515,0.522,0.545,0.545,0.555,0.535,0.519,0.565,0.535,0.484,0.475,0.43,0.475,0.551,0.635,0.670,0.695,0.700,0.709,0.815,0.905,0.949,0.999],
     r:[0.281,0.260,0.272,0.243,0.246,0.241,0.232,0.214,0.192,0.241,0.214,0.213,0.213,0.206,0.189,0.176,0.164,0.236,0.197,0.178,0.181,0.231,0.199,0.238,0.178,0.193,0.228,0.204,0.185,0.164,0.156,0.151,0.164,0.151,0.328,0.365,0.424,0.442,0.367,0.285,0.265,0.245,0.255,0.234,0.160,0.091,0.045,0.001],
     zone:[36,47], zc:'rgba(0,212,170,0.09)',
   },
   B: {
-    name: '快速确立型', freq: '12%',
-    color: '#4cc9f0', bg: 'rgba(76,201,240,0.15)',
-    action: '拉锯期（-48h~-33h）不宜重仓，方向未定。待绿色站稳上方并维持2-3小时后入场，确认性最强。一旦确立，历史上极少逆转。',
-    signal: '等确认再入场', signalColor: '#4cc9f0',
+    name:'快速确立型', freq:'12%', color:'#4cc9f0', bg:'rgba(76,201,240,0.15)',
+    signal:'确立后跟进入场',
+    action:'初期拉锯后绿色在约-33h确立稳定领先，此后极少逆转。拉锯期不宜重仓，确立后2-3h跟进最稳。',
+    predict:'若初期有拉锯但绿色已站稳12h以上，预计进入稳定收敛阶段，红色将持续萎缩。',
     g:[0.385,0.395,0.375,0.395,0.415,0.435,0.425,0.425,0.418,0.415,0.415,0.320,0.355,0.375,0.344,0.375,0.435,0.435,0.485,0.495,0.475,0.475,0.485,0.545,0.545,0.615,0.585,0.635,0.655,0.685,0.695,0.695,0.695,0.535,0.546,0.505,0.585,0.615,0.600,0.695,0.725,0.690,0.645,0.650,0.675,0.755,0.955,0.999],
     r:[0.385,0.375,0.415,0.415,0.376,0.385,0.385,0.385,0.430,0.365,0.365,0.475,0.495,0.495,0.500,0.510,0.475,0.475,0.425,0.425,0.445,0.445,0.435,0.345,0.365,0.235,0.365,0.285,0.255,0.235,0.190,0.210,0.205,0.435,0.394,0.475,0.395,0.365,0.385,0.285,0.275,0.295,0.335,0.335,0.325,0.235,0.045,0.002],
     zone:[0,16], zc:'rgba(255,215,0,0.09)',
   },
   C: {
-    name: '中期反超型', freq: '33%',
-    color: '#ffd700', bg: 'rgba(255,215,0,0.15)',
-    action: '最常见形态（33%）。反超交叉点是核心入场机会，发生后1-4小时内进场确认性最强。超过12小时才入场价格已偏高，需评估上行空间。',
-    signal: '反超后1-4h入场', signalColor: '#ffd700',
+    name:'中期反超型', freq:'33%', color:'#ffd700', bg:'rgba(255,215,0,0.15)',
+    signal:'反超后1-4h入场',
+    action:'最常见形态（33%）。红色先领约20-24h，约-24h完成反超，反超后红色加速崩溃。反超发生后1-4h内是最佳入场窗口。',
+    predict:'若当前红色仍领先但绿色正在追赶，大概率在未来12-24h内发生反超，届时是核心入场机会。',
     g:[0.329,0.321,0.281,0.280,0.277,0.276,0.279,0.238,0.251,0.186,0.241,0.309,0.380,0.333,0.305,0.292,0.296,0.298,0.303,0.419,0.379,0.379,0.403,0.381,0.361,0.526,0.556,0.537,0.540,0.566,0.545,0.581,0.613,0.667,0.667,0.683,0.688,0.722,0.748,0.720,0.715,0.682,0.699,0.683,0.685,0.571,0.670,0.977],
     r:[0.415,0.465,0.465,0.475,0.489,0.514,0.525,0.545,0.535,0.555,0.555,0.525,0.465,0.525,0.555,0.565,0.565,0.565,0.565,0.475,0.525,0.515,0.475,0.525,0.535,0.325,0.275,0.295,0.305,0.315,0.335,0.085,0.075,0.085,0.085,0.075,0.095,0.115,0.100,0.170,0.265,0.265,0.265,0.275,0.285,0.375,0.001,0.001],
     zone:[19,31], zc:'rgba(255,215,0,0.10)',
   },
   D: {
-    name: '末期追赶型', freq: '8%',
-    color: '#ff9f43', bg: 'rgba(255,159,67,0.15)',
-    action: '追赶发生时绿色价格已从底部抬升（0.20-0.40），入场成本中等。在追赶开始后1-2小时确认动量方向再进场。注意此形态追赶过程波动大，不是"买了就涨"。',
-    signal: '确认动量后小仓进', signalColor: '#ff9f43',
+    name:'末期追赶型', freq:'8%', color:'#ff9f43', bg:'rgba(255,159,67,0.15)',
+    signal:'确认动量后小仓进',
+    action:'红色主导36h以上，绿色最后12h急速追赶。追赶中入场成本中等偏高，追赶过程波动大，需1-2h确认动量方向再进场。',
+    predict:'若绿色长期低位但近6h开始快速拉升，有可能触发末期追赶。高风险高弹性，需密切关注推文速率。',
     g:[0.093,0.093,0.079,0.074,0.073,0.071,0.065,0.083,0.100,0.093,0.084,0.076,0.069,0.070,0.071,0.072,0.073,0.060,0.053,0.047,0.038,0.039,0.037,0.037,0.032,0.032,0.094,0.073,0.402,0.325,0.345,0.322,0.291,0.289,0.365,0.352,0.500,0.608,0.571,0.466,0.344,0.411,0.381,0.281,0.195,0.422,0.984,0.999],
     r:[0.361,0.341,0.323,0.311,0.254,0.230,0.211,0.303,0.365,0.376,0.389,0.372,0.382,0.400,0.422,0.411,0.424,0.408,0.401,0.383,0.411,0.372,0.369,0.333,0.347,0.292,0.562,0.696,0.474,0.559,0.571,0.617,0.626,0.636,0.570,0.589,0.402,0.325,0.390,0.498,0.616,0.566,0.619,0.699,0.810,0.580,0.001,0.001],
     zone:[26,47], zc:'rgba(255,159,67,0.10)',
   },
   E: {
-    name: '临门一脚型', freq: '2%',
-    color: '#ff6b6b', bg: 'rgba(255,107,107,0.15)',
-    action: '极罕见（2%）但赔率最高。核心触发条件：绿色价格0.10-0.20、红色0.80+，且推文数在最后几小时出现真实爆发。高赔率押小注（≤5%仓位），接受高概率亏损。',
-    signal: '高赔率小仓押注', signalColor: '#ff6b6b',
+    name:'临门一脚型', freq:'2%', color:'#ff6b6b', bg:'rgba(255,107,107,0.15)',
+    signal:'高赔率小仓押注',
+    action:'极罕见（2%）但赔率最高。绿色全程趴底，最后2-3h垂直爆发。触发条件：推文数在最后几小时真实爆发，价格绿色<20¢。',
+    predict:'若绿色长期趴底无追赶迹象，大概率延续E型格局。若出现推文突发加速，则可能触发垂直爆发，小仓待机。',
     g:[0.244,0.233,0.210,0.207,0.201,0.182,0.153,0.170,0.154,0.146,0.148,0.149,0.198,0.240,0.216,0.203,0.206,0.187,0.158,0.163,0.156,0.210,0.186,0.158,0.147,0.111,0.111,0.086,0.077,0.061,0.054,0.042,0.029,0.094,0.102,0.066,0.093,0.087,0.135,0.368,0.372,0.377,0.390,0.386,0.412,0.870,0.863,0.990],
     r:[0.419,0.439,0.442,0.435,0.414,0.412,0.411,0.436,0.432,0.467,0.448,0.467,0.506,0.543,0.566,0.586,0.596,0.597,0.578,0.579,0.613,0.666,0.675,0.696,0.721,0.754,0.759,0.736,0.738,0.686,0.662,0.664,0.653,0.789,0.877,0.892,0.894,0.911,0.857,0.609,0.619,0.620,0.589,0.584,0.596,0.115,0.001,0.001],
     zone:[43,47], zc:'rgba(255,107,107,0.13)',
   },
   F: {
-    name: '领先险守型', freq: '22%',
-    color: '#a29bfe', bg: 'rgba(162,155,254,0.15)',
-    action: '持绿色最容易恐慌的形态（22%）。末期红色急拉是流动性/价格噪音，不代表推文数真的要逆转。历史数据显示绿色在此情况下仍然胜出。不要轻易割肉。',
-    signal: '持仓不动，不割肉', signalColor: '#a29bfe',
+    name:'领先险守型', freq:'22%', color:'#a29bfe', bg:'rgba(162,155,254,0.15)',
+    signal:'持仓不动，不割肉',
+    action:'绿色长期领先（22%），末期红色突然大幅追赶。历史数据：即使结算前2h绿0.16红0.84，绿色仍然胜出。末期急拉是噪音，不要轻易割肉。',
+    predict:'若绿色已长期领先但红色近12h快速拉升，大概率将走F型"险守"路线。持仓坚守，末期恐慌是陷阱。',
     g:[0.317,0.285,0.274,0.298,0.314,0.320,0.319,0.319,0.334,0.291,0.300,0.307,0.319,0.314,0.323,0.411,0.369,0.375,0.414,0.434,0.435,0.428,0.494,0.490,0.557,0.562,0.576,0.581,0.560,0.634,0.602,0.651,0.673,0.635,0.533,0.490,0.437,0.454,0.461,0.473,0.446,0.429,0.410,0.417,0.393,0.273,0.159,0.998],
     r:[0.105,0.056,0.044,0.060,0.066,0.069,0.077,0.089,0.090,0.063,0.058,0.062,0.074,0.048,0.059,0.063,0.053,0.021,0.041,0.029,0.027,0.027,0.048,0.076,0.094,0.102,0.111,0.134,0.184,0.219,0.282,0.201,0.231,0.345,0.397,0.446,0.490,0.466,0.478,0.485,0.549,0.524,0.548,0.573,0.588,0.700,0.843,0.001],
     zone:[33,46], zc:'rgba(255,107,107,0.10)',
   },
 };
 
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // API 层
-// ═══════════════════════════════════════════════════════════════════
-const GAMMA = 'https://gamma-api.polymarket.com';
-const CLOB  = 'https://clob.polymarket.com';
-const XTRACKER_TRACKINGS = 'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true';
+// ═══════════════════════════════════════════════════════════════
+const GAMMA   = 'https://gamma-api.polymarket.com';
+const CLOB    = 'https://clob.polymarket.com';
+const XTRACK  = 'https://xtracker.polymarket.com/api/users/elonmusk/trackings?activeOnly=true';
 
 let _charts = {};
 let _currentSlug = null;
 
 async function fetchMarkets() {
-  // 优先 xtracker trackings，备用 gamma 候选 slug
+  // 只取7天期市场（5-9天持续时间），按最快到期排序
   try {
-    const r = await fetch(XTRACKER_TRACKINGS, { signal: AbortSignal.timeout(6000) });
+    const r = await fetch(XTRACK, { signal: AbortSignal.timeout(7000) });
     if (r.ok) {
       const j = await r.json();
       if (j.success && Array.isArray(j.data) && j.data.length > 0) {
         const now = new Date();
-        return j.data
-          .filter(t => new Date(t.endDate) > now)
-          .map(t => ({ slug: titleToSlug(t.title), title: t.title, endDate: t.endDate }))
-          .filter(m => m.slug);
+        const markets = j.data
+          .filter(t => {
+            const end = new Date(t.endDate);
+            const start = new Date(t.startDate);
+            const diff = (end - start) / 86400000;
+            return end > now && diff >= 5 && diff <= 9; // 7天期
+          })
+          .map(t => ({
+            slug: titleToSlug(t.title),
+            title: t.title,
+            endDate: t.endDate,
+            startDate: t.startDate,
+            trackingId: t.id,
+          }))
+          .filter(m => m.slug)
+          .sort((a, b) => new Date(a.endDate) - new Date(b.endDate)); // 最快到期在前
+        if (markets.length > 0) return markets;
       }
     }
-  } catch {}
+  } catch (e) { console.warn('[fetchMarkets xtracker]', e.message); }
 
-  // 备用：gamma candidate slugs
+  // Gamma 备用：构建候选 slug
   const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
   const now = new Date();
   const slugs = [];
   const seen = new Set();
-  for (let d = -3; d <= 7; d++) {
+  for (let d = -1; d <= 7; d++) {
     const s = new Date(now.getTime() + d * 86400000);
     const e = new Date(s.getTime() + 7 * 86400000);
     const slug = `elon-musk-of-tweets-${months[s.getUTCMonth()]}-${s.getUTCDate()}-${months[e.getUTCMonth()]}-${e.getUTCDate()}`;
-    if (!seen.has(slug)) { seen.add(slug); slugs.push(slug); }
+    if (!seen.has(slug)) { seen.add(slug); slugs.push({ slug, title: slug, endDate: e.toISOString(), startDate: s.toISOString() }); }
   }
-  return slugs.map(slug => ({ slug, title: slug, endDate: null }));
+  return slugs;
 }
 
 function titleToSlug(title) {
@@ -356,7 +411,7 @@ function titleToSlug(title) {
 
 async function fetchEventRanges(slug) {
   const r = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
-    headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(7000),
+    headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000),
   });
   if (!r.ok) throw new Error(`gamma ${r.status}`);
   const data = await r.json();
@@ -365,142 +420,161 @@ async function fetchEventRanges(slug) {
   if (!ev) throw new Error('event not found');
 
   const markets = (ev.markets || []).map(m => {
-    let minVal = null, maxVal = null;
-    // Parse range from question title
     const q = m.question || m.title || '';
-    const rangeMatch = q.match(/(\d+)\s+to\s+(\d+)/i) || q.match(/(\d+)\s*[-–]\s*(\d+)/);
-    if (rangeMatch) { minVal = parseInt(rangeMatch[1]); maxVal = parseInt(rangeMatch[2]); }
-
+    const rm = q.match(/(\d+)\s+to\s+(\d+)/i) || q.match(/(\d+)\s*[-–]\s*(\d+)/);
+    if (!rm) return null;
     const prices = JSON.parse(m.outcomePrices || '["0","1"]');
     const tokens = JSON.parse(m.clobTokenIds || '["",""]');
     return {
-      id: m.id,
-      question: q,
-      minVal, maxVal,
+      id: m.id, question: q,
+      minVal: parseInt(rm[1]), maxVal: parseInt(rm[2]),
       yesPrice: parseFloat(prices[0] || 0),
       yesTokenId: tokens[0] || '',
-      conditionId: m.conditionId || '',
-      endDate: ev.endDate || ev.end_date_iso,
     };
-  }).filter(m => m.minVal !== null);
+  }).filter(Boolean);
 
-  // Sort by range min
   markets.sort((a, b) => a.minVal - b.minVal);
   return { markets, endDate: ev.endDate || ev.end_date_iso, title: ev.title };
 }
 
 async function fetchHistory(tokenId) {
   if (!tokenId) throw new Error('no tokenId');
-  // 48h at 1h fidelity
-  const since = Math.floor((Date.now() - 49 * 3600000) / 1000);
-  const url = `${CLOB}/prices-history?market=${tokenId}&interval=1d&fidelity=60&startTs=${since}`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  const since = Math.floor((Date.now() - 50 * 3600000) / 1000);
+  const r = await fetch(`${CLOB}/prices-history?market=${tokenId}&interval=1d&fidelity=60&startTs=${since}`, {
+    signal: AbortSignal.timeout(8000),
+  });
   if (!r.ok) throw new Error(`clob ${r.status}`);
   const j = await r.json();
-  const hist = j.history || [];
-  return hist.map(p => ({ t: p.t * 1000, p: parseFloat(p.p) }));
+  return (j.history || []).map(p => ({ t: p.t * 1000, p: parseFloat(p.p) }));
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// 形态分类器
-// ═══════════════════════════════════════════════════════════════════
-function classifyPattern(greenHist, redHist) {
+// 获取推文数（尝试 xtracker API，备用 polystrike）
+async function fetchTweetCount(slug, startDate, endDate) {
+  // 方案1：xtracker posts API
+  try {
+    const url = `https://xtracker.polymarket.com/api/users/elonmusk/posts?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&limit=1000`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (r.ok) {
+      const j = await r.json();
+      const posts = j.data || [];
+      if (posts.length > 0) return posts.length;
+    }
+  } catch {}
+
+  // 方案2：polystrike
+  try {
+    const r = await fetch('https://polystrike.xyz/api/v1/meta/elon', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const j = await r.json();
+      const endMs = new Date(endDate).getTime();
+      const match = (j.data || []).find(p => Math.abs(p.end_ts - endMs) < 12 * 3600000);
+      if (match) {
+        const count = match.polymarket_xtracker_counter > 0 ? match.polymarket_xtracker_counter : match.real_counter;
+        if (count > 0) return count;
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 形态预测分类器
+// ═══════════════════════════════════════════════════════════════
+function predictPattern(greenHist, redHist) {
   const len = greenHist.length;
-  if (len < 4) return { pattern: null, confidence: 0, reason: '数据不足（需至少4小时历史）', scores: {} };
+  if (len < 4) return { pattern: null, confidence: 0, reason: '数据不足（需至少4小时价格历史）', scores: {} };
 
   const gNow = greenHist[len-1];
   const rNow = redHist[len-1];
-  const greenLeads = gNow > rNow;
 
-  // Consecutive hours green has been leading (from now backwards)
-  let greenLeadHours = 0;
+  // 绿色连续领先小时数
+  let greenLeadH = 0;
   for (let i = len-1; i >= 0; i--) {
-    if (greenHist[i] > redHist[i]) greenLeadHours++;
+    if (greenHist[i] > redHist[i]) greenLeadH++;
+    else break;
+  }
+  // 红色连续领先小时数
+  let redLeadH = 0;
+  for (let i = len-1; i >= 0; i--) {
+    if (redHist[i] > greenHist[i]) redLeadH++;
     else break;
   }
 
-  // Consecutive hours red has been leading
-  let redLeadHours = 0;
-  for (let i = len-1; i >= 0; i--) {
-    if (redHist[i] > greenHist[i]) redLeadHours++;
-    else break;
-  }
-
-  // Crossovers in last 36h
+  // 最近36h内的交叉次数
   let crossovers = 0;
-  const start36 = Math.max(0, len - 36);
-  for (let i = start36; i < len - 1; i++) {
-    const was = greenHist[i] > redHist[i];
-    const now2 = greenHist[i+1] > redHist[i+1];
-    if (was !== now2) crossovers++;
+  const s36 = Math.max(0, len - 36);
+  for (let i = s36; i < len - 1; i++) {
+    if ((greenHist[i] > redHist[i]) !== (greenHist[i+1] > redHist[i+1])) crossovers++;
   }
 
-  // Red gain in last 12h
+  // 近12h红色涨幅
   const lb12 = Math.min(12, len - 1);
-  const redGain12h = rNow - redHist[len - 1 - lb12];
+  const redGain12 = rNow - redHist[len - 1 - lb12];
 
-  // Green gain in last 6h
+  // 近6h绿色涨幅
   const lb6 = Math.min(6, len - 1);
-  const greenGain6h = gNow - greenHist[len - 1 - lb6];
+  const greenGain6 = gNow - greenHist[len - 1 - lb6];
 
-  // Red max price in window
-  const redMax = Math.max(...redHist);
+  // 绿色历史最低价
+  const gMin = Math.min(...greenHist);
+  // 红色历史最高价
+  const rMax = Math.max(...redHist);
 
-  // Score each pattern [0-1]
   const scores = {};
 
-  // A: Green dominates all the way through
-  scores.A = (greenLeads ? 0.4 : 0)
-    + (greenLeadHours >= 24 ? 0.4 : greenLeadHours / 24 * 0.3)
-    + (redGain12h < 0.08 ? 0.2 : 0);
+  // A：全程碾压 - 绿全程领先，红无有效追赶
+  scores.A = (gNow > rNow ? 0.4 : 0)
+    + (greenLeadH >= Math.min(24, len) ? 0.4 : greenLeadH / Math.max(len, 1) * 0.3)
+    + (redGain12 < 0.07 ? 0.2 : 0);
 
-  // B: Initial tug-of-war, then green establishes ~12-36h ago
-  scores.B = (greenLeads ? 0.3 : 0)
-    + (crossovers >= 1 && crossovers <= 4 ? 0.3 : 0)
-    + (greenLeadHours >= 12 && greenLeadHours < 40 ? 0.4 : 0);
+  // B：快速确立 - 有拉锯，绿色12-40h前确立
+  scores.B = (gNow > rNow ? 0.3 : 0)
+    + (crossovers >= 1 && crossovers <= 4 ? 0.35 : 0)
+    + (greenLeadH >= 10 && greenLeadH < 40 ? 0.35 : 0);
 
-  // C: Red led first, green overtook in last 6-24h
-  scores.C = (greenLeads ? 0.3 : 0)
-    + (crossovers >= 1 ? 0.25 : 0)
-    + (greenLeadHours >= 4 && greenLeadHours < 24 ? 0.45 : 0);
+  // C：中期反超 - 红先领，绿近4-24h反超
+  scores.C = (gNow > rNow ? 0.25 : 0.1)
+    + (crossovers >= 1 ? 0.3 : 0)
+    + (greenLeadH >= 2 && greenLeadH < 24 ? 0.4 : 0)
+    + (gNow > rNow && redLeadH === 0 && greenLeadH < 24 ? 0.05 : 0);
 
-  // D: Red dominates most of window, green surging in last 6-12h
-  scores.D = (!greenLeads || greenLeadHours < 8 ? 0.3 : 0)
-    + (greenGain6h > 0.10 ? 0.5 : greenGain6h > 0.05 ? 0.25 : 0)
-    + (redLeadHours >= 12 || redMax > 0.4 ? 0.2 : 0);
+  // D：末期追赶 - 红长期主导，绿近6h开始急拉
+  scores.D = (gNow < rNow || greenLeadH < 8 ? 0.25 : 0)
+    + (greenGain6 > 0.09 ? 0.5 : greenGain6 > 0.04 ? 0.25 : 0)
+    + (redLeadH >= 10 || rMax > 0.45 ? 0.25 : 0);
 
-  // E: Red dominates massively, green stuck at bottom with no chase
-  scores.E = (!greenLeads ? 0.3 : 0)
-    + (redMax > 0.6 ? 0.3 : 0)
-    + (greenGain6h < 0.04 && gNow < 0.25 ? 0.4 : 0);
+  // E：临门一脚 - 红长期大幅领先，绿无动静趴底
+  scores.E = (gNow < rNow ? 0.3 : 0)
+    + (rMax > 0.55 ? 0.3 : 0)
+    + (gNow < 0.20 && greenGain6 < 0.05 ? 0.4 : 0);
 
-  // F: Green leading but red catching up fast at the end
-  scores.F = (greenLeads ? 0.4 : 0)
-    + (redGain12h > 0.12 ? 0.5 : redGain12h > 0.06 ? 0.25 : 0)
-    + (greenLeadHours > 20 ? 0.1 : 0);
+  // F：领先险守 - 绿领先但红末期急追
+  scores.F = (gNow > rNow ? 0.35 : 0)
+    + (redGain12 > 0.10 ? 0.5 : redGain12 > 0.05 ? 0.25 : 0)
+    + (greenLeadH >= 18 ? 0.15 : 0);
 
-  // Find best match
-  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-  const second = Object.entries(scores).sort((a, b) => b[1] - a[1])[1];
-  const pattern = best[0];
-  const confidence = Math.min(0.95, best[1]);
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const [bestKey, bestScore] = sorted[0];
+  const [secondKey] = sorted[1];
 
-  // Build reason string
+  const confidence = Math.min(0.92, bestScore);
+
   const reasons = {
-    A: `绿色已连续领先 ${greenLeadHours}h，红色近12h仅涨 ${(redGain12h*100).toFixed(0)}%`,
-    B: `出现 ${crossovers} 次拉锯后，绿色 ${greenLeadHours}h 前确立领先`,
-    C: `绿色约 ${greenLeadHours}h 前完成反超，当前处于确认窗口`,
-    D: `绿色近6h涨幅 ${(greenGain6h*100).toFixed(0)}%，末期追赶信号`,
-    E: `绿色长期落后 ${(gNow*100).toFixed(1)}%，尚无有效追赶动量`,
-    F: `绿色领先但红色近12h涨 ${(redGain12h*100).toFixed(0)}%，末期追赶压力大`,
+    A: `绿色已连续领先 ${greenLeadH}h，红色近12h仅涨 ${(redGain12*100).toFixed(0)}%，形态稳固`,
+    B: `经历 ${crossovers} 次拉锯后绿色 ${greenLeadH}h 前确立领先，预计进入收敛阶段`,
+    C: `绿色约 ${greenLeadH}h 前完成反超，处于确认窗口，关注后续是否稳固`,
+    D: `绿色近6h涨幅 ${(greenGain6*100).toFixed(0)}%，末期追赶信号正在形成`,
+    E: `绿色长期趴底 ${(gNow*100).toFixed(1)}¢，近6h无有效拉升，等待推文数突破触发`,
+    F: `绿色领先但红色近12h大幅上涨 ${(redGain12*100).toFixed(0)}%，末期追赶压力加剧`,
   };
 
-  return { pattern, confidence, reason: reasons[pattern] || '', scores, second: second[0] };
+  return { pattern: bestKey, confidence, reason: reasons[bestKey] || '', scores, second: secondKey };
 }
 
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // 渲染层
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 function makeChart(domId) {
   const dom = document.getElementById(domId);
   if (!dom) return null;
@@ -514,317 +588,152 @@ function makeChart(domId) {
 function renderActualChart(domId, greenHist, redHist, timestamps, greenLabel, redLabel) {
   const c = makeChart(domId);
   if (!c) return;
-
   const xLabels = timestamps.map(t => {
     const d = new Date(t);
-    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:00`;
   });
-
   c.setOption({
-    animation: false,
-    backgroundColor: 'transparent',
-    grid: { top: 8, bottom: 36, left: 44, right: 14 },
+    animation: false, backgroundColor: 'transparent',
+    grid: { top: 6, bottom: 34, left: 42, right: 12 },
     xAxis: {
       type: 'category', data: xLabels, boundaryGap: false,
-      axisLabel: {
-        color: '#4a5568', fontSize: 10,
-        formatter: (v, i) => (i % Math.ceil(xLabels.length / 6) === 0 ? v : ''),
-      },
-      axisLine: { lineStyle: { color: '#2a2f3a' } },
-      splitLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: '#4a5568', fontSize: 10, formatter: (v, i) => (i % Math.max(1, Math.ceil(xLabels.length / 6)) === 0 ? v : '') },
+      axisLine: { lineStyle: { color: '#2a2f3a' } }, splitLine: { show: false }, axisTick: { show: false },
     },
     yAxis: {
       type: 'value', min: 0, max: 1,
       splitLine: { lineStyle: { color: '#1e232d', type: 'dashed' } },
-      axisLabel: {
-        color: '#4a5568', fontSize: 10,
-        formatter: v => (v === 0 || v === 0.5 || v === 1) ? v.toFixed(1) : '',
-      },
+      axisLabel: { color: '#4a5568', fontSize: 10, formatter: v => (v === 0 || v === 0.5 || v === 1) ? v.toFixed(1) : '' },
     },
     series: [
-      {
-        name: greenLabel, type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#00d4aa', width: 2.5 },
-        areaStyle: { color: 'rgba(0,212,170,0.06)' },
-        data: greenHist,
-      },
-      {
-        name: redLabel, type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#ff6b6b', width: 2.5 },
-        areaStyle: { color: 'rgba(255,107,107,0.05)' },
-        data: redHist,
-      },
+      { name: greenLabel, type: 'line', smooth: true, symbol: 'none',
+        lineStyle: { color: '#00d4aa', width: 2.5 }, areaStyle: { color: 'rgba(0,212,170,0.06)' }, data: greenHist },
+      { name: redLabel, type: 'line', smooth: true, symbol: 'none',
+        lineStyle: { color: '#ff6b6b', width: 2.5 }, areaStyle: { color: 'rgba(255,107,107,0.05)' }, data: redHist },
     ],
     tooltip: {
       trigger: 'axis', backgroundColor: '#14171c', borderColor: '#2a2f3a',
       textStyle: { color: '#e0e6f0', fontSize: 11 },
       formatter: p => p[0].axisValue + '<br>'
-        + `<span style="color:#00d4aa">●</span> ${greenLabel} ${(p[0].data * 100).toFixed(1)}¢<br>`
-        + `<span style="color:#ff6b6b">●</span> ${redLabel} ${(p[1].data * 100).toFixed(1)}¢`,
+        + `<span style="color:#00d4aa">●</span> ${greenLabel} ${(p[0].data*100).toFixed(1)}¢<br>`
+        + `<span style="color:#ff6b6b">●</span> ${redLabel} ${(p[1].data*100).toFixed(1)}¢`,
     },
   });
 }
 
-function renderMatchBar(domId, result) {
+function renderMatchBar(domId, result, hoursLeft) {
   const el = document.getElementById(domId);
   if (!el) return;
   if (!result || !result.pattern) {
-    el.innerHTML = '<span class="match-label">形态识别：</span><span style="color:var(--muted);font-size:0.82rem">数据不足，无法自动识别</span>';
+    el.innerHTML = '<span class="match-label">形态预测：</span><span style="color:var(--muted);font-size:0.81rem">数据不足，无法判断</span>';
     return;
   }
   const t = TEMPLATES[result.pattern];
+  const t2 = result.second ? TEMPLATES[result.second] : null;
   const confPct = Math.round(result.confidence * 100);
-  const t2 = TEMPLATES[result.second];
+  const reliabilityNote = hoursLeft < 24 ? '<span style="color:var(--accent);font-size:0.7rem">● 最后24h，预测可信度高</span>'
+    : hoursLeft < 48 ? '<span style="color:var(--warn);font-size:0.7rem">● 最后48h内，预测参考价值强</span>'
+    : '<span style="color:var(--muted);font-size:0.7rem">● 距结算较远，形态仍可能演变</span>';
+
   el.innerHTML = `
-    <span class="match-label">形态识别：</span>
+    <span class="match-label">形态预测走向：</span>
     <div class="pattern-badge" style="border-color:${t.color};color:${t.color};background:${t.bg}">
       <span style="font-weight:900">${result.pattern}</span>
       <span>${t.name}</span>
     </div>
     <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%;background:${t.color}"></div></div>
-    <span class="match-conf">${confPct}%</span>
+    <span style="font-size:0.78rem;color:var(--muted)">${confPct}%</span>
     <span class="match-reason">${result.reason}</span>
-    ${t2 ? `<span style="font-size:0.72rem;color:var(--muted)">次可能：${result.second}·${t2.name}</span>` : ''}
+    ${t2 ? `<span style="font-size:0.71rem;color:var(--muted)">次可能：${result.second}·${t2.name}</span>` : ''}
+    ${reliabilityNote}
   `;
 }
 
-function renderActionCard(domId, pattern) {
+function renderActionCard(domId, pattern, hoursLeft) {
   const el = document.getElementById(domId);
   if (!el || !pattern) { if (el) el.style.display = 'none'; return; }
   const t = TEMPLATES[pattern];
   el.style.display = 'block';
   el.style.borderLeftColor = t.color;
   el.style.background = t.bg.replace('0.15', '0.07');
-  el.innerHTML = `
-    <strong style="color:${t.color}">操作参考 · ${t.signal}</strong>
-    ${t.action}
-  `;
-}
-
-function renderTemplateChart(containerId, tplKey, isMatched) {
-  const domId = `tmpl-${containerId}-${tplKey}`;
-  const t = TEMPLATES[tplKey];
-  const c = echarts.init(document.getElementById(domId), null, { renderer: 'canvas' });
-  _charts[domId] = c;
-
-  const gSeries = {
-    name: '目标区间', type: 'line', smooth: true, symbol: 'none',
-    lineStyle: { color: '#00d4aa', width: 1.5 },
-    areaStyle: { color: 'rgba(0,212,170,0.04)' },
-    data: t.g,
-  };
-  if (t.zone) {
-    gSeries.markArea = {
-      silent: true,
-      itemStyle: { color: t.zc || 'rgba(255,215,0,0.08)' },
-      data: [[{ xAxis: t.zone[0] }, { xAxis: t.zone[1] }]],
-    };
-  }
-  c.setOption({
-    animation: false,
-    backgroundColor: 'transparent',
-    grid: { top: 2, bottom: 18, left: 28, right: 4 },
-    xAxis: {
-      type: 'category', data: TPL_X, boundaryGap: false,
-      axisLabel: { color: '#3a4050', fontSize: 9, formatter: (v, i) => (i === 0 || i === 24 || i === 47) ? v : '' },
-      axisLine: { lineStyle: { color: '#2a2f3a' } },
-      splitLine: { show: false }, axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value', min: 0, max: 1,
-      splitLine: { lineStyle: { color: '#1a1e26', type: 'dashed' } },
-      axisLabel: { color: '#3a4050', fontSize: 9, formatter: v => v === 0.5 ? '0.5' : '' },
-    },
-    series: [
-      gSeries,
-      {
-        name: '竞争者', type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#ff6b6b', width: 1.5 },
-        areaStyle: { color: 'rgba(255,107,107,0.03)' },
-        data: t.r,
-      },
-    ],
-  });
-}
-
-function renderTemplateRow(containerId, matchedPattern) {
-  const row = document.getElementById(`tmpl-${containerId}`);
-  if (!row) return;
-  row.innerHTML = '';
-  Object.keys(TEMPLATES).forEach(key => {
-    const t = TEMPLATES[key];
-    const isMatched = key === matchedPattern;
-    const card = document.createElement('div');
-    card.className = 'tmpl-card' + (isMatched ? ' matched' : '');
-    card.id = `tmpl-card-${containerId}-${key}`;
-    card.innerHTML = `
-      <div class="tmpl-head">
-        <div class="tmpl-id" style="background:${t.bg};color:${t.color}">${key}</div>
-        <div class="tmpl-info">
-          <div class="tmpl-name" style="${isMatched ? `color:${t.color}` : ''}">${t.name}</div>
-          <div class="tmpl-freq">${t.freq}</div>
-        </div>
-      </div>
-      <div class="tmpl-chart" id="tmpl-${containerId}-${key}"></div>
-      <div class="tmpl-action">${isMatched ? t.action : t.signal}</div>
-    `;
-    row.appendChild(card);
-    // Render template chart after DOM append
-    setTimeout(() => renderTemplateChart(containerId, key, isMatched), 0);
-  });
+  el.innerHTML = `<strong style="color:${t.color}">预测说明 · ${t.name}</strong>${t.predict}<br><span style="color:${t.color};font-weight:600">当前建议：${t.signal}</span>`;
 }
 
 function renderLegend(domId, greenLabel, redLabel) {
   const el = document.getElementById(domId);
   if (!el) return;
   el.innerHTML = `
-    <div class="al-item">
-      <div class="al-line" style="background:#00d4aa"></div>
-      <span style="color:#00d4aa;font-weight:600">${greenLabel}</span>
-      <span style="color:var(--muted);font-size:0.72rem">（中心区间）</span>
-    </div>
-    <div class="al-item">
-      <div class="al-line" style="background:#ff6b6b"></div>
-      <span style="color:#ff6b6b;font-weight:600">${redLabel}</span>
-    </div>
+    <div class="al-item"><div class="al-line" style="background:#00d4aa"></div><span style="color:#00d4aa;font-weight:600">${greenLabel}</span><span style="color:var(--muted);font-size:0.72rem">（中心区间）</span></div>
+    <div class="al-item"><div class="al-line" style="background:#ff6b6b"></div><span style="color:#ff6b6b;font-weight:600">${redLabel}</span></div>
   `;
+}
+
+function renderTemplateChart(cid, key) {
+  const domId = `tmpl-chart-${cid}-${key}`;
+  const t = TEMPLATES[key];
+  const dom = document.getElementById(domId);
+  if (!dom) return;
+  const c = echarts.init(dom, null, { renderer: 'canvas' });
+  _charts[domId] = c;
+  const gSeries = {
+    type: 'line', smooth: true, symbol: 'none',
+    lineStyle: { color: '#00d4aa', width: 1.5 }, areaStyle: { color: 'rgba(0,212,170,0.04)' }, data: t.g,
+  };
+  if (t.zone) {
+    gSeries.markArea = {
+      silent: true, itemStyle: { color: t.zc },
+      data: [[{ xAxis: t.zone[0] }, { xAxis: t.zone[1] }]],
+    };
+  }
+  c.setOption({
+    animation: false, backgroundColor: 'transparent',
+    grid: { top: 2, bottom: 16, left: 26, right: 4 },
+    xAxis: {
+      type: 'category', data: TPL_X, boundaryGap: false,
+      axisLabel: { color: '#2e3440', fontSize: 8, formatter: (v, i) => (i === 0 || i === 24 || i === 47) ? v : '' },
+      axisLine: { lineStyle: { color: '#2a2f3a' } }, splitLine: { show: false }, axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value', min: 0, max: 1,
+      splitLine: { lineStyle: { color: '#1a1e26', type: 'dashed' } },
+      axisLabel: { color: '#2e3440', fontSize: 8, formatter: v => v === 0.5 ? '0.5' : '' },
+    },
+    series: [
+      gSeries,
+      { type: 'line', smooth: true, symbol: 'none',
+        lineStyle: { color: '#ff6b6b', width: 1.5 }, areaStyle: { color: 'rgba(255,107,107,0.03)' }, data: t.r },
+    ],
+  });
+}
+
+function renderTemplateRow(cid, matchedPattern) {
+  const row = document.getElementById(`tmpl-${cid}`);
+  if (!row) return;
+  row.innerHTML = '';
+  Object.keys(TEMPLATES).forEach(key => {
+    const t = TEMPLATES[key];
+    const isMatch = key === matchedPattern;
+    const card = document.createElement('div');
+    card.className = 'tmpl-card' + (isMatch ? ' matched' : '');
+    card.innerHTML = `
+      <div class="tmpl-head">
+        <div class="tmpl-id" style="background:${t.bg};color:${t.color}">${key}</div>
+        <div class="tmpl-info">
+          <div class="tmpl-name" style="${isMatch ? `color:${t.color}` : ''}">${t.name}</div>
+          <div class="tmpl-freq">${t.freq}</div>
+        </div>
+      </div>
+      <div class="tmpl-chart" id="tmpl-chart-${cid}-${key}"></div>
+      <div class="tmpl-action">${isMatch ? '↑ 预测走向此形态' : t.signal}</div>
+    `;
+    row.appendChild(card);
+    setTimeout(() => renderTemplateChart(cid, key), 0);
+  });
 }
 
 function showChartError(domId, msg) {
   const el = document.getElementById(domId);
-  if (el) el.innerHTML = `<div class="error-box"><div class="error-icon">⚠</div><span>${msg}</span></div>`;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// 主流程
-// ═══════════════════════════════════════════════════════════════════
-async function loadMarket(slug) {
-  if (!slug) return;
-  _currentSlug = slug;
-  setStatus('loading', '获取市场数据...');
-
-  // Reset charts
-  ['A','B'].forEach(s => {
-    document.getElementById(`chart-${s}`).innerHTML = '<div class="loading-box"><div class="spinner"></div>获取价格历史...</div>';
-    document.getElementById(`match-${s}`).innerHTML = '<span class="match-label">形态识别：</span><span style="color:var(--muted);font-size:0.82rem">等待数据...</span>';
-    document.getElementById(`action-${s}`).style.display = 'none';
-    document.getElementById(`tmpl-${s}`).innerHTML = '';
-  });
-  document.getElementById('range-summary').innerHTML = '';
-
-  let eventData;
-  try {
-    eventData = await fetchEventRanges(slug);
-  } catch (e) {
-    setStatus('err', '获取市场失败：' + e.message);
-    showChartError('chart-A', '无法加载市场数据：' + e.message);
-    showChartError('chart-B', '无法加载市场数据');
-    return;
-  }
-
-  const { markets, endDate, title } = eventData;
-  if (markets.length < 2) {
-    setStatus('err', '区间数量不足（<2个）');
-    return;
-  }
-
-  // Find hottest (highest YES price), with valid tokenId
-  const sorted = [...markets].sort((a, b) => b.yesPrice - a.yesPrice);
-  const hottest = sorted[0];
-  const hottestIdx = markets.indexOf(hottest);
-
-  const below = hottestIdx > 0 ? markets[hottestIdx - 1] : null;
-  const above = hottestIdx < markets.length - 1 ? markets[hottestIdx + 1] : null;
-
-  // Update section titles
-  const fmtRange = m => m ? `${m.minVal}-${m.maxVal}` : '—';
-  document.getElementById('title-A').textContent = `中心区间 vs 下方区间  ·  ${fmtRange(hottest)} 与 ${fmtRange(below)}`;
-  document.getElementById('title-B').textContent = `中心区间 vs 上方区间  ·  ${fmtRange(hottest)} 与 ${fmtRange(above)}`;
-
-  const timeLeft = endDate ? (() => {
-    const diff = new Date(endDate) - new Date();
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    return h >= 0 ? `剩余 ${h}h ${m}m` : '已结束';
-  })() : '';
-  document.getElementById('time-A').textContent = timeLeft;
-  document.getElementById('time-B').textContent = timeLeft;
-
-  // Range summary chips
-  const summaryEl = document.getElementById('range-summary');
-  const addChip = (label, color, price) => {
-    const chip = document.createElement('div');
-    chip.className = 'range-chip';
-    chip.innerHTML = `<div class="range-dot" style="background:${color}"></div><span class="range-name">${label}</span><span class="range-price">${(price*100).toFixed(1)}¢</span>`;
-    summaryEl.appendChild(chip);
-  };
-  if (below) addChip(`${fmtRange(below)} 下方`, '#ff6b6b60', below.yesPrice);
-  addChip(`${fmtRange(hottest)} 中心★`, '#00d4aa', hottest.yesPrice);
-  if (above) addChip(`${fmtRange(above)} 上方`, '#ff6b6b60', above.yesPrice);
-
-  setStatus('ok', `已加载 ${markets.length} 个区间 · ${new Date().toLocaleTimeString('zh-CN')}`);
-
-  // Fetch history for each range and render comparisons
-  await renderComparison('A', hottest, below, `${fmtRange(hottest)}`, `${fmtRange(below)}`);
-  await renderComparison('B', hottest, above, `${fmtRange(hottest)}`, `${fmtRange(above)}`);
-}
-
-async function renderComparison(sectionId, centerMarket, compMarket, centerLabel, compLabel) {
-  if (!compMarket) {
-    showChartError(`chart-${sectionId}`, compMarket === null ? '该方向无相邻区间' : '无相邻区间');
-    renderTemplateRow(sectionId, null);
-    return;
-  }
-
-  let centerHist = [], compHist = [], timestamps = [];
-
-  try {
-    const [cd, rd] = await Promise.all([
-      fetchHistory(centerMarket.yesTokenId),
-      fetchHistory(compMarket.yesTokenId),
-    ]);
-
-    // Align by timestamp intersection
-    const cMap = new Map(cd.map(p => [Math.round(p.t / 3600000), p.p]));
-    const rMap = new Map(rd.map(p => [Math.round(p.t / 3600000), p.p]));
-    const allHours = new Set([...cMap.keys(), ...rMap.keys()]);
-    const sortedHours = [...allHours].sort();
-
-    // Take last 48 points
-    const window = sortedHours.slice(-48);
-    window.forEach(h => {
-      if (cMap.has(h) && rMap.has(h)) {
-        timestamps.push(h * 3600000);
-        centerHist.push(cMap.get(h));
-        compHist.push(rMap.get(h));
-      }
-    });
-  } catch (e) {
-    console.warn('[fetchHistory]', e.message);
-  }
-
-  // If no history data, use current prices as single-point fallback
-  if (centerHist.length < 2) {
-    const now = Date.now();
-    timestamps = [now - 3600000, now];
-    centerHist = [centerMarket.yesPrice, centerMarket.yesPrice];
-    compHist = [compMarket.yesPrice, compMarket.yesPrice];
-    setStatus('ok', '历史价格不可用，仅显示当前价格');
-  }
-
-  renderLegend(`legend-${sectionId}`, centerLabel, compLabel);
-  renderActualChart(`chart-${sectionId}`, centerHist, compHist, timestamps, centerLabel, compLabel);
-
-  const result = classifyPattern(centerHist, compHist);
-  renderMatchBar(`match-${sectionId}`, result);
-  renderActionCard(`action-${sectionId}`, result.pattern);
-  renderTemplateRow(sectionId, result.pattern);
-
-  // Resize after render
-  setTimeout(() => {
-    const c = _charts[`chart-${sectionId}`];
-    if (c) c.resize();
-  }, 100);
+  if (el) el.innerHTML = `<div class="error-box"><span style="font-size:1.4rem">⚠</span><span>${msg}</span></div>`;
 }
 
 function setStatus(type, msg) {
@@ -833,41 +742,230 @@ function setStatus(type, msg) {
   el.textContent = msg;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 主流程
+// ═══════════════════════════════════════════════════════════════
+async function renderComparison(sectionId, centerMarket, compMarket, centerLabel, compLabel, hoursLeft) {
+  if (!compMarket) {
+    showChartError(`chart-${sectionId}`, '该方向无相邻区间');
+    renderTemplateRow(sectionId, null);
+    return;
+  }
+
+  let greenHist = [], redHist = [], timestamps = [];
+
+  try {
+    const [cd, rd] = await Promise.all([
+      fetchHistory(centerMarket.yesTokenId),
+      fetchHistory(compMarket.yesTokenId),
+    ]);
+    const cMap = new Map(cd.map(p => [Math.round(p.t / 3600000), p.p]));
+    const rMap = new Map(rd.map(p => [Math.round(p.t / 3600000), p.p]));
+    const allH = [...new Set([...cMap.keys(), ...rMap.keys()])].sort();
+    allH.slice(-48).forEach(h => {
+      if (cMap.has(h) && rMap.has(h)) {
+        timestamps.push(h * 3600000);
+        greenHist.push(cMap.get(h));
+        redHist.push(rMap.get(h));
+      }
+    });
+  } catch (e) {
+    console.warn('[fetchHistory]', e.message);
+  }
+
+  // 不够数据时用当前价格占位
+  if (greenHist.length < 2) {
+    const now = Date.now();
+    timestamps = [now - 3600000, now];
+    greenHist = [centerMarket.yesPrice, centerMarket.yesPrice];
+    redHist   = [compMarket.yesPrice,   compMarket.yesPrice];
+  }
+
+  renderLegend(`legend-${sectionId}`, centerLabel, compLabel);
+  renderActualChart(`chart-${sectionId}`, greenHist, redHist, timestamps, centerLabel, compLabel);
+
+  const result = predictPattern(greenHist, redHist);
+  renderMatchBar(`match-${sectionId}`, result, hoursLeft);
+  renderActionCard(`action-${sectionId}`, result.pattern, hoursLeft);
+  renderTemplateRow(sectionId, result.pattern);
+
+  setTimeout(() => { const c = _charts[`chart-${sectionId}`]; if (c) c.resize(); }, 120);
+}
+
+async function loadMarket(slug, startDate, endDate) {
+  if (!slug) return;
+  _currentSlug = slug;
+  setStatus('loading', '加载市场数据...');
+
+  // Reset
+  ['A','B'].forEach(s => {
+    document.getElementById(`chart-${s}`).innerHTML = '<div class="loading-box"><div class="spinner"></div>获取价格历史...</div>';
+    document.getElementById(`match-${s}`).innerHTML = '<span class="match-label">形态预测：</span><span style="color:var(--muted);font-size:0.81rem">等待数据...</span>';
+    document.getElementById(`action-${s}`).style.display = 'none';
+    document.getElementById(`tmpl-${s}`).innerHTML = '';
+  });
+  document.getElementById('range-summary').innerHTML = '';
+  document.getElementById('tweet-banner').style.display = 'none';
+  document.getElementById('relevance-note').style.display = 'none';
+
+  // Fetch market ranges
+  let eventData;
+  try {
+    eventData = await fetchEventRanges(slug);
+  } catch (e) {
+    setStatus('err', '获取市场失败：' + e.message);
+    ['A','B'].forEach(s => showChartError(`chart-${s}`, '无法加载市场：' + e.message));
+    return;
+  }
+
+  const { markets, endDate: evEnd, title } = eventData;
+  const useEnd = endDate || evEnd;
+  const useStart = startDate;
+
+  if (markets.length < 2) {
+    setStatus('err', '区间不足'); return;
+  }
+
+  // 时间剩余
+  const now = new Date();
+  const diffMs = new Date(useEnd) - now;
+  const hoursLeft = Math.max(0, diffMs / 3600000);
+  const daysLeft = hoursLeft / 24;
+  const timeStr = hoursLeft < 1 ? `${Math.floor(hoursLeft * 60)}分钟` : `${Math.floor(hoursLeft)}h ${Math.floor((hoursLeft % 1) * 60)}m`;
+
+  // Section titles
+  const [bestA, ...rest] = [...markets].sort((a, b) => b.yesPrice - a.yesPrice);
+  const hottestIdx = markets.indexOf(bestA);
+  const below = hottestIdx > 0 ? markets[hottestIdx - 1] : null;
+  const above = hottestIdx < markets.length - 1 ? markets[hottestIdx + 1] : null;
+
+  const fmtR = m => m ? `${m.minVal}-${m.maxVal}` : '—';
+  document.getElementById('title-A').textContent = `对比 A：中心区间 ${fmtR(bestA)} vs 下方区间 ${fmtR(below)}`;
+  document.getElementById('title-B').textContent = `对比 B：中心区间 ${fmtR(bestA)} vs 上方区间 ${fmtR(above)}`;
+  document.getElementById('time-A').textContent = `剩余 ${timeStr}`;
+  document.getElementById('time-B').textContent = `剩余 ${timeStr}`;
+
+  // Relevance notice
+  const rn = document.getElementById('relevance-note');
+  rn.style.display = 'flex';
+  if (hoursLeft <= 24) {
+    rn.style.borderColor = '#00d4aa'; rn.style.background = 'rgba(0,212,170,0.07)';
+    rn.innerHTML = '<span style="font-size:1.1rem">🎯</span><span>最后 24 小时，形态即将确立。<strong style="color:#00d4aa">预测可信度最高</strong>，结合推文数量判断决策。</span>';
+  } else if (hoursLeft <= 48) {
+    rn.style.borderColor = '#ffd700'; rn.style.background = 'rgba(255,215,0,0.06)';
+    rn.innerHTML = '<span style="font-size:1.1rem">📍</span><span>距结算 ' + timeStr + '，进入<strong style="color:#ffd700">形态关键窗口（最后48h）</strong>，预测参考价值强。</span>';
+  } else {
+    rn.style.borderColor = '#8b9ab0'; rn.style.background = 'rgba(139,154,176,0.05)';
+    rn.innerHTML = '<span style="font-size:1.1rem">⏱</span><span>距结算还有 ' + timeStr + '，形态仍在演变中。<strong style="color:var(--muted)">以下预测为当前阶段参考，最后48h精度显著提升。</strong></span>';
+  }
+
+  // Range chips
+  const sumEl = document.getElementById('range-summary');
+  const addChip = (label, color, price) => {
+    const ch = document.createElement('div');
+    ch.className = 'range-chip';
+    ch.innerHTML = `<div class="range-dot" style="background:${color}"></div><span class="range-name">${label}</span><span class="range-price">${(price*100).toFixed(1)}¢</span>`;
+    sumEl.appendChild(ch);
+  };
+  if (below) addChip(`${fmtR(below)} 下方`, 'rgba(255,107,107,0.6)', below.yesPrice);
+  addChip(`${fmtR(bestA)} ★ 中心`, '#00d4aa', bestA.yesPrice);
+  if (above) addChip(`${fmtR(above)} 上方`, 'rgba(255,107,107,0.6)', above.yesPrice);
+
+  setStatus('ok', `${markets.length} 个区间 · ${new Date().toLocaleTimeString('zh-CN')}`);
+
+  // Tweet count (async, don't block)
+  if (useStart && useEnd) {
+    fetchTweetCount(slug, useStart, useEnd).then(count => {
+      if (count === null) return;
+      const bannerEl = document.getElementById('tweet-banner');
+      bannerEl.style.display = 'block';
+      document.getElementById('tb-market-title').textContent = '· ' + (title || slug);
+
+      const startMs = new Date(useStart).getTime();
+      const endMs = new Date(useEnd).getTime();
+      const totalDays = (endMs - startMs) / 86400000;
+      const elapsedDays = Math.max(0.01, (now - new Date(useStart)) / 86400000);
+      const pace = count / elapsedDays;
+      const projected = Math.round(pace * totalDays);
+      const pct = Math.min(100, Math.round(elapsedDays / totalDays * 100));
+
+      document.getElementById('tb-total').textContent = count;
+      document.getElementById('tb-pace').textContent = pace.toFixed(1);
+      document.getElementById('tb-elapsed').textContent = elapsedDays.toFixed(1);
+      document.getElementById('tb-total-days').textContent = `共 ${totalDays.toFixed(0)} 天`;
+      document.getElementById('tb-progress-fill').style.width = pct + '%';
+      document.getElementById('tb-projected').textContent = `~${projected} 条`;
+
+      // 找预测落点区间
+      const projMarket = markets.find(m => projected >= m.minVal && projected <= m.maxVal);
+      document.getElementById('tb-center').textContent = projMarket
+        ? `预测落点：${fmtR(projMarket)}`
+        : `预测总量：~${projected}（区间外）`;
+
+      // 备注
+      const gapToHottest = bestA.minVal - count;
+      const noteEl = document.getElementById('tb-note');
+      if (projMarket && projMarket.minVal === bestA.minVal) {
+        noteEl.textContent = '预测与中心落点一致 ✓';
+        noteEl.style.color = 'var(--accent)';
+      } else if (gapToHottest > 0) {
+        noteEl.textContent = `距中心下沿还差 ${gapToHottest} 条`;
+        noteEl.style.color = 'var(--warn)';
+      } else {
+        noteEl.textContent = `已超过中心上沿 ${Math.abs(gapToHottest)} 条`;
+        noteEl.style.color = 'var(--red)';
+      }
+    }).catch(() => {});
+  }
+
+  // Render both comparisons in parallel
+  await Promise.all([
+    renderComparison('A', bestA, below, fmtR(bestA), fmtR(below), hoursLeft),
+    renderComparison('B', bestA, above, fmtR(bestA), fmtR(above), hoursLeft),
+  ]);
+}
+
 async function init() {
   setStatus('loading', '加载市场列表...');
   let markets = [];
-  try {
-    markets = await fetchMarkets();
-  } catch (e) {
-    setStatus('err', '市场列表加载失败');
-    return;
+  try { markets = await fetchMarkets(); } catch (e) {
+    setStatus('err', '加载失败：' + e.message); return;
   }
 
   const sel = document.getElementById('market-sel');
   sel.innerHTML = '';
+
   if (markets.length === 0) {
-    sel.innerHTML = '<option value="">未找到活跃市场</option>';
-    setStatus('err', '未找到活跃市场');
-    return;
+    sel.innerHTML = '<option value="">未找到7天期活跃市场</option>';
+    setStatus('err', '未找到7天期活跃市场'); return;
   }
 
   markets.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.slug;
-    opt.textContent = m.title || m.slug;
+    opt.dataset.start = m.startDate || '';
+    opt.dataset.end = m.endDate || '';
+    const daysLeft = m.endDate ? Math.round((new Date(m.endDate) - new Date()) / 86400000 * 10) / 10 : '?';
+    opt.textContent = `${m.title || m.slug}  （${daysLeft}天后到期）`;
     sel.appendChild(opt);
   });
 
-  sel.addEventListener('change', () => loadMarket(sel.value));
-  await loadMarket(markets[0].slug);
+  sel.addEventListener('change', () => {
+    const opt = sel.options[sel.selectedIndex];
+    loadMarket(sel.value, opt.dataset.start, opt.dataset.end);
+  });
+
+  // 自动选最快到期的那一期
+  const firstOpt = sel.options[0];
+  await loadMarket(markets[0].slug, firstOpt.dataset.start, firstOpt.dataset.end);
 }
 
 function refresh() {
-  const slug = document.getElementById('market-sel').value;
-  if (slug) loadMarket(slug);
+  const sel = document.getElementById('market-sel');
+  const opt = sel.options[sel.selectedIndex];
+  if (sel.value) loadMarket(sel.value, opt?.dataset.start, opt?.dataset.end);
 }
 
-// Resize all charts on window resize
 window.addEventListener('resize', () => {
   Object.values(_charts).forEach(c => { try { c.resize(); } catch {} });
 });
