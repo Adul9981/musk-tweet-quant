@@ -30,23 +30,28 @@ function candidateSlugs() {
   for (let d = -7; d <= 7; d++) {
     const start = new Date(now.getTime() + d * 86400000);
     const end   = new Date(start.getTime() + 7 * 86400000);
-    const slug  = `elon-musk-of-tweets-${MONTHS[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTHS[end.getUTCMonth()]}-${end.getUTCDate()}`;
+    const slug  = `elon-musk-of-tweets-${MONTHS[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTHS[end.getUTCMonth()]}-${end.getUTCDate()}-${end.getUTCFullYear()}`;
     if (!seen.has(slug)) { seen.add(slug); slugs.push(slug); }
   }
   return slugs;
 }
 
 async function fetchEventBySlug(slug) {
-  try {
-    const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const events = Array.isArray(data) ? data : data.data || [];
-    return events.find(e => e.slug === slug) || null;
-  } catch { return null; }
+  const variants = [...new Set([slug, slug.replace(/-\d{4}$/, '')])];
+  for (const s of variants) {
+    try {
+      const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(s)}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const events = Array.isArray(data) ? data : data.data || [];
+      const found = events.find(e => e.slug === s) || events[0];
+      if (found) return found;
+    } catch { /* try next */ }
+  }
+  return null;
 }
 
 async function fetchActiveMarkets() {
@@ -105,10 +110,11 @@ async function fetchActiveMarkets() {
 
 // title → slug：e.g. "Elon Musk # tweets May 26 - June 2, 2026?" → "elon-musk-of-tweets-may-26-june-2"
 function titleToSlug(title) {
-  const m = title.match(/tweets\s+(\w+)\s+(\d+)\s*[-–]\s*(\w+)\s+(\d+)/i);
+  const m = title.match(/tweets\s+(\w+)\s+(\d+)\s*[-–]\s*(\w+)\s+(\d+)(?:\s*,\s*(\d{4}))?/i);
   if (!m) return '';
-  const [, m1, d1, m2, d2] = m;
-  return `elon-musk-of-tweets-${m1.toLowerCase()}-${d1}-${m2.toLowerCase()}-${d2}`;
+  const [, m1, d1, m2, d2, y] = m;
+  const year = y || String(new Date().getUTCFullYear());
+  return `elon-musk-of-tweets-${m1.toLowerCase()}-${d1}-${m2.toLowerCase()}-${d2}-${year}`;
 }
 
 // ── 数据源 A：xtracker posts API（主力）────────────────────

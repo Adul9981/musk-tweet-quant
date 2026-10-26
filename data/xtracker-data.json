@@ -1,0 +1,112 @@
+{
+  "success": true,
+  "updatedAt": "2026-06-03T00:00:00.000Z",
+  "data": [
+    {
+      "id": "market-may26-june2",
+      "title": "Elon Musk # tweets May 26 - June 2, 2026?",
+      "startDate": "2026-05-26T16:00:00.000Z",
+      "endDate": "2026-06-02T15:59:59.000Z",
+      "marketLink": "https://polymarket.com/event/elon-musk-of-tweets-may-26-june-2",
+      "stats": {
+        "total": 174,
+        "pace": 25,
+        "percentComplete": 100,
+        "daysRemaining": 0,
+        "hoursRemaining": 0,
+        "todayTotal": 19,
+        "daysTotal": 7,
+        "daily": [
+          {
+            "date": "2026-05-26",
+            "count": 14
+          },
+          {
+            "date": "2026-05-27",
+            "count": 28
+          },
+          {
+            "date": "2026-05-28",
+            "count": 22
+          },
+          {
+            "date": "2026-05-29",
+            "count": 27
+          },
+          {
+            "date": "2026-05-30",
+            "count": 19
+          },
+          {
+            "date": "2026-06-01",
+            "count": 45
+          },
+          {
+            "date": "2026-06-02",
+            "count": 19
+          }
+        ]
+      }
+    },
+    {
+      "id": "market-may29-june5",
+      "title": "Elon Musk # tweets May 29 - June 5, 2026?",
+      "startDate": "2026-05-29T16:00:00.000Z",
+      "endDate": "2026-06-05T15:59:59.000Z",
+      "marketLink": "https://polymarket.com/event/elon-musk-of-tweets-may-29-june-5",
+      "stats": {
+        "total": 106,
+        "pace": 21,
+        "percentComplete": 57,
+        "daysRemaining": 3,
+        "hoursRemaining": 8,
+        "todayTotal": 19,
+        "daysTotal": 7,
+        "daily": [
+          {
+            "date": "2026-05-29",
+            "count": 27
+          },
+          {
+            "date": "2026-05-30",
+            "count": 19
+          },
+          {
+            "date": "2026-05-31",
+            "count": 22
+          },
+          {
+            "date": "2026-06-01",
+            "count": 45
+          },
+          {
+            "date": "2026-06-02",
+            "count": 19
+          }
+        ]
+      }
+    },
+    {
+      "id": "market-june2-june9",
+      "title": "Elon Musk # tweets June 2 - June 9, 2026?",
+      "startDate": "2026-06-02T16:00:00.000Z",
+      "endDate": "2026-06-09T15:59:59.000Z",
+      "marketLink": "https://polymarket.com/event/elon-musk-of-tweets-june-2-june-9",
+      "stats": {
+        "total": 12,
+        "pace": 30,
+        "percentComplete": 14,
+        "daysRemaining": 6,
+        "hoursRemaining": 10,
+        "todayTotal": 12,
+        "daysTotal": 7,
+        "daily": [
+          {
+            "date": "2026-06-02",
+            "count": 12
+          }
+        ]
+      }
+    }
+  ]
+}

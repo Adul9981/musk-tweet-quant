@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design system — SAP / Apple style (highest visual principle)
+   Light #f5f5f7 canvas, white rounded cards, one restrained accent (#0071e3),
+   system font stack, generous whitespace, mobile-first.
+   Dark-theme utilities are re-mapped here so the whole app flips to light
+   without touching every JSX line; semantic colors are kept for status only.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --apple-bg: #f5f5f7;
+  --apple-card: #ffffff;
+  --apple-ink: #1d1d1f;
+  --apple-sub: #6e6e73;
+  --apple-line: #e5e5ea;
+  --apple-accent: #0e9486;
+  --apple-accent-strong: #11a799;
+  --apple-accent-soft: #dff3f0;
+  --apple-accent-line: #a8ddd4;
+  --apple-green: #1e8e3e;
+  --apple-amber: #b45309;
+  --apple-red: #c92a2a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,26 +35,29 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #0d1829;
-  color: #cbd5e1;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: var(--apple-bg);
+  color: var(--apple-ink);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01', 'cv01';
 }
 
-/* Scrollbar — thin, muted */
+/* Scrollbar — thin, light */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111f30;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #243d5e;
+  background: #c7c7cc;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2e5488;
+  background: #a8a8ad;
 }
 
 input[type='number']::-webkit-inner-spin-button,
@@ -46,6 +72,516 @@ input:focus {
   outline: none;
 }
 
+::selection {
+  background: rgba(0, 113, 227, 0.16);
+}
+
 .font-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+}
+
+/* ── Surfaces: every dark card/panel becomes a white Apple card ────────────── */
+.bg-\[\#0d0f1e\],
+.bg-\[\#080f1a\],
+.bg-\[\#0c1525\],
+.bg-\[\#10122a\],
+.bg-\[\#111e30\],
+.bg-\[\#111f30\],
+.bg-\[\#11202f\],
+.bg-\[\#13152e\],
+.bg-\[\#141414\],
+.bg-\[\#162538\],
+.bg-\[\#1a1a2e\],
+.bg-slate-700\/60,
+.bg-slate-700\/50,
+.bg-slate-700\/40,
+.bg-slate-700\/30,
+.bg-slate-700\/20,
+.bg-slate-700\/10,
+.bg-slate-800\/90,
+.bg-slate-800\/80,
+.bg-slate-800\/70,
+.bg-slate-800\/60,
+.bg-slate-800\/50,
+.bg-slate-800\/40,
+.bg-slate-800\/30,
+.bg-slate-800\/20,
+.bg-slate-800\/10,
+.bg-slate-900\/90,
+.bg-slate-900\/80,
+.bg-slate-900\/70,
+.bg-slate-900\/60,
+.bg-slate-900\/50,
+.bg-slate-900\/40,
+.bg-slate-900\/30,
+.bg-slate-900\/20,
+.bg-slate-900\/10,
+.bg-slate-600\/40,
+.bg-slate-600\/30,
+.bg-slate-600\/20,
+.bg-gray-900\/50,
+.bg-gray-900\/40,
+.bg-gray-800\/60,
+.bg-gray-800\/50,
+.bg-gray-800\/40,
+.bg-gray-800\/30,
+.bg-gray-800\/20,
+.bg-gray-700\/40,
+.bg-gray-700\/30,
+.bg-emerald-950\/60,
+.bg-rose-950\/60,
+.bg-amber-950\/30 {
+  background-color: var(--apple-card) !important;
+}
+
+/* Secondary surfaces — subtle gray tint instead of dark panels */
+.bg-slate-800,
+.bg-slate-900,
+.bg-slate-700,
+.bg-slate-600,
+.bg-gray-800,
+.bg-gray-900,
+.bg-gray-700 {
+  background-color: #f2f2f4 !important;
+}
+
+.bg-white {
+  background-color: var(--apple-card) !important;
+}
+
+/* Card look: soft border + gentle Apple shadow */
+.bg-\[\#0d0f1e\],
+.bg-\[\#080f1a\],
+.bg-\[\#0c1525\],
+.bg-\[\#10122a\],
+.bg-\[\#111e30\],
+.bg-\[\#111f30\],
+.bg-\[\#11202f\],
+.bg-\[\#13152e\],
+.bg-\[\#141414\],
+.bg-\[\#162538\],
+.bg-\[\#1a1a2e\],
+.bg-slate-800\/60,
+.bg-slate-800\/50,
+.bg-slate-800\/40,
+.bg-slate-800\/30,
+.bg-slate-900\/60,
+.bg-slate-900\/50,
+.bg-slate-900\/40,
+.bg-slate-900\/30,
+.bg-gray-900\/50,
+.bg-gray-800\/50 {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Borders: dark lines → light hairlines ─────────────────────────────────── */
+.border-slate-700\/60,
+.border-slate-700\/50,
+.border-slate-700\/40,
+.border-slate-700\/30,
+.border-slate-700\/20,
+.border-slate-800\/80,
+.border-slate-800\/60,
+.border-slate-800\/40,
+.border-slate-800\/30,
+.border-slate-800\/20,
+.border-slate-600\/50,
+.border-slate-600\/40,
+.border-slate-600\/30,
+.border-slate-600\/20,
+.border-gray-700\/50,
+.border-gray-700\/40,
+.border-gray-700\/30,
+.border-gray-800\/60,
+.border-gray-800\/40,
+.border-gray-800\/30 {
+  border-color: var(--apple-line) !important;
+}
+
+.border-slate-700,
+.border-slate-600,
+.border-slate-800,
+.border-gray-700,
+.border-gray-800 {
+  border-color: var(--apple-line) !important;
+}
+
+/* ── Text: dark-theme grays → Apple ink scale ──────────────────────────────── */
+.text-white {
+  color: var(--apple-ink) !important;
+}
+
+.text-slate-100,
+.text-slate-200,
+.text-gray-200,
+.text-gray-100 {
+  color: #1d1d1f !important;
+}
+
+.text-slate-300,
+.text-gray-300 {
+  color: #3a3a3c !important;
+}
+
+.text-slate-400,
+.text-gray-400 {
+  color: var(--apple-sub) !important;
+}
+
+.text-slate-500,
+.text-gray-500 {
+  color: #86868b !important;
+}
+
+.text-slate-600,
+.text-gray-600 {
+  color: var(--apple-sub) !important;
+}
+
+.text-gray-900 {
+  color: var(--apple-ink) !important;
+}
+
+/* ── Accent: teal → Apple blue (single restrained accent) ──────────────────── */
+.text-teal-300,
+.text-teal-400,
+.text-teal-200,
+.text-cyan-400 {
+  color: var(--apple-accent) !important;
+}
+
+.text-teal-500,
+.text-teal-600 {
+  color: #0a68d6 !important;
+}
+
+.bg-teal-500\/8,
+.bg-teal-500\/10,
+.bg-teal-500\/15,
+.bg-teal-500\/20,
+.bg-teal-500\/25,
+.bg-teal-500\/30,
+.bg-teal-500\/40,
+.bg-teal-400\/20 {
+  background-color: var(--apple-accent-soft) !important;
+}
+
+.border-teal-500\/20,
+.border-teal-500\/25,
+.border-teal-500\/30,
+.border-teal-500\/35,
+.border-teal-500\/40,
+.border-teal-400\/30,
+.border-teal-400\/40 {
+  border-color: #b7d9f7 !important;
+}
+
+/* ── Semantic: emerald (positive) → Apple green ────────────────────────────── */
+.text-emerald-300,
+.text-emerald-200,
+.text-emerald-500,
+.text-emerald-400 {
+  color: var(--apple-green) !important;
+}
+
+.bg-emerald-500\/6,
+.bg-emerald-500\/8,
+.bg-emerald-500\/10,
+.bg-emerald-500\/15,
+.bg-emerald-500\/20,
+.bg-emerald-500\/25,
+.bg-emerald-400\/20 {
+  background-color: #eaf7ef !important;
+}
+
+.border-emerald-500\/20,
+.border-emerald-500\/25,
+.border-emerald-500\/30,
+.border-emerald-500\/35,
+.border-emerald-500\/40,
+.border-emerald-700\/30 {
+  border-color: #a7e3b5 !important;
+}
+
+/* ── Semantic: amber / yellow (warning) ────────────────────────────────────── */
+.text-amber-300,
+.text-amber-400,
+.text-amber-500,
+.text-amber-200,
+.text-yellow-300,
+.text-yellow-400,
+.text-yellow-200 {
+  color: var(--apple-amber) !important;
+}
+
+.bg-amber-500\/6,
+.bg-amber-500\/8,
+.bg-amber-500\/10,
+.bg-amber-500\/15,
+.bg-amber-500\/20,
+.bg-yellow-500\/8,
+.bg-yellow-500\/10,
+.bg-yellow-500\/20 {
+  background-color: #fdf3e3 !important;
+}
+
+.border-amber-500\/20,
+.border-amber-500\/25,
+.border-amber-500\/30,
+.border-amber-500\/40,
+.border-yellow-500\/25,
+.border-yellow-500\/30 {
+  border-color: #f3d9a4 !important;
+}
+
+/* ── Semantic: rose / red (danger) ─────────────────────────────────────────── */
+.text-rose-300,
+.text-rose-400,
+.text-rose-200,
+.text-red-400,
+.text-red-500 {
+  color: var(--apple-red) !important;
+}
+
+.bg-rose-500\/6,
+.bg-rose-500\/8,
+.bg-rose-500\/10,
+.bg-rose-500\/20,
+.bg-rose-500\/25 {
+  background-color: #fdeaea !important;
+}
+
+.border-rose-500\/20,
+.border-rose-500\/25,
+.border-rose-500\/30,
+.border-rose-500\/40,
+.border-rose-500\/50 {
+  border-color: #f5b8b8 !important;
+}
+
+/* ── Semantic: violet (lottery / special) → muted violet on light ──────────── */
+.text-violet-300,
+.text-violet-400,
+.text-violet-200,
+.text-purple-400,
+.text-indigo-300 {
+  color: #7048e8 !important;
+}
+
+.bg-violet-500\/8,
+.bg-violet-500\/10,
+.bg-violet-500\/15,
+.bg-violet-500\/20,
+.bg-violet-900\/30,
+.bg-purple-500\/10 {
+  background-color: #f1ecfd !important;
+}
+
+.border-violet-500\/20,
+.border-violet-500\/25,
+.border-violet-500\/30,
+.border-violet-500\/35,
+.border-violet-400\/30,
+.border-violet-700\/30,
+.border-purple-500\/20 {
+  border-color: #d8cdf7 !important;
+}
+
+/* ── Hover states → light equivalents ──────────────────────────────────────── */
+.hover\:bg-slate-700:hover,
+.hover\:bg-slate-800:hover,
+.hover\:bg-slate-900:hover,
+.hover\:bg-gray-800:hover,
+.hover\:bg-gray-700:hover {
+  background-color: #e9e9ec !important;
+}
+
+.hover\:bg-white\/5:hover,
+.hover\:bg-white\/4:hover,
+.hover\:bg-white\/10:hover {
+  background-color: #f2f2f4 !important;
+}
+
+.hover\:text-slate-300:hover,
+.hover\:text-slate-200:hover,
+.hover\:text-slate-100:hover,
+.hover\:text-white:hover {
+  color: #1d1d1f !important;
+}
+
+.hover\:text-teal-400:hover,
+.hover\:text-teal-300:hover,
+.hover\:text-emerald-400:hover {
+  color: #0a68d6 !important;
+}
+
+.hover\:border-slate-600:hover,
+.hover\:border-slate-500:hover {
+  border-color: #c7c7cc !important;
+}
+
+/* ── Buttons with saturated fills keep white text ──────────────────────────── */
+.bg-violet-600 .text-white,
+.bg-violet-500 .text-white,
+.bg-violet-700 .text-white,
+.bg-teal-500 .text-white,
+.bg-teal-600 .text-white,
+.bg-emerald-500 .text-white,
+.bg-emerald-600 .text-white,
+.bg-emerald-700 .text-white,
+.bg-emerald-400 .text-white,
+.bg-rose-500 .text-white,
+.bg-rose-600 .text-white,
+.bg-red-500 .text-white,
+.bg-red-600 .text-white,
+.bg-amber-500 .text-white,
+.bg-amber-600 .text-white,
+.bg-blue-500 .text-white,
+.bg-blue-600 .text-white,
+.bg-indigo-600 .text-white,
+.bg-gradient-to-r .text-white,
+.bg-gradient-to-br .text-white,
+.bg-gradient-to-t .text-white,
+.bg-gradient-to-b .text-white,
+.bg-\[\#cc7000\] .text-white,
+.bg-\[\#e69500\] .text-white,
+.bg-\[\#f5b833\] .text-white,
+.bg-\[\#f5d066\] .text-white,
+.bg-\[\#f5e6a3\] .text-white {
+  color: #ffffff !important;
+}
+
+/* Heatmap cells: text stays white on saturated emerald blocks */
+.bg-emerald-400 .text-emerald-200,
+.bg-emerald-600 .text-emerald-200,
+.bg-emerald-700 .text-emerald-200,
+.bg-emerald-800 .text-emerald-200,
+.bg-emerald-400 .text-slate-100,
+.bg-emerald-600 .text-slate-100,
+.bg-emerald-700 .text-slate-100,
+.bg-emerald-400 .text-slate-200,
+.bg-emerald-600 .text-slate-200,
+.bg-emerald-700 .text-slate-200,
+.bg-emerald-400 .text-slate-400,
+.bg-emerald-600 .text-slate-400,
+.bg-emerald-700 .text-slate-400,
+.bg-emerald-800 .text-slate-400 {
+  color: #ffffff !important;
+}
+
+/* Solid accent buttons → Apple blue */
+.bg-violet-600 {
+  background-color: var(--apple-accent) !important;
+}
+
+.hover\:bg-teal-500:hover {
+  background-color: #0a84ff !important;
+}
+
+/* Dark gradient panels → flat white (SAP / Apple light cards) */
+.from-slate-900,
+.from-slate-800,
+.from-gray-900,
+.from-gray-950,
+.via-\[\#162538\],
+.via-\[\#111e30\],
+.via-\[\#13152e\],
+.via-\[\#0c1525\],
+.to-\[\#0f1a28\],
+.to-\[\#111f30\],
+.to-slate-900,
+.to-gray-950,
+.to-\[\#0d0f1e\] {
+  --tw-gradient-stops: #ffffff, #ffffff, #ffffff !important;
+}
+
+.from-slate-900,
+.from-slate-800,
+.from-gray-900,
+.from-gray-950 {
+  --tw-gradient-from: #ffffff !important;
+}
+
+.to-\[\#0f1a28\],
+.to-\[\#111f30\],
+.to-slate-900,
+.to-gray-950 {
+  --tw-gradient-to: #ffffff !important;
+}
+
+/* ── Form controls: light fields, blue focus ───────────────────────────────── */
+input,
+select,
+textarea {
+  color: var(--apple-ink);
+  background-color: var(--apple-card);
+  border-color: var(--apple-line);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a1a1a6;
+}
+
+.focus\:border-teal-500:focus,
+.focus\:border-teal-400:focus,
+.focus\:border-emerald-500:focus {
+  border-color: var(--apple-accent) !important;
+}
+
+.focus\:ring-teal-500\/30:focus,
+.focus\:ring-teal-400\/30:focus,
+.focus\:ring-emerald-500\/30:focus {
+  --tw-ring-color: rgba(0, 113, 227, 0.25) !important;
+}
+
+/* ── Recharts defaults: light grid/tooltip ─────────────────────────────────── */
+.recharts-cartesian-axis-tick text {
+  fill: #86868b;
+  font-size: 11px;
+}
+
+.recharts-tooltip-wrapper {
+  font-size: 12px;
+}
+
+.recharts-default-tooltip {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid var(--apple-line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
+  color: var(--apple-ink) !important;
+}
+
+/* ── Accent theme is variable-driven (switch = update :root once) ──────────── */
+:root {
+  --apple-accent: #0e9486;
+  --apple-accent-strong: #11a799;
+  --apple-accent-soft: #dff3f0;
+  --apple-accent-line: #a8ddd4;
+}
+
+.bg-\[\#0071e3\] {
+  background-color: var(--apple-accent) !important;
+}
+
+.hover\:bg-\[\#0a84ff\]:hover {
+  background-color: var(--apple-accent-strong) !important;
+}
+
+.bg-\[\#e8f1fd\] {
+  background-color: var(--apple-accent-soft) !important;
+}
+
+.text-\[\#0071e3\] {
+  color: var(--apple-accent) !important;
+}
+
+.border-\[\#0071e3\] {
+  border-color: var(--apple-accent) !important;
+}
+
+.border-\[\#b7d9f7\] {
+  border-color: var(--apple-accent-line) !important;
 }

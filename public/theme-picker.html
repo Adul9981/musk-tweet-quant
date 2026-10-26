@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="teal">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主题色选择 · Apple iPhone 系列</title>
+<style>
+:root {
+  --bg: #f5f5f7; --card: #ffffff; --ink: #1d1d1f; --sub: #6e6e73; --line: #e5e5ea;
+  --green: #1e8e3e; --amber: #b45309; --red: #c92a2a;
+}
+/* ① 薄荷绿 · iPhone 11 / 13 绿 */
+html[data-theme="mint"] { --accent:#0AA06E; --accent-strong:#0BB27A; --soft:#DDF4EA; --accent-line:#A9E3CB; }
+/* ② 粉色 · iPhone 13 粉 */
+html[data-theme="pink"] { --accent:#E06C9F; --accent-strong:#EA7FAF; --soft:#FCE8F0; --accent-line:#F3BED3; }
+/* ③ 紫色 · iPhone 11 / 12 紫 */
+html[data-theme="purple"] { --accent:#8E5BD6; --accent-strong:#9D6EE0; --soft:#F0E8FB; --accent-line:#D4C2F3; }
+/* ④ 珊瑚 · iPhone XR 珊瑚 */
+html[data-theme="coral"] { --accent:#EE6A4E; --accent-strong:#F47B61; --soft:#FDEBE5; --accent-line:#F6C4B8; }
+/* ⑤ 金色 · iPhone 6 金 */
+html[data-theme="gold"] { --accent:#B98A2E; --accent-strong:#C89A3C; --soft:#F8F0DC; --accent-line:#E6D3A2; }
+/* ⑥ 蓝绿 · iPhone 16 蓝绿 */
+html[data-theme="teal"] { --accent:#0E9486; --accent-strong:#11A799; --soft:#DFF3F0; --accent-line:#A8DDD4; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding: 28px 16px 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 8px; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.sub { color: var(--sub); font-size: 13px; margin-top: 6px; }
+.selected {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 14px; padding: 7px 14px; border-radius: 999px;
+  background: var(--soft); border: 1px solid var(--accent-line); color: var(--accent);
+  font-size: 13px; font-weight: 600; transition: all .25s;
+}
+.selected .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.hint {
+  margin: 22px 0 18px; padding: 12px 16px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line);
+  color: var(--sub); font-size: 13px; text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.05);
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+.card {
+  background: var(--card); border: 2px solid var(--line); border-radius: 20px;
+  padding: 18px; cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.05);
+}
+.card:hover { transform: translateY(-2px); }
+.card.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--soft), 0 10px 28px rgba(0,0,0,.08); }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.card-title { font-size: 16px; font-weight: 700; }
+.card-origin { font-size: 11px; color: var(--sub); font-weight: 500; }
+.swatches { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.sw { width: 34px; height: 34px; border-radius: 10px; }
+.sw.main { background: var(--accent); box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 35%, transparent); }
+.sw.soft { background: var(--soft); border: 1px solid var(--accent-line); }
+.sw.line { background: var(--accent-line); }
+.sw.g { background: var(--green); }
+.sw.a { background: var(--amber); }
+.sw.r { background: var(--red); }
+.demo { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: var(--bg); }
+.demo-nav { display: flex; gap: 6px; margin-bottom: 12px; }
+.pill {
+  padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 600;
+}
+.pill.active { background: var(--soft); color: var(--accent); border: 1px solid var(--accent-line); }
+.pill.idle { color: var(--sub); background: var(--card); border: 1px solid var(--line); }
+.demo-kpi { display: flex; gap: 10px; margin-bottom: 12px; }
+.kpi {
+  flex: 1; background: var(--card); border: 1px solid var(--line);
+  border-radius: 14px; padding: 12px; text-align: center;
+}
+.kpi .lbl { font-size: 9px; color: var(--sub); text-transform: uppercase; letter-spacing: .08em; }
+.kpi .num { font-size: 22px; font-weight: 800; font-family: "SF Mono", ui-monospace, Menlo, monospace; margin-top: 3px; color: var(--ink); }
+.kpi .num.accent { color: var(--accent); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); color: #fff; border: 0; border-radius: 999px;
+  padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .2s;
+}
+.btn:hover { background: var(--accent-strong); }
+.bar-row { margin-top: 12px; }
+.bar-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--sub); margin-bottom: 5px; }
+.bars { display: flex; align-items: flex-end; gap: 6px; height: 54px; }
+.bar { flex: 1; border-radius: 4px 4px 0 0; }
+.bar.accent { background: var(--accent); }
+.bar.green { background: var(--green); }
+.bar.ghost { background: var(--accent-line); opacity: .55; }
+.signals { display: flex; gap: 12px; margin-top: 12px; font-size: 10px; color: var(--sub); align-items: center; }
+.sig { display: inline-flex; align-items: center; gap: 4px; }
+.sig i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.choose {
+  margin-top: 14px; width: 100%; padding: 10px; border-radius: 12px;
+  background: var(--soft); border: 1px solid var(--accent-line); color: var(--accent);
+  font-size: 13px; font-weight: 700; text-align: center;
+}
+footer { margin-top: 26px; text-align: center; color: var(--sub); font-size: 12px; line-height: 1.7; }
+@media (max-width: 720px) { h1 { font-size: 21px; } .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>主题色选择 · Apple iPhone 系列灵感</h1>
+    <p class="sub">保持 SAP / Apple 浅色风格不变，只换强调色。点击卡片即时预览，确定后整站统一切换。</p>
+    <div class="selected"><span class="dot"></span><span id="sel-name">蓝绿 · iPhone 16 蓝绿</span></div>
+  </header>
+
+  <div class="hint">💡 预览说明：绿 / 琥珀 / 红三个"信号色"在所有主题下保持不变（它们只表达 正常 / 注意 / 危险），不会跟随主题切换。</div>
+
+  <div class="grid" id="grid">
+    <!-- ① 薄荷绿 -->
+    <div class="card" data-theme="mint" data-name="薄荷绿 · iPhone 11/13 绿">
+      <div class="card-head"><span class="card-title">薄荷绿</span><span class="card-origin">iPhone 11 / 13 绿 · 清新治愈</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+
+    <!-- ② 粉色 -->
+    <div class="card" data-theme="pink" data-name="粉色 · iPhone 13 粉">
+      <div class="card-head"><span class="card-title">粉色</span><span class="card-origin">iPhone 13 粉 · 温柔讨喜</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+
+    <!-- ③ 紫色 -->
+    <div class="card" data-theme="purple" data-name="紫色 · iPhone 11/12 紫">
+      <div class="card-head"><span class="card-title">紫色</span><span class="card-origin">iPhone 11 / 12 紫 · 科技高级感</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+
+    <!-- ④ 珊瑚 -->
+    <div class="card" data-theme="coral" data-name="珊瑚 · iPhone XR 珊瑚">
+      <div class="card-head"><span class="card-title">珊瑚</span><span class="card-origin">iPhone XR 珊瑚 · 活力醒目</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+
+    <!-- ⑤ 金色 -->
+    <div class="card" data-theme="gold" data-name="金色 · iPhone 6 金">
+      <div class="card-head"><span class="card-title">金色</span><span class="card-origin">iPhone 6 金 · 低调奢华</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+
+    <!-- ⑥ 蓝绿 -->
+    <div class="card active" data-theme="teal" data-name="蓝绿 · iPhone 16 蓝绿">
+      <div class="card-head"><span class="card-title">蓝绿</span><span class="card-origin">iPhone 16 蓝绿 · 清爽现代</span></div>
+      <div class="swatches"><div class="sw main"></div><div class="sw soft"></div><div class="sw line"></div><div class="sw g"></div><div class="sw a"></div><div class="sw r"></div></div>
+      <div class="demo">
+        <div class="demo-nav"><span class="pill active">市场概览</span><span class="pill idle">概率分析</span><span class="pill idle">热力图</span></div>
+        <div class="demo-kpi">
+          <div class="kpi"><div class="lbl">推文数</div><div class="num accent">142</div></div>
+          <div class="kpi"><div class="lbl">时速</div><div class="num">21</div></div>
+        </div>
+        <button class="btn">进入市场 ↗</button>
+        <div class="bar-row">
+          <div class="bar-labels"><span>今日发推节奏</span><span>基线 43 条/天</span></div>
+          <div class="bars"><div class="bar accent" style="height:62%"></div><div class="bar green" style="height:84%"></div><div class="bar ghost" style="height:38%"></div><div class="bar ghost" style="height:26%"></div><div class="bar green" style="height:52%"></div></div>
+        </div>
+        <div class="signals"><span class="sig"><i style="background:var(--green)"></i>正常</span><span class="sig"><i style="background:var(--amber)"></i>注意</span><span class="sig"><i style="background:var(--red)"></i>危险</span><span style="margin-left:auto">信号色不变</span></div>
+      </div>
+      <div class="choose">选择这个主题</div>
+    </div>
+  </div>
+
+  <footer>
+    选中后告诉我主题名即可，我会把主站、落地页、形态对比页统一切换为该强调色。<br>
+    当前预览页不影响线上版本，放心切换比较。
+  </footer>
+</div>
+
+<script>
+  const cards = document.querySelectorAll('.card');
+  const selName = document.getElementById('sel-name');
+  const NAME_MAP = {
+    mint: '薄荷绿 · iPhone 11/13 绿', pink: '粉色 · iPhone 13 粉', purple: '紫色 · iPhone 11/12 紫',
+    coral: '珊瑚 · iPhone XR 珊瑚', gold: '金色 · iPhone 6 金', teal: '蓝绿 · iPhone 16 蓝绿',
+  };
+  function apply(theme, name) {
+    document.documentElement.dataset.theme = theme;
+    selName.textContent = name;
+    cards.forEach(c => c.classList.toggle('active', c.dataset.theme === theme));
+  }
+  cards.forEach(card => {
+    card.addEventListener('click', () => apply(card.dataset.theme, card.dataset.name));
+  });
+</script>
+</body>
+</html>

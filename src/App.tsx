@@ -14,7 +14,7 @@ import {
   Gauge,
   BookOpen,
   Wallet,
-  Bell,
+  ChartLine,
 } from 'lucide-react';
 import { TweetHeatmap } from './components/TweetHeatmap';
 import { StrategyGuide } from './components/StrategyGuide';
@@ -205,7 +205,7 @@ function candidateElonSlugs(): string[] {
   for (let d = -14; d <= 10; d++) {
     const start = new Date(now.getTime() + d * 86400000);
     const end   = new Date(start.getTime() + 7 * 86400000);
-    const slug = `elon-musk-of-tweets-${MONTH_NAMES[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTH_NAMES[end.getUTCMonth()]}-${end.getUTCDate()}`;
+    const slug = `elon-musk-of-tweets-${MONTH_NAMES[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTH_NAMES[end.getUTCMonth()]}-${end.getUTCDate()}-${end.getUTCFullYear()}`;
     if (!seen.has(slug)) { seen.add(slug); slugs.push(slug); }
   }
   return slugs;
@@ -311,7 +311,7 @@ async function discoverElonMarkets(): Promise<MarketData[]> {
   const foundSlugs = new Set<string>();
 
   const results = await Promise.allSettled(
-    candidates.map(slug =>
+    candidates.flatMap(slug => [...new Set([slug, slug.replace(/-\d{4}$/, '')])]).map(slug =>
       fetch(`${GAMMA_BASE}/events?slug=${encodeURIComponent(slug)}`, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(8000),
@@ -432,7 +432,7 @@ async function buildClobSnapshots(market: MarketData): Promise<PriceSnapshot[]> 
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'tweet' | 'guide' | 'positions' | 'telegram'>('market');
+  const [activeTab, setActiveTab] = useState<'market' | 'analysis' | 'heatmap' | 'morphology' | 'tweet' | 'guide' | 'positions' | 'telegram'>('market');
   const [gistData, setGistData] = useState<MarketData[]>([]);
   const [trackings, setTrackings] = useState<Tracking[]>([]);
   const [selectedMarketIndex, setSelectedMarketIndex] = useState(0);
@@ -695,6 +695,25 @@ export default function App() {
       clearInterval(histInterval);
       clearInterval(heatmapInterval);
     };
+  }, []);
+
+  // 页面访问打点（/api/track -> VPS 统计服务，与电竞情报库同款设计）
+  useEffect(() => {
+    try {
+      let vid = '';
+      try {
+        vid = localStorage.getItem('musk_vid') || '';
+        if (!vid) {
+          vid = 'm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+          localStorage.setItem('musk_vid', vid);
+        }
+      } catch { /* ignore */ }
+      fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: window.location.pathname, ref: document.referrer || '', visitor: vid }),
+      });
+    } catch { /* ignore */ }
   }, []);
 
   const activeMarkets = useMemo(() => {
@@ -1159,30 +1178,34 @@ export default function App() {
   // Alert system removed
 
   return (
-    <div className="min-h-screen bg-[#0d0f1e]">
+    <div className="min-h-screen bg-gradient-to-b from-[#eaf5f1] via-[#f5f5f7] to-[#f5f5f7]">
       {/* ── Header ── */}
-      <header className="bg-[#10122a]/98 backdrop-blur border-b border-slate-700/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-3">
+      <header className="bg-white/85 backdrop-blur-xl border-b border-[#e5e5ea] sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-400/40 flex items-center justify-center">
-                <Radio className="w-4 h-4 text-teal-400" />
+              <div className="w-9 h-9 rounded-[10px] bg-[#0071e3] shadow-sm flex items-center justify-center">
+                <Radio className="w-4.5 h-4.5 text-[#fff]" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-white tracking-wide">马斯克推文预测市场</h1>
-                <p className="text-[10px] text-slate-500 tracking-widest uppercase">Musk Tweet Prediction</p>
+                <h1 className="text-sm font-bold text-[#1d1d1f] tracking-tight">马斯克推文预测量化</h1>
+                <p className="text-[10px] text-[#86868b] tracking-[0.14em] uppercase">Musk Tweet Quant</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded text-xs font-medium bg-teal-500/10 border border-teal-500/30 text-teal-400">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ef] border border-[#a7e3b5] text-[#1e8e3e]">
+                <CheckCircle className="w-3 h-3" />
+                免费开放
+              </span>
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#e8f1fd] border border-[#b7d9f7] text-[#0071e3]">
                 {phase.name}
               </span>
               <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
                 {/* Live clock */}
-                <div className="flex items-center gap-1.5 text-slate-300">
-                  <Clock className="w-3 h-3 text-teal-500" />
+                <div className="flex items-center gap-1.5 text-[#3a3a3c]">
+                  <Clock className="w-3 h-3 text-[#0071e3]" />
                   <span>{now.toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                  <span className="text-slate-600">BJ</span>
+                  <span className="text-[#86868b]">BJ</span>
                 </div>
                 {/* Data freshness */}
                 {lastUpdated && (() => {
@@ -1191,8 +1214,8 @@ export default function App() {
                   const ageText = ageMins < 1 ? '刚刚' : ageMins < 60 ? `${ageMins}分钟前` : `${Math.floor(ageMins / 60)}小时前`;
                   const isStale = ageMins > 10;
                   return (
-                    <div className={`flex items-center gap-1 ${isStale ? 'text-amber-500' : 'text-slate-500'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isStale ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                    <div className={`flex items-center gap-1 ${isStale ? 'text-[#b45309]' : 'text-[#86868b]'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isStale ? 'bg-[#b45309]' : 'bg-[#1e8e3e]'}`} />
                       <span>数据 {ageText}</span>
                     </div>
                   );
@@ -1202,7 +1225,7 @@ export default function App() {
                 href="https://polymarket.com/?r=adul"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-transparent hover:bg-slate-800 text-slate-500 hover:text-slate-300 text-xs font-medium rounded-lg border border-slate-700/50 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] hover:text-[#1d1d1f] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
               >
                 <span>主页</span>
                 <ExternalLink className="w-3 h-3" />
@@ -1211,7 +1234,7 @@ export default function App() {
                 href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-teal-500/20"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0071e3] hover:bg-[#0a84ff] text-[#fff] text-xs font-semibold rounded-full transition-all shadow-sm"
               >
                 <span>进入市场</span>
                 <ExternalLink className="w-3 h-3" />
@@ -1222,22 +1245,23 @@ export default function App() {
       </header>
 
       {/* ── Nav ── */}
-      <nav className="bg-[#10122a] border-b border-slate-700/60">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-0 overflow-x-auto scrollbar-hide">
+      <nav className="bg-white/90 backdrop-blur-xl border-b border-[#e5e5ea] sticky top-[57px] z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide">
             {/* 核心功能（高亮） */}
             {[
               { id: 'market',   label: '市场概览',  icon: TrendingUp, primary: true },
               { id: 'analysis', label: '概率分析',  icon: BarChart3,  primary: true },
               { id: 'heatmap',  label: '发推热力图', icon: Grid3X3,   primary: true },
+              { id: 'morphology', label: '形态对比', icon: ChartLine, primary: true },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 mt-1 mb-0 text-xs font-semibold rounded-full transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-teal-400 text-teal-300 bg-teal-500/8'
-                    : 'border-transparent text-slate-300 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#e8f1fd] text-[#0071e3]'
+                    : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-[#f2f2f4]'
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
@@ -1245,21 +1269,20 @@ export default function App() {
               </button>
             ))}
             {/* 分隔线 */}
-            <div className="w-px bg-slate-700/60 my-2 mx-1" />
+            <div className="w-px bg-[#e5e5ea] my-2.5 mx-1.5" />
             {/* 辅助功能（低调） */}
             {[
               { id: 'positions', label: '持仓管理', icon: Wallet },
               { id: 'tweet',     label: '推文生成', icon: FileText },
               { id: 'guide',     label: '策略指南', icon: BookOpen },
-              { id: 'telegram',  label: '预警',     icon: Bell },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-medium border-b-2 transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 mt-1 mb-0 text-xs font-medium rounded-full transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-slate-400 text-slate-200 bg-white/5'
-                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/4'
+                    ? 'bg-[#f2f2f4] text-[#1d1d1f]'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f2f2f4]'
                 }`}
               >
                 <tab.icon className="w-3 h-3" />
@@ -1272,7 +1295,7 @@ export default function App() {
 
       {/* Alert Banners disabled */}
 
-      <main className="max-w-7xl mx-auto px-6 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'market' && (() => {
           // ── 精准度计算（基于剩余时间）──
           const totalRemainingH = remainingDays * 24 + remainingHoursFromApi;
@@ -1321,19 +1344,30 @@ export default function App() {
             .sort((a, b) => a.rangeMin - b.rangeMin);
 
           // ── 每日热力色块颜色（等高色块，深浅=强度）──
-          const dailyData = currentTracking?.stats?.daily?.slice(-7) || [];
+          // 每日发推明细：由热力图逐小时数据聚合（统计口径与"今日发推节奏"一致）
+          const dailyData = (() => {
+            const startBJ = currentTracking?.startDate
+              ? new Date(new Date(currentTracking.startDate).getTime() + 8 * 3600e3).toISOString().split('T')[0]
+              : null;
+            const byDate = new Map<string, number>();
+            for (const d of heatmapData) {
+              if (startBJ && d.date < startBJ) continue;
+              byDate.set(d.date, (byDate.get(d.date) || 0) + d.count);
+            }
+            return [...byDate.entries()].map(([date, count]) => ({ date, count })).slice(-7);
+          })();
           const maxDaily = Math.max(...dailyData.map(d => d.count), 1);
           const heatBg = (count: number) => {
             const ratio = count / maxDaily;
-            if (ratio >= 0.8) return 'bg-emerald-400';
-            if (ratio >= 0.6) return 'bg-emerald-600';
-            if (ratio >= 0.4) return 'bg-emerald-700/80';
-            if (ratio >= 0.2) return 'bg-emerald-900/70';
-            return 'bg-slate-800/60';
+            if (ratio >= 0.85) return 'bg-[#1e8e3e]';
+            if (ratio >= 0.65) return 'bg-[#4caf6e]';
+            if (ratio >= 0.45) return 'bg-[#8fce9f]';
+            if (ratio >= 0.25) return 'bg-[#cdeed6]';
+            return 'bg-[#f0f3f1]';
           };
           const heatText = (count: number) => {
             const ratio = count / maxDaily;
-            return ratio >= 0.6 ? 'text-white' : ratio >= 0.3 ? 'text-emerald-200' : 'text-slate-400';
+            return ratio >= 0.65 ? 'text-white' : 'text-[#1d1d1f]';
           };
 
           // ── 市场标签日期格式：从 slug 提取计数周期日期（比 start_date 准确）──
@@ -1343,7 +1377,7 @@ export default function App() {
             july:7, august:8, september:9, october:10, november:11, december:12
           };
           const marketTabLabel = (market: typeof activeMarkets[0]) => {
-            const m = market.slug.match(/tweets-(\w+)-(\d+)-(\w+)-(\d+)$/);
+            const m = market.slug.match(/tweets-(\w+)-(\d+)-(\w+)-(\d+)(?:-(\d{4}))?$/);
             if (m) {
               const sm = SLUG_MONTH[m[1]]; const sd = parseInt(m[2]);
               const em = SLUG_MONTH[m[3]]; const ed = parseInt(m[4]);
@@ -1360,16 +1394,16 @@ export default function App() {
           <div className="space-y-4">
             {/* ── 顶部：市场切换标签 ── */}
             <div className="flex items-center justify-between">
-              <div className="text-xs text-slate-500 font-mono">BJ {bjH}:00</div>
+              <div className="text-xs text-[#86868b] font-mono">BJ {bjH}:00</div>
               <div className="flex gap-1.5 flex-wrap justify-end">
                 {activeMarkets.map((market, i) => (
                   <button
                     key={market.slug}
                     onClick={() => handleSelectMarket(i)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                       i === selectedMarketIndex
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                        : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                        ? 'bg-[#e8f1fd] border-[#0071e3] text-[#0071e3] shadow-sm'
+                        : 'bg-white border-[#e5e5ea] text-[#6e6e73] hover:text-[#1d1d1f] hover:border-[#c7c7cc]'
                     }`}
                   >
                     {marketTabLabel(market)}
@@ -1380,49 +1414,54 @@ export default function App() {
 
             {/* ── 第一行：4个核心数字 ── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">推文数</p>
-                <p className="text-3xl font-bold text-white font-mono">{currentTracking?.stats?.total ?? '—'}</p>
-                <p className="text-xs text-slate-500 mt-1">条</p>
+              <div className="bg-gradient-to-b from-white to-[#f7fbf9] border border-[#e5e5ea] rounded-2xl p-4 text-center shadow-[0_2px_6px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)]">
+                <p className="text-[10px] text-[#86868b] uppercase tracking-widest mb-1">推文数</p>
+                <p className="text-3xl font-bold text-[#0e9486] font-mono">{currentTracking?.stats?.total ?? '—'}</p>
+                <p className="text-xs text-[#86868b] mt-1">条</p>
               </div>
-              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">时速</p>
-                <p className="text-3xl font-bold text-white font-mono">{currentTracking?.stats?.pace ?? '—'}</p>
-                <p className="text-xs text-slate-500 mt-1">条/天</p>
+              <div className="bg-gradient-to-b from-white to-[#f7fbf9] border border-[#e5e5ea] rounded-2xl p-4 text-center shadow-[0_2px_6px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)]">
+                <p className="text-[10px] text-[#86868b] uppercase tracking-widest mb-1">时速</p>
+                <p className="text-3xl font-bold text-[#1d1d1f] font-mono">{currentTracking?.stats?.pace ?? '—'}</p>
+                <p className="text-xs text-[#86868b] mt-1">条/天</p>
               </div>
-              <div className="bg-[#141414] border border-slate-700/40 rounded-2xl p-4 text-center">
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">剩余时间</p>
-                <p className="text-3xl font-bold text-white font-mono">
+              <div className="bg-gradient-to-b from-white to-[#f7fbf9] border border-[#e5e5ea] rounded-2xl p-4 text-center shadow-[0_2px_6px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)]">
+                <p className="text-[10px] text-[#86868b] uppercase tracking-widest mb-1">剩余时间</p>
+                <p className="text-3xl font-bold text-[#1d1d1f] font-mono">
                   {currentTracking?.stats ? (
                     remainingDays > 0
                       ? `${remainingDays}d`
                       : `${remainingHoursFromApi}h`
                   ) : '—'}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-[#86868b] mt-1">
                   {currentTracking?.stats && remainingDays > 0 && remainingHoursFromApi > 0
                     ? `${remainingHoursFromApi}h`
                     : ''}
                 </p>
               </div>
-              <div className={`rounded-2xl p-4 text-center border ${activeWindow.bg}`}>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">当前窗口</p>
+              <div className="bg-gradient-to-b from-white to-[#f7fbf9] rounded-2xl p-4 text-center border border-[#e5e5ea] shadow-[0_2px_6px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)]">
+                <p className="text-[10px] text-[#86868b] uppercase tracking-widest mb-1">当前窗口</p>
                 <p className="text-2xl font-bold">{activeWindow.emoji}</p>
-                <p className={`text-xs font-semibold mt-1 ${activeWindow.color}`}>{activeWindow.label}</p>
+                <p className="text-xs font-semibold mt-1 text-[#0071e3]">{activeWindow.label}</p>
               </div>
             </div>
+            {!currentTracking?.stats && (
+              <p className="text-xs text-[#86868b] px-1">
+                推文统计暂不可用：数据源未连接，或该市场暂无统计数据（部署并配置环境变量后自动恢复）
+              </p>
+            )}
 
             {/* ── 第二行：预测落点 + 精准度 ── */}
-            <div className="bg-[#141414] border border-emerald-900/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+            <div className="bg-gradient-to-b from-white to-[#f7fbf9] border border-[#e5e5ea] rounded-2xl p-5 flex items-center justify-between gap-4 shadow-[0_2px_6px_rgba(0,0,0,0.04),0_10px_28px_rgba(0,0,0,0.06)]">
               <div>
-                <p className="text-xs text-slate-500 mb-1">预测落点</p>
-                <p className="text-4xl font-bold text-emerald-300 font-mono">~{predictedCenter}</p>
-                <p className="text-xs text-slate-400 mt-1">条 · 日均 <span className="text-white font-mono">{apiPace.toFixed(1)}</span> 条/天</p>
+                <p className="text-xs text-[#86868b] mb-1">预测落点</p>
+                <p className="text-4xl font-bold text-[#1e8e3e] font-mono">~{predictedCenter}</p>
+                <p className="text-xs text-[#86868b] mt-1">条 · 日均 <span className="text-[#1d1d1f] font-mono">{apiPace.toFixed(1)}</span> 条/天</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-500 mb-1">预测精准度</p>
-                <p className="text-4xl font-bold text-white font-mono">{accuracy}%</p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[#86868b] mb-1">预测精准度</p>
+                <p className="text-4xl font-bold text-[#0071e3] font-mono">{accuracy}%</p>
+                <p className="text-xs text-[#86868b] mt-1">
                   {totalRemainingH >= 24
                     ? `距到期 ${remainingDays}d ${remainingHoursFromApi}h`
                     : `距到期 ${totalRemainingH}h`}
@@ -1432,14 +1471,14 @@ export default function App() {
                 <a
                   href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition-all"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
                 >
                   查看市场 <ExternalLink className="w-3 h-3" />
                 </a>
                 <button
                   onClick={handleRefresh}
                   disabled={isLoadingGist || isLoadingTracker}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg border border-slate-700 transition-all disabled:opacity-40"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0071e3] hover:bg-[#0a84ff] text-[#fff] text-xs font-medium rounded-full transition-all disabled:opacity-40"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingGist || isLoadingTracker ? 'animate-spin' : ''}`} />
                   {isLoadingGist || isLoadingTracker ? '刷新中...' : '刷新'}
@@ -1450,28 +1489,41 @@ export default function App() {
             {/* ── 第三行：左=每日热力色块，右=区间定价 ── */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
               {/* 左：每日热力色块 */}
-              <div className="lg:col-span-2 bg-[#141414] border border-slate-700/40 rounded-2xl p-4">
-                <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">本期每日发推</p>
+              <div className="lg:col-span-2 bg-white border border-[#e5e5ea] rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.05)]">
+                <div className="flex items-baseline justify-between mb-3">
+                  <p className="text-xs font-semibold text-[#1d1d1f]">本期每日发推</p>
+                  {dailyData.length > 0 && (
+                    <span className="text-[11px] text-[#86868b] font-mono">本周累计 {dailyData.reduce((s, d) => s + d.count, 0)} 条</span>
+                  )}
+                </div>
                 {dailyData.length > 0 ? (
-                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${dailyData.length}, 1fr)` }}>
-                    {dailyData.map((day, i) => {
-                      const d = new Date(day.date + 'T00:00:00Z');
-                      return (
-                        <div
-                          key={day.date || i}
-                          className={`rounded-xl p-2 text-center transition-all ${heatBg(day.count)}`}
-                          title={`${day.date} · ${day.count}条`}
-                        >
-                          <p className={`text-base font-bold font-mono leading-tight ${heatText(day.count)}`}>{day.count}</p>
-                          <p className={`text-[9px] mt-1 ${heatText(day.count)} opacity-70`}>
-                            {d.getUTCMonth()+1}/{d.getUTCDate()}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${dailyData.length}, 1fr)` }}>
+                      {dailyData.map((day, i) => {
+                        const d = new Date(day.date + 'T00:00:00Z');
+                        const isToday = day.date === new Date(Date.now() + 8 * 3600e3).toISOString().split('T')[0];
+                        const wk = ['日', '一', '二', '三', '四', '五', '六'][d.getUTCDay()];
+                        return (
+                          <div
+                            key={day.date || i}
+                            className={`relative rounded-xl px-1 py-2.5 text-center transition-all ${isToday ? 'ring-2 ring-[#0e9486]' : ''} ${heatBg(day.count)}`}
+                            title={`${day.date} · ${day.count}条`}
+                          >
+                            {isToday && <span className="absolute top-1 right-1.5 text-[8px] font-bold text-[#0e9486]">今</span>}
+                            <p className={`text-lg font-bold font-mono leading-none ${heatText(day.count)}`}>{day.count}</p>
+                            <p className={`text-[10px] mt-1 font-medium ${heatText(day.count)} opacity-75`}>
+                              {wk} {d.getUTCMonth() + 1}/{d.getUTCDate()}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-[#a1a1a6] mt-2.5 text-center">颜色越深 = 当天发推越多 · 与热力图同源</p>
+                  </>
                 ) : (
-                  <p className="text-xs text-slate-500 text-center py-4">暂无本期每日数据</p>
+                  <p className="text-xs text-[#86868b] text-center py-4">
+                    {isLoadingGist || isLoadingTracker ? '正在加载…' : '暂无本期每日数据（统计未连接）'}
+                  </p>
                 )}
               </div>
 
@@ -1480,7 +1532,11 @@ export default function App() {
                 <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">区间定价</p>
                 {rangeSignals.length === 0 && (
                   <div className="flex items-center gap-2 py-4 px-2">
-                    <span className="text-slate-600 text-xs">暂无区间数据 · 刷新或选择其他市场</span>
+                    <span className="text-[#86868b] text-xs">
+                      {isLoadingGist || isLoadingTracker
+                        ? '正在加载市场数据…'
+                        : '暂无区间数据：当前市场可能已结束，或数据源未连接'}
+                    </span>
                   </div>
                 )}
                 <div className="space-y-1.5">
@@ -1865,50 +1921,52 @@ export default function App() {
 
                   {/* 热力图（今日发推 24h）*/}
                   {hasTodayData && (
-                    <section className="bg-[#141414] rounded-2xl p-5 border border-slate-700/40">
+                    <section className="bg-white rounded-2xl p-5 border border-[#e5e5ea] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.05)]">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-slate-300">今日发推热力图</h2>
-                        <span className="text-xs text-slate-500">北京时间 · 每小时实际条数 vs 历史基线</span>
+                        <div>
+                          <h2 className="text-sm font-semibold text-[#1d1d1f]">今日发推节奏（24 小时）</h2>
+                          <p className="text-xs text-[#86868b] mt-0.5">与"发推热力图"页同源（柱状视图）· 每小时实际 vs 历史基线</p>
+                        </div>
+                        <span className="text-xs font-mono text-[#6e6e73]">今日 {Object.values(todayH).reduce((s, n) => s + n, 0)} 条</span>
                       </div>
-                      <div className="flex items-end gap-1 h-28">
+                      <div className="flex items-end gap-[3px] h-36">
                         {Array.from({ length: 24 }, (_, h) => {
                           const actual   = todayH[h] || 0;
                           const baseline = Math.round(HOURLY_WEIGHTS_BJ[h] * 43.4 * 10) / 10;
-                          const maxVal   = 6;
+                          const maxVal   = Math.max(6, ...Object.values(todayH));
                           const actH     = Math.round((actual / maxVal) * 100);
                           const baseH    = Math.round((baseline / maxVal) * 100);
                           const isCurr   = h === bjH;
                           const isPastH  = h < bjH;
                           return (
-                            <div key={h} className="flex-1 flex flex-col items-center gap-0.5" title={`BJ ${h}:00 · 实际${actual}条 · 基线${baseline}条`}>
-                              <div className="w-full flex flex-col justify-end gap-px" style={{ height: '96px' }}>
-                                <div className="relative w-full flex flex-col justify-end" style={{ height: '96px' }}>
+                            <div key={h} className="flex-1 flex flex-col items-center gap-1" title={`BJ ${h}:00 · 实际${actual}条 · 基线${baseline}条`}>
+                              <div className={`relative w-full flex items-end justify-center ${isCurr ? 'bg-[#dff3f0]' : ''} rounded-lg`} style={{ height: '116px' }}>
+                                <div
+                                  className={`absolute bottom-0 w-full rounded-t-md ${isCurr ? 'bg-[#bfe7e1]' : 'bg-[#ececf0]'}`}
+                                  style={{ height: `${Math.min(100, baseH)}%` }}
+                                />
+                                {isPastH && actual > 0 && (
                                   <div
-                                    className={`w-full rounded-t-sm ${isCurr ? 'bg-teal-500/40' : 'bg-slate-700/50'}`}
-                                    style={{ height: `${Math.min(100, baseH)}%` }}
+                                    className={`absolute bottom-0 w-full rounded-t-md ${
+                                      actual >= baseline * 1.4 ? 'bg-[#1e8e3e]' :
+                                      actual >= baseline * 0.6 ? 'bg-[#34a853]' : 'bg-[#c92a2a]'
+                                    }`}
+                                    style={{ height: `${Math.min(100, actH)}%` }}
                                   />
-                                  {isPastH && actual > 0 && (
-                                    <div
-                                      className={`absolute bottom-0 w-full rounded-t-sm ${
-                                        actual >= baseline * 1.4 ? 'bg-teal-500' :
-                                        actual >= baseline * 0.6 ? 'bg-teal-500' : 'bg-rose-500/70'
-                                      }`}
-                                      style={{ height: `${Math.min(100, actH)}%` }}
-                                    />
-                                  )}
-                                </div>
+                                )}
                               </div>
-                              <p className={`text-xs font-mono ${isCurr ? 'text-teal-400' : 'text-slate-400'}`}>
-                                {h === 0 || h % 4 === 0 ? h : ''}
+                              <p className={`text-[10px] font-mono ${isCurr ? 'text-[#0e9486] font-bold' : 'text-[#a1a1a6]'}`}>
+                                {h === 0 || h % 3 === 0 ? h : ''}
                               </p>
                             </div>
                           );
                         })}
                       </div>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-teal-500 inline-block"/>实际（正常）</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-rose-500/70 inline-block"/>实际（偏低）</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-slate-700/50 inline-block"/>历史基线</span>
+                      <div className="flex items-center gap-4 mt-3 text-xs text-[#86868b]">
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#1e8e3e] inline-block"/>实际（正常）</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#c92a2a] inline-block"/>实际（偏低）</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#ececf0] inline-block"/>历史基线</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#dff3f0] border border-[#a8ddd4] inline-block"/>当前小时</span>
                       </div>
                     </section>
                   )}
@@ -2318,8 +2376,40 @@ export default function App() {
         )}
 
         {activeTab === 'heatmap' && (
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-6xl mx-auto space-y-3">
+            <div>
+              <h2 className="text-base font-semibold text-[#1d1d1f]">发推热力图（完整视图）</h2>
+              <p className="text-xs text-[#86868b] mt-0.5">多日 × 24 小时网格 · 与首页"今日发推节奏"同源，逐小时实际条数</p>
+            </div>
             <TweetHeatmap />
+          </div>
+        )}
+
+        {activeTab === 'morphology' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-base font-semibold text-[#1d1d1f]">走势形态预测 · 区间对比分析</h2>
+                <p className="text-xs text-[#86868b] mt-0.5">对比当前价格走势与六种历史形态模板 · 自动选择最快到期市场</p>
+              </div>
+              <a
+                href="/morphology_compare.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
+              >
+                <ExternalLink className="w-3 h-3" />
+                在新窗口打开
+              </a>
+            </div>
+            <div className="bg-white border border-[#e5e5ea] rounded-2xl overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.05)]">
+              <iframe
+                src="/morphology_compare.html"
+                title="走势形态预测 · 区间对比分析"
+                className="w-full border-0"
+                style={{ height: 'calc(100vh - 210px)', minHeight: 720 }}
+              />
+            </div>
           </div>
         )}
 

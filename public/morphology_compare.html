@@ -9,19 +9,19 @@
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <style>
 :root {
-  --bg: #0b0d10; --card: #14171c; --card2: #1a1e26;
-  --accent: #00d4aa; --accent2: #4cc9f0;
-  --red: #ff6b6b; --warn: #ffd700; --muted: #8b9ab0;
-  --border: #2a2f3a; --text: #e0e6f0;
+  --bg: #f5f5f7; --card: #ffffff; --card2: #f2f2f4;
+  --accent: #0e9486; --accent2: #5ac8b3;
+  --red: #c92a2a; --warn: #b45309; --muted: #6e6e73;
+  --border: #e5e5ea; --text: #1d1d1f;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'SF Pro Display', -apple-system, sans-serif; }
 
 header {
-  background: linear-gradient(135deg, #020e0a 0%, #001812 50%, #020d18 100%);
-  border-bottom: 2px solid var(--accent); padding: 18px 40px 14px;
+  background: linear-gradient(135deg, #f5f5f7 0%, #ffffff 55%, #e8f1fd 100%);
+  border-bottom: 1px solid var(--border); padding: 18px 40px 14px;
 }
-header h1 { font-size: 1.45rem; font-weight: 700; color: var(--accent); }
+header h1 { font-size: 1.45rem; font-weight: 700; color: var(--text); }
 header p  { color: var(--muted); font-size: 0.79rem; margin-top: 4px; }
 
 main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
@@ -30,7 +30,8 @@ main { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
 .controls {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px 18px; margin-bottom: 16px;
+  border-radius: 14px; padding: 12px 18px; margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
 }
 .ctrl-label { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 select {
@@ -54,7 +55,8 @@ select:focus { outline: none; border-color: var(--accent); }
 /* ── Tweet Banner ── */
 .tweet-banner {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 20px; margin-bottom: 16px;
+  border-radius: 14px; padding: 14px 20px; margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
 }
 .tb-header {
   font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
@@ -73,7 +75,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .tb-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .5s; }
 .center-badge {
   padding: 5px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;
-  border: 2px solid var(--accent); color: var(--accent); background: rgba(0,212,170,0.08);
+  border: 2px solid var(--accent); color: var(--accent); background: rgba(14,148,134,0.08);
   white-space: nowrap;
 }
 .tb-note { font-size: 0.75rem; color: var(--muted); align-self: center; }
@@ -100,6 +102,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .section {
   background: var(--card); border: 1px solid var(--border);
   border-radius: 16px; margin-bottom: 24px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
 }
 .sect-header {
   display: flex; align-items: center; gap: 10px;
@@ -107,7 +110,7 @@ select:focus { outline: none; border-color: var(--accent); }
 }
 .sect-label {
   font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em;
-  color: var(--bg); background: var(--accent); padding: 2px 8px; border-radius: 4px;
+  color: #ffffff; background: var(--accent); padding: 2px 8px; border-radius: 4px;
 }
 .sect-label.b { background: var(--accent2); }
 .sect-title { font-size: 0.93rem; font-weight: 600; flex: 1; }
@@ -124,7 +127,7 @@ select:focus { outline: none; border-color: var(--accent); }
 .match-bar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 10px 18px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.12);
+  background: #fafafa;
 }
 .match-label { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
 .pattern-badge {
@@ -161,7 +164,7 @@ select:focus { outline: none; border-color: var(--accent); }
   transition: border-color .2s, box-shadow .2s; cursor: pointer; background: var(--card2);
 }
 .tmpl-card:hover { border-color: var(--accent); }
-.tmpl-card.matched { border-color: var(--accent) !important; box-shadow: 0 0 16px rgba(0,212,170,0.22) !important; }
+.tmpl-card.matched { border-color: var(--accent) !important; box-shadow: 0 0 16px rgba(14,148,134,0.18) !important; }
 .tmpl-head { padding: 7px 9px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); }
 .tmpl-id {
   width: 21px; height: 21px; border-radius: 4px;
@@ -295,7 +298,7 @@ const TPL_X = ['-48h','-47h','-46h','-45h','-44h','-43h','-42h','-41h','-40h','-
 
 const TEMPLATES = {
   A: {
-    name:'全程碾压型', freq:'20%', color:'#00d4aa', bg:'rgba(0,212,170,0.15)',
+    name:'全程碾压型', freq:'20%', color:'#0bbf93', bg:'rgba(0,212,170,0.15)',
     signal:'持仓 / 跟进入场',
     action:'绿色从始至终稳定领先，差距单调扩大。任何时间买入均合理，越早成本越低。红色无博弈价值。',
     predict:'若当前绿色已全程领先且红色无有效追赶，大概率延续此形态至结算。',
@@ -313,7 +316,7 @@ const TEMPLATES = {
     zone:[0,16], zc:'rgba(255,215,0,0.09)',
   },
   C: {
-    name:'中期反超型', freq:'33%', color:'#ffd700', bg:'rgba(255,215,0,0.15)',
+    name:'中期反超型', freq:'33%', color:'#c98a00', bg:'rgba(255,215,0,0.15)',
     signal:'反超后1-4h入场',
     action:'最常见形态（33%）。红色先领约20-24h，约-24h完成反超，反超后红色加速崩溃。反超发生后1-4h内是最佳入场窗口。',
     predict:'若当前红色仍领先但绿色正在追赶，大概率在未来12-24h内发生反超，届时是核心入场机会。',
@@ -331,7 +334,7 @@ const TEMPLATES = {
     zone:[26,47], zc:'rgba(255,159,67,0.10)',
   },
   E: {
-    name:'临门一脚型', freq:'2%', color:'#ff6b6b', bg:'rgba(255,107,107,0.15)',
+    name:'临门一脚型', freq:'2%', color:'#e5484d', bg:'rgba(255,107,107,0.15)',
     signal:'高赔率小仓押注',
     action:'极罕见（2%）但赔率最高。绿色全程趴底，最后2-3h垂直爆发。触发条件：推文数在最后几小时真实爆发，价格绿色<20¢。',
     predict:'若绿色长期趴底无追赶迹象，大概率延续E型格局。若出现推文突发加速，则可能触发垂直爆发，小仓待机。',
@@ -397,26 +400,32 @@ async function fetchMarkets() {
   for (let d = -1; d <= 7; d++) {
     const s = new Date(now.getTime() + d * 86400000);
     const e = new Date(s.getTime() + 7 * 86400000);
-    const slug = `elon-musk-of-tweets-${months[s.getUTCMonth()]}-${s.getUTCDate()}-${months[e.getUTCMonth()]}-${e.getUTCDate()}`;
+    const slug = `elon-musk-of-tweets-${months[s.getUTCMonth()]}-${s.getUTCDate()}-${months[e.getUTCMonth()]}-${e.getUTCDate()}-${e.getUTCFullYear()}`;
     if (!seen.has(slug)) { seen.add(slug); slugs.push({ slug, title: slug, endDate: e.toISOString(), startDate: s.toISOString() }); }
   }
   return slugs;
 }
 
 function titleToSlug(title) {
-  const m = title.match(/tweets\s+(\w+)\s+(\d+)\s*[-–]\s*(\w+)\s+(\d+)/i);
+  const m = title.match(/tweets\s+(\w+)\s+(\d+)\s*[-–]\s*(\w+)\s+(\d+)(?:\s*,\s*(\d{4}))?/i);
   if (!m) return '';
-  return `elon-musk-of-tweets-${m[1].toLowerCase()}-${m[2]}-${m[3].toLowerCase()}-${m[4]}`;
+  const year = m[5] || String(new Date().getUTCFullYear());
+  return `elon-musk-of-tweets-${m[1].toLowerCase()}-${m[2]}-${m[3].toLowerCase()}-${m[4]}-${year}`;
 }
 
 async function fetchEventRanges(slug) {
-  const r = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
-    headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000),
-  });
-  if (!r.ok) throw new Error(`gamma ${r.status}`);
-  const data = await r.json();
-  const events = Array.isArray(data) ? data : (data.data || []);
-  const ev = events.find(e => e.slug === slug) || events[0];
+  const variants = [...new Set([slug, slug.replace(/-\d{4}$/, '')])];
+  let ev = null;
+  for (const s of variants) {
+    const r = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(s)}`, {
+      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) continue;
+    const data = await r.json();
+    const events = Array.isArray(data) ? data : (data.data || []);
+    ev = events.find(e => e.slug === s) || events[0];
+    if (ev) break;
+  }
   if (!ev) throw new Error('event not found');
 
   const markets = (ev.markets || []).map(m => {
@@ -597,25 +606,25 @@ function renderActualChart(domId, greenHist, redHist, timestamps, greenLabel, re
     grid: { top: 6, bottom: 34, left: 42, right: 12 },
     xAxis: {
       type: 'category', data: xLabels, boundaryGap: false,
-      axisLabel: { color: '#4a5568', fontSize: 10, formatter: (v, i) => (i % Math.max(1, Math.ceil(xLabels.length / 6)) === 0 ? v : '') },
-      axisLine: { lineStyle: { color: '#2a2f3a' } }, splitLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: '#86868b', fontSize: 10, formatter: (v, i) => (i % Math.max(1, Math.ceil(xLabels.length / 6)) === 0 ? v : '') },
+      axisLine: { lineStyle: { color: '#e5e5ea' } }, splitLine: { show: false }, axisTick: { show: false },
     },
     yAxis: {
       type: 'value', min: 0, max: 1,
-      splitLine: { lineStyle: { color: '#1e232d', type: 'dashed' } },
-      axisLabel: { color: '#4a5568', fontSize: 10, formatter: v => (v === 0 || v === 0.5 || v === 1) ? v.toFixed(1) : '' },
+      splitLine: { lineStyle: { color: '#e5e5ea', type: 'dashed' } },
+      axisLabel: { color: '#86868b', fontSize: 10, formatter: v => (v === 0 || v === 0.5 || v === 1) ? v.toFixed(1) : '' },
     },
     series: [
       { name: greenLabel, type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#00d4aa', width: 2.5 }, areaStyle: { color: 'rgba(0,212,170,0.06)' }, data: greenHist },
+        lineStyle: { color: '#0bbf93', width: 2.5 }, areaStyle: { color: 'rgba(0,212,170,0.06)' }, data: greenHist },
       { name: redLabel, type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#ff6b6b', width: 2.5 }, areaStyle: { color: 'rgba(255,107,107,0.05)' }, data: redHist },
+        lineStyle: { color: '#e5484d', width: 2.5 }, areaStyle: { color: 'rgba(255,107,107,0.05)' }, data: redHist },
     ],
     tooltip: {
-      trigger: 'axis', backgroundColor: '#14171c', borderColor: '#2a2f3a',
-      textStyle: { color: '#e0e6f0', fontSize: 11 },
+      trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.96)', borderColor: '#e5e5ea',
+      textStyle: { color: '#1d1d1f', fontSize: 11 },
       formatter: p => p[0].axisValue + '<br>'
-        + `<span style="color:#00d4aa">●</span> ${greenLabel} ${(p[0].data*100).toFixed(1)}¢<br>`
+        + `<span style="color:#0bbf93">●</span> ${greenLabel} ${(p[0].data*100).toFixed(1)}¢<br>`
         + `<span style="color:#ff6b6b">●</span> ${redLabel} ${(p[1].data*100).toFixed(1)}¢`,
     },
   });
@@ -663,7 +672,7 @@ function renderLegend(domId, greenLabel, redLabel) {
   const el = document.getElementById(domId);
   if (!el) return;
   el.innerHTML = `
-    <div class="al-item"><div class="al-line" style="background:#00d4aa"></div><span style="color:#00d4aa;font-weight:600">${greenLabel}</span><span style="color:var(--muted);font-size:0.72rem">（中心区间）</span></div>
+    <div class="al-item"><div class="al-line" style="background:#0bbf93"></div><span style="color:#0bbf93;font-weight:600">${greenLabel}</span><span style="color:var(--muted);font-size:0.72rem">（中心区间）</span></div>
     <div class="al-item"><div class="al-line" style="background:#ff6b6b"></div><span style="color:#ff6b6b;font-weight:600">${redLabel}</span></div>
   `;
 }
@@ -677,7 +686,7 @@ function renderTemplateChart(cid, key) {
   _charts[domId] = c;
   const gSeries = {
     type: 'line', smooth: true, symbol: 'none',
-    lineStyle: { color: '#00d4aa', width: 1.5 }, areaStyle: { color: 'rgba(0,212,170,0.04)' }, data: t.g,
+    lineStyle: { color: '#0bbf93', width: 1.5 }, areaStyle: { color: 'rgba(0,212,170,0.04)' }, data: t.g,
   };
   if (t.zone) {
     gSeries.markArea = {
@@ -690,18 +699,18 @@ function renderTemplateChart(cid, key) {
     grid: { top: 2, bottom: 16, left: 26, right: 4 },
     xAxis: {
       type: 'category', data: TPL_X, boundaryGap: false,
-      axisLabel: { color: '#2e3440', fontSize: 8, formatter: (v, i) => (i === 0 || i === 24 || i === 47) ? v : '' },
-      axisLine: { lineStyle: { color: '#2a2f3a' } }, splitLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: '#86868b', fontSize: 8, formatter: (v, i) => (i === 0 || i === 24 || i === 47) ? v : '' },
+      axisLine: { lineStyle: { color: '#e5e5ea' } }, splitLine: { show: false }, axisTick: { show: false },
     },
     yAxis: {
       type: 'value', min: 0, max: 1,
-      splitLine: { lineStyle: { color: '#1a1e26', type: 'dashed' } },
-      axisLabel: { color: '#2e3440', fontSize: 8, formatter: v => v === 0.5 ? '0.5' : '' },
+      splitLine: { lineStyle: { color: '#e5e5ea', type: 'dashed' } },
+      axisLabel: { color: '#86868b', fontSize: 8, formatter: v => v === 0.5 ? '0.5' : '' },
     },
     series: [
       gSeries,
       { type: 'line', smooth: true, symbol: 'none',
-        lineStyle: { color: '#ff6b6b', width: 1.5 }, areaStyle: { color: 'rgba(255,107,107,0.03)' }, data: t.r },
+        lineStyle: { color: '#e5484d', width: 1.5 }, areaStyle: { color: 'rgba(255,107,107,0.03)' }, data: t.r },
     ],
   });
 }
@@ -849,13 +858,13 @@ async function loadMarket(slug, startDate, endDate) {
   const rn = document.getElementById('relevance-note');
   rn.style.display = 'flex';
   if (hoursLeft <= 24) {
-    rn.style.borderColor = '#00d4aa'; rn.style.background = 'rgba(0,212,170,0.07)';
-    rn.innerHTML = '<span style="font-size:1.1rem">🎯</span><span>最后 24 小时，形态即将确立。<strong style="color:#00d4aa">预测可信度最高</strong>，结合推文数量判断决策。</span>';
+    rn.style.borderColor = '#0bbf93'; rn.style.background = 'rgba(11,191,147,0.08)';
+    rn.innerHTML = '<span style="font-size:1.1rem">🎯</span><span>最后 24 小时，形态即将确立。<strong style="color:#0bbf93">预测可信度最高</strong>，结合推文数量判断决策。</span>';
   } else if (hoursLeft <= 48) {
-    rn.style.borderColor = '#ffd700'; rn.style.background = 'rgba(255,215,0,0.06)';
+    rn.style.borderColor = '#c98a00'; rn.style.background = 'rgba(201,138,0,0.08)';
     rn.innerHTML = '<span style="font-size:1.1rem">📍</span><span>距结算 ' + timeStr + '，进入<strong style="color:#ffd700">形态关键窗口（最后48h）</strong>，预测参考价值强。</span>';
   } else {
-    rn.style.borderColor = '#8b9ab0'; rn.style.background = 'rgba(139,154,176,0.05)';
+    rn.style.borderColor = '#86868b'; rn.style.background = 'rgba(134,134,139,0.06)';
     rn.innerHTML = '<span style="font-size:1.1rem">⏱</span><span>距结算还有 ' + timeStr + '，形态仍在演变中。<strong style="color:var(--muted)">以下预测为当前阶段参考，最后48h精度显著提升。</strong></span>';
   }
 
@@ -867,9 +876,9 @@ async function loadMarket(slug, startDate, endDate) {
     ch.innerHTML = `<div class="range-dot" style="background:${color}"></div><span class="range-name">${label}</span><span class="range-price">${(price*100).toFixed(1)}¢</span>`;
     sumEl.appendChild(ch);
   };
-  if (below) addChip(`${fmtR(below)} 下方`, 'rgba(255,107,107,0.6)', below.yesPrice);
-  addChip(`${fmtR(bestA)} ★ 中心`, '#00d4aa', bestA.yesPrice);
-  if (above) addChip(`${fmtR(above)} 上方`, 'rgba(255,107,107,0.6)', above.yesPrice);
+  if (below) addChip(`${fmtR(below)} 下方`, 'rgba(229,72,77,0.7)', below.yesPrice);
+  addChip(`${fmtR(bestA)} ★ 中心`, '#0bbf93', bestA.yesPrice);
+  if (above) addChip(`${fmtR(above)} 上方`, 'rgba(229,72,77,0.7)', above.yesPrice);
 
   setStatus('ok', `${markets.length} 个区间 · ${new Date().toLocaleTimeString('zh-CN')}`);
 

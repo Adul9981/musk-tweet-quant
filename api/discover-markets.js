@@ -20,7 +20,7 @@ function candidateSlugs() {
   for (let d = -14; d <= 10; d++) {
     const start = new Date(now.getTime() + d * 86400000);
     const end   = new Date(start.getTime() + 7 * 86400000);
-    const slug = `elon-musk-of-tweets-${MONTHS[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTHS[end.getUTCMonth()]}-${end.getUTCDate()}`;
+    const slug = `elon-musk-of-tweets-${MONTHS[start.getUTCMonth()]}-${start.getUTCDate()}-${MONTHS[end.getUTCMonth()]}-${end.getUTCDate()}-${end.getUTCFullYear()}`;
     if (!seen.has(slug)) { seen.add(slug); slugs.push(slug); }
   }
   return slugs;
@@ -32,13 +32,20 @@ function extractRange(question = '') {
 }
 
 async function fetchEventBySlug(slug) {
-  const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(slug)}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.[0] ?? null;
+  // 兼容新老命名：新市场 slug 带 -YYYY 后缀（2026-08-22 起），老市场不带
+  const variants = [...new Set([slug, slug.replace(/-\d{4}$/, '')])];
+  for (const s of variants) {
+    try {
+      const res = await fetch(`${GAMMA}/events?slug=${encodeURIComponent(s)}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data?.[0]) return data[0];
+    } catch { /* try next */ }
+  }
+  return null;
 }
 
 function parseEvent(event, slug) {

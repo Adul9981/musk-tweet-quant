@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+
+# Private operational records (subscription era, keep local only)
+data/leads.md
+reports/subscription_stats.html
+知识库/14_订阅运营统计.md
 
 # Editor directories and files
 .vscode/*

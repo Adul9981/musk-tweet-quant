@@ -123,7 +123,7 @@ export function ProbabilityChart({ history, marketStartDate, marketEndDate }: Pr
 
         <ResponsiveContainer width="100%" height={320}>
           <BarChart data={barData} margin={{ top: 5, right: 20, left: 0, bottom: 40 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f40" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" vertical={false} />
             <XAxis
               dataKey="range"
               tick={{ fontSize: 10, fill: '#475569' }}
@@ -141,8 +141,8 @@ export function ProbabilityChart({ history, marketStartDate, marketEndDate }: Pr
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 8,
-                border: '1px solid #1e3a5f',
-                background: '#111f30',
+                border: '1px solid #e5e5ea',
+                background: 'rgba(255,255,255,0.96)',
               }}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -258,7 +258,7 @@ export function ProbabilityChart({ history, marketStartDate, marketEndDate }: Pr
 
       <ResponsiveContainer width="100%" height={380}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f40" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5ea" />
           <XAxis
             dataKey="time"
             tick={{ fontSize: 10, fill: '#475569' }}
@@ -275,11 +275,11 @@ export function ProbabilityChart({ history, marketStartDate, marketEndDate }: Pr
               value !== null ? `${Number(value).toFixed(1)}%` : '—',
               String(name ?? ''),
             ]}
-            labelStyle={{ color: '#cbd5e1', fontWeight: 600 }}
+            labelStyle={{ color: '#1d1d1f', fontWeight: 600 }}
             contentStyle={{
               fontSize: 12, borderRadius: 8,
-              border: '1px solid #1e3a5f',
-              background: '#111f30',
+              border: '1px solid #e5e5ea',
+              background: 'rgba(255,255,255,0.96)',
               boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
             }}
           />
