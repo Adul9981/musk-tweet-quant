@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <title>Musk Quant · 匿名使用统计</title>
+  <title>Musk Quant · 使用统计</title>
   <style>
     :root {
       --bg:#f5f5f7;--card:#fff;--ink:#1d1d1f;--sub:#6e6e73;--line:#e5e5ea;
@@ -19,19 +18,13 @@
     .sub{margin:0;color:var(--sub);line-height:1.6;font-size:14px;max-width:660px}
     .back{padding:9px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;font-weight:700;white-space:nowrap}
     .panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 8px 28px rgba(29,29,31,.045)}
-    .login{max-width:520px;margin:48px auto}
-    .login h2{margin:0 0 8px;font-size:18px}
-    .login p{margin:0 0 16px;color:var(--sub);font-size:13px;line-height:1.6}
-    .login-row{display:flex;gap:8px}
-    input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font:inherit;color:var(--ink);background:#fff}
-    input:focus{outline:none;border-color:var(--accent)}
-    button{border:0;border-radius:12px;padding:10px 16px;background:var(--accent);color:#fff;font:inherit;font-weight:700;cursor:pointer}
-    button:disabled{opacity:.5;cursor:wait}
-    .error{min-height:18px;margin-top:10px;color:var(--red);font-size:12px}
     .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
     .range{border:1px solid var(--line);background:#fff;color:var(--sub);border-radius:999px;padding:7px 12px;font-size:11px;cursor:pointer}
     .range.active{border-color:#bfe7df;background:var(--soft);color:var(--accent)}
     .updated{margin-left:auto;color:var(--sub);font-size:11px}
+    .contacts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .contact{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:16px;background:#fff;border:1px solid var(--line);text-decoration:none;color:var(--ink);box-shadow:0 5px 18px rgba(29,29,31,.035)}
+    .contact b{display:block;font-size:13px}.contact span{display:block;margin-top:3px;color:var(--sub);font-size:11px}.contact em{font-style:normal;color:var(--accent);font-size:18px;font-weight:700}
     .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
     .kpi{padding:17px 12px;text-align:center}
     .kpi b{display:block;font-size:27px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums}
@@ -58,39 +51,36 @@
     .empty{color:var(--sub);font-size:12px;padding:20px 4px;text-align:center}
     footer{text-align:center;color:var(--sub);font-size:11px;margin-top:22px;line-height:1.7}
     @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}.method{grid-template-columns:1fr 1fr}}
-    @media(max-width:620px){main{width:min(100% - 20px,1180px);padding-top:24px}header{display:block}.back{display:inline-block;margin-top:14px}.kpis,.method{grid-template-columns:1fr 1fr}.login-row{display:block}input,button{width:100%;margin-top:8px}.updated{width:100%;margin-left:0;margin-top:5px}}
+    @media(max-width:620px){main{width:min(100% - 20px,1180px);padding-top:24px}header{display:block}.back{display:inline-block;margin-top:14px}.kpis,.method,.contacts{grid-template-columns:1fr}.updated{width:100%;margin-left:0;margin-top:5px}}
   </style>
 </head>
 <body>
   <main>
     <header>
       <div>
-        <div class="eyebrow">MUSK QUANT / FIRST-PARTY ANALYTICS</div>
-        <h1>匿名使用统计</h1>
-        <p class="sub">记录匿名访客、标签页会话、页面浏览、最近 5 分钟活跃会话和导流点击。不保存原始 IP，也不采集钱包或交易账户。</p>
+        <div class="eyebrow">MUSK QUANT / PUBLIC ANALYTICS</div>
+        <h1>使用统计</h1>
+        <p class="sub">公开展示去重访客、标签页会话、页面浏览、最近 5 分钟活跃会话和导流趋势。访客标识匿名，不保存原始 IP，也不采集钱包或交易账户。</p>
       </div>
       <a class="back" href="/">← 返回工具</a>
     </header>
 
-    <section id="loginPanel" class="panel login">
-      <div class="eyebrow">ADMIN ACCESS</div>
-      <h2>管理员验证</h2>
-      <p>统计查询需要 Vercel 环境变量中的 <code>ANALYTICS_ADMIN_TOKEN</code> 或 <code>STATS_SECRET</code>。令牌只保存在当前标签页会话中。</p>
-      <div class="login-row">
-        <input id="tokenInput" type="password" autocomplete="current-password" placeholder="输入管理员令牌">
-        <button id="loginButton" type="button">进入看板</button>
-      </div>
-      <div id="loginError" class="error"></div>
+    <section class="contacts" aria-label="Telegram 入口">
+      <a class="contact" href="https://t.me/serene7mc" target="_blank" rel="noopener noreferrer" data-track-link="telegram_consult">
+        <div><b>个人咨询</b><span>@serene7mc · 工具反馈 / 策略交流</span></div><em>↗</em>
+      </a>
+      <a class="contact" href="https://t.me/polymarket_ad/" target="_blank" rel="noopener noreferrer" data-track-link="telegram_channel">
+        <div><b>订阅频道</b><span>Polymarket AD · 市场观察与更新</span></div><em>↗</em>
+      </a>
     </section>
 
-    <section id="dashboard" hidden>
+    <section id="dashboard">
       <div class="toolbar">
         <button class="range active" type="button" data-days="1">今天</button>
         <button class="range" type="button" data-days="7">近 7 天</button>
         <button class="range" type="button" data-days="30">近 30 天</button>
         <button class="range" type="button" data-days="90">近 90 天</button>
         <span id="updated" class="updated">载入中…</span>
-        <button id="logoutButton" type="button">退出</button>
       </div>
 
       <div class="kpis">
@@ -142,6 +132,7 @@
 
     <footer>Musk Quant · 只读聚合统计 · 北京时间 · <a href="/privacy.html">隐私说明</a></footer>
   </main>
+  <script src="/analytics.js" defer></script>
   <script src="/analytics-page.js" defer></script>
 </body>
 </html>

@@ -5,9 +5,11 @@
     '/morphology_compare.html',
     '/theme-picker.html',
     '/privacy.html',
+    '/analytics.html',
   ]);
   const path = window.location.pathname;
-  if (!allowedPaths.has(path) || path === '/analytics.html') return;
+  if (!allowedPaths.has(path)) return;
+  const isStatsPage = path === '/analytics.html';
 
   const endpoint = '/api/track';
   const visitorKey = 'musk_visitor_id';
@@ -109,17 +111,19 @@
     }).catch(() => {});
   };
 
-  send('page_view', true);
+  if (!isStatsPage) send('page_view', true);
   document.addEventListener('click', (event) => {
     const target = event.target.closest?.('[data-track-link]');
     if (target) send('outbound_click', true, target.dataset.trackLink || '');
   }, { capture: true });
-  setInterval(() => {
-    if (document.visibilityState === 'visible') send('heartbeat');
-  }, 60_000);
-  window.addEventListener('scroll', readScroll, { passive: true });
-  document.addEventListener('visibilitychange', () => {
-    send(document.visibilityState === 'visible' ? 'heartbeat' : 'page_hide', true);
-  });
-  window.addEventListener('pagehide', () => send('page_hide', true));
+  if (!isStatsPage) {
+    setInterval(() => {
+      if (document.visibilityState === 'visible') send('heartbeat');
+    }, 60_000);
+    window.addEventListener('scroll', readScroll, { passive: true });
+    document.addEventListener('visibilitychange', () => {
+      send(document.visibilityState === 'visible' ? 'heartbeat' : 'page_hide', true);
+    });
+    window.addEventListener('pagehide', () => send('page_hide', true));
+  }
 })();

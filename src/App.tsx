@@ -1272,6 +1272,15 @@ export default function App() {
                 {tab.label}
               </button>
             ))}
+            <a
+              href="/analytics.html"
+              data-track-link="analytics_page"
+              className="flex items-center gap-1.5 px-3 py-2.5 mt-1 mb-0 text-xs font-medium rounded-full text-[#0e9486] hover:bg-[#e8f6f3] transition-all whitespace-nowrap"
+            >
+              <BarChart3 className="w-3 h-3" />
+              使用统计
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
           </div>
         </div>
       </nav>
@@ -2427,8 +2436,28 @@ export default function App() {
         )}
       </main>
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 pb-6 text-center text-[11px] text-[#86868b] leading-relaxed">
-        匿名访问统计仅用于了解工具使用情况，不采集钱包或交易账户。
+        <span>匿名访问统计不采集钱包或交易账户。</span>
         <a href="/privacy.html" className="ml-1 text-[#0e9486] underline underline-offset-2">隐私说明</a>
+        <span className="mx-2 text-[#d2d2d7]">·</span>
+        <a
+          href="https://t.me/serene7mc"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-track-link="telegram_consult"
+          className="font-semibold text-[#0e9486] underline underline-offset-2"
+        >
+          个人咨询
+        </a>
+        <span className="mx-2 text-[#d2d2d7]">·</span>
+        <a
+          href="https://t.me/polymarket_ad/"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-track-link="telegram_channel"
+          className="font-semibold text-[#0e9486] underline underline-offset-2"
+        >
+          订阅频道
+        </a>
       </footer>
     </div>
   );

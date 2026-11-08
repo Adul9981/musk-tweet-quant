@@ -13,7 +13,7 @@
 - **形态对比**：走势形态预测 · 区间对比分析（六种历史形态模板 A–F，独立页 `public/morphology_compare.html` 嵌入接入）
 - **工具区**：持仓管理 · 推文生成 · 策略指南 · 预警（Telegram）
 - **落地页**：`landing-page/index.html`（Musk Quant Radar，同款浅色风格）
-- **匿名使用统计**：`/analytics.html`（管理员令牌保护）
+- **使用统计**：`/analytics.html`（公开只读聚合页，顶部导航可进入）
 
 ## 数据
 
@@ -42,12 +42,14 @@ npm run check:analytics # 审计匿名事件、会话去重和管理员鉴权
 ## 匿名使用统计
 
 - `/api/track` 接收 `page_view`、`heartbeat`、`page_hide`、`outbound_click`。
-- `/api/stats?days=1|7|30|90` 返回匿名聚合，必须携带管理员 Bearer Token。
-- `/api/health` 只报告存储与鉴权是否配置，不返回访问数据。
+- `/api/public-stats?days=1|7|30|90` 公开返回只读匿名聚合，页面每 60 秒刷新。
+- `/api/stats?days=1|7|30|90` 返回同口径数据，但保留管理员 Bearer Token 保护。
+- `/api/health` 只报告存储与公开统计状态，不返回访问数据。
 - 数据保存在私有 Gist 的 `stats.json`，不保存原始 IP。
 - Vercel 环境变量：`STATS_GIST_ID`、`GITHUB_TOKEN`、
   `ANALYTICS_ADMIN_TOKEN`（或沿用 `STATS_SECRET`）、`ANALYTICS_IP_SALT`。
 - 页面与导流明细保留 180 天；访客与会话聚合保留 400 天。
+- 统计页和站点页脚提供个人咨询 `@serene7mc` 与订阅频道 `@polymarket_ad` 入口。
 
 ## 设计规范
 

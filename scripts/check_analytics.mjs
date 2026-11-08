@@ -28,8 +28,12 @@ globalThis.fetch = async (url, options = {}) => {
   });
 };
 
-const { handleAnalyticsTrack, handleAnalyticsStats, handleAnalyticsHealth } =
-  await import('../lib/analytics-store.js');
+const {
+  handleAnalyticsTrack,
+  handleAnalyticsStats,
+  handleAnalyticsPublicStats,
+  handleAnalyticsHealth,
+} = await import('../lib/analytics-store.js');
 
 function response() {
   const headers = {};
@@ -81,11 +85,21 @@ async function stats(days = 1, token = 'test-admin-token') {
   return result;
 }
 
+async function publicStats(days = 1) {
+  const result = response();
+  await handleAnalyticsPublicStats({
+    method: 'GET',
+    url: `/api/public-stats?days=${days}`,
+    headers: {},
+  }, result);
+  return result;
+}
+
 await track('page_view');
 await track('heartbeat');
 await track('outbound_click');
 
-let result = await stats(1);
+let result = await publicStats(1);
 assert.equal(result.statusCode, 200);
 assert.equal(result.body.overview.uniqueVisitors, 1);
 assert.equal(result.body.overview.sessions, 1);
@@ -115,11 +129,11 @@ sessionDays[previous] = {
     pageViews: 1,
   },
 };
-result = await stats(7);
+result = await publicStats(7);
 assert.equal(result.body.overview.sessions, 1, 'cross-day session must be distinct-counted');
 
 await track('page_view', 'session_67890', 'visitor_12345');
-result = await stats(7);
+result = await publicStats(30);
 assert.equal(result.body.overview.uniqueVisitors, 1);
 assert.equal(result.body.overview.sessions, 2);
 
@@ -132,4 +146,4 @@ assert.equal(health.statusCode, 200);
 assert.equal(health.body.storageConfigured, true);
 assert.equal(health.body.adminConfigured, true);
 
-console.log('Analytics check passed: events, session dedupe, auth, and field storage.');
+console.log('Analytics check passed: public stats, protected admin stats, session dedupe, and fields.');

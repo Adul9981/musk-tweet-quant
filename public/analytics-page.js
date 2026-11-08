@@ -1,4 +1,3 @@
-const TOKEN_KEY = 'musk_analytics_admin_token';
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -24,10 +23,12 @@ const linkName = (id) => ({
   polymarket_bet: 'Polymarket 下注',
   morphology_open: '形态对比新窗口',
   telegram_alert: 'Telegram 通知',
+  telegram_consult: '个人 Telegram 咨询',
+  telegram_channel: 'Telegram 订阅频道',
+  analytics_page: '使用统计页',
 }[id] || id);
 
 let rangeDays = 1;
-let token = sessionStorage.getItem(TOKEN_KEY) || '';
 
 function render(payload) {
   const overview = payload.overview || {};
@@ -68,16 +69,9 @@ async function load(days = rangeDays) {
     button.classList.toggle('active', Number(button.dataset.days) === days);
   });
   try {
-    const response = await fetch(`/api/stats?days=${days}`, {
+    const response = await fetch(`/api/public-stats?days=${days}`, {
       cache: 'no-store',
-      headers: { Authorization: `Bearer ${token}` },
     });
-    if (response.status === 401) {
-      sessionStorage.removeItem(TOKEN_KEY);
-      token = '';
-      showLogin('管理员令牌无效，请重新输入。');
-      return;
-    }
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || `${response.status}`);
     render(payload);
@@ -86,44 +80,8 @@ async function load(days = rangeDays) {
   }
 }
 
-function showDashboard() {
-  $('loginPanel').hidden = true;
-  $('dashboard').hidden = false;
-  load(1);
-}
-
-function showLogin(message = '') {
-  $('dashboard').hidden = true;
-  $('loginPanel').hidden = false;
-  $('loginError').textContent = message;
-  $('tokenInput').focus();
-}
-
-$('loginButton').addEventListener('click', () => {
-  const value = $('tokenInput').value.trim();
-  if (!value) {
-    $('loginError').textContent = '请输入管理员令牌。';
-    return;
-  }
-  token = value;
-  sessionStorage.setItem(TOKEN_KEY, token);
-  showDashboard();
-});
-$('tokenInput').addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') $('loginButton').click();
-});
-$('logoutButton').addEventListener('click', () => {
-  sessionStorage.removeItem(TOKEN_KEY);
-  token = '';
-  $('tokenInput').value = '';
-  showLogin();
-});
 document.querySelectorAll('[data-days]').forEach((button) => {
   button.addEventListener('click', () => load(Number(button.dataset.days)));
 });
-setInterval(() => {
-  if (!$('dashboard').hidden && token) load(rangeDays);
-}, 60_000);
-
-if (token) showDashboard();
-else showLogin();
+load(1);
+setInterval(() => load(rangeDays), 60_000);
