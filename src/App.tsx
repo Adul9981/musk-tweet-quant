@@ -697,25 +697,6 @@ export default function App() {
     };
   }, []);
 
-  // 页面访问打点（/api/track -> VPS 统计服务，与电竞情报库同款设计）
-  useEffect(() => {
-    try {
-      let vid = '';
-      try {
-        vid = localStorage.getItem('musk_vid') || '';
-        if (!vid) {
-          vid = 'm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-          localStorage.setItem('musk_vid', vid);
-        }
-      } catch { /* ignore */ }
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: window.location.pathname, ref: document.referrer || '', visitor: vid }),
-      });
-    } catch { /* ignore */ }
-  }, []);
-
   const activeMarkets = useMemo(() => {
     const now = Date.now();
     return [...gistData]
@@ -1223,6 +1204,7 @@ export default function App() {
               </div>
               <a
                 href="https://polymarket.com/?r=adul"
+                data-track-link="polymarket_home"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] hover:text-[#1d1d1f] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
@@ -1232,6 +1214,7 @@ export default function App() {
               </a>
               <a
                 href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                data-track-link="polymarket_market"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0071e3] hover:bg-[#0a84ff] text-[#fff] text-xs font-semibold rounded-full transition-all shadow-sm"
@@ -1470,6 +1453,7 @@ export default function App() {
               <div className="hidden md:flex flex-col items-end gap-1">
                 <a
                   href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                  data-track-link="polymarket_market"
                   target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
                 >
@@ -2350,6 +2334,7 @@ export default function App() {
 
                 <a
                   href={`https://polymarket.com/event/${currentMarket?.slug || ''}${REFERRAL}`}
+                  data-track-link="polymarket_bet"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full p-4 bg-violet-600 hover:bg-teal-500 rounded-xl text-center font-semibold text-white transition-all"
@@ -2394,6 +2379,7 @@ export default function App() {
               </div>
               <a
                 href="/morphology_compare.html"
+                data-track-link="morphology_open"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-[#f2f2f4] text-[#6e6e73] text-xs font-medium rounded-full border border-[#e5e5ea] transition-all"
@@ -2440,6 +2426,10 @@ export default function App() {
           />
         )}
       </main>
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 pb-6 text-center text-[11px] text-[#86868b] leading-relaxed">
+        匿名访问统计仅用于了解工具使用情况，不采集钱包或交易账户。
+        <a href="/privacy.html" className="ml-1 text-[#0e9486] underline underline-offset-2">隐私说明</a>
+      </footer>
     </div>
   );
 }

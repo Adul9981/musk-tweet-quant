@@ -13,6 +13,7 @@
 - **形态对比**：走势形态预测 · 区间对比分析（六种历史形态模板 A–F，独立页 `public/morphology_compare.html` 嵌入接入）
 - **工具区**：持仓管理 · 推文生成 · 策略指南 · 预警（Telegram）
 - **落地页**：`landing-page/index.html`（Musk Quant Radar，同款浅色风格）
+- **匿名使用统计**：`/analytics.html`（管理员令牌保护）
 
 ## 数据
 
@@ -29,6 +30,7 @@ npm run dev       # 本地开发
 npm run build     # 产物在 dist/
 npm run preview   # 预览构建产物
 npm run check:free # 检查构建产物中无付费墙 / 订阅入口
+npm run check:analytics # 审计匿名事件、会话去重和管理员鉴权
 ```
 
 ## 访问模式
@@ -36,6 +38,16 @@ npm run check:free # 检查构建产物中无付费墙 / 订阅入口
 - 免费开放，不收集订阅留资。
 - `/api/verify-member` 仅为旧缓存页保留兼容响应，始终返回开放状态。
 - `/api/lead` 已停用并返回 `410`，不会接收或转发联系方式。
+
+## 匿名使用统计
+
+- `/api/track` 接收 `page_view`、`heartbeat`、`page_hide`、`outbound_click`。
+- `/api/stats?days=1|7|30|90` 返回匿名聚合，必须携带管理员 Bearer Token。
+- `/api/health` 只报告存储与鉴权是否配置，不返回访问数据。
+- 数据保存在私有 Gist 的 `stats.json`，不保存原始 IP。
+- Vercel 环境变量：`STATS_GIST_ID`、`GITHUB_TOKEN`、
+  `ANALYTICS_ADMIN_TOKEN`（或沿用 `STATS_SECRET`）、`ANALYTICS_IP_SALT`。
+- 页面与导流明细保留 180 天；访客与会话聚合保留 400 天。
 
 ## 设计规范
 

@@ -23,6 +23,16 @@
   密钥仍需轮换。
 - ⚠️ 若 Polar.sh 仍存在生效中的循环订阅，需在 Polar 商户后台另行取消；代码端已不再提供支付入口。
 
+## 2026-11-08 匿名访问统计升级
+
+- ✅ 接入第一方匿名事件：`page_view` / `heartbeat` / `page_hide` / `outbound_click`。
+- ✅ 使用 `musk_visitor_id`（localStorage）与 `musk_session_id`（sessionStorage）区分访客和标签页会话。
+- ✅ Vercel Functions 写入私有 Gist，统计访客、会话、页面浏览、回访、5 分钟活跃会话、停留与导流点击。
+- ✅ 修复范围会话口径：按 `COUNT(DISTINCT session_id)` 聚合，避免跨午夜会话重复计数。
+- ✅ 新存储 `language` 与 `timezone`；原始 IP 不入库，仅使用私有盐生成截断 HMAC 用于限流。
+- ✅ 新增 `/analytics.html` 管理看板与 `/api/stats` Bearer Token 鉴权。
+- ✅ 新增 `/privacy.html`，说明匿名 ID、数据范围、保留期限和退出方式。
+
 ## ⏰ 8/26 订阅上线日（倒计时提醒）
 
 > 8/26 00:00 起订阅制自动生效（免费期至 8/25 23:59）。上线日清单：

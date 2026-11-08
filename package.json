@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check:free": "node scripts/check_free_mode.mjs",
+    "check:analytics": "node scripts/check_analytics.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
