@@ -89,7 +89,7 @@ async function publicStats(days = 1) {
   const result = response();
   await handleAnalyticsPublicStats({
     method: 'GET',
-    url: `/api/public-stats?days=${days}`,
+    url: `/api/stats?days=${days}&public=1`,
     headers: {},
   }, result);
   return result;

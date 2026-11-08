@@ -69,7 +69,7 @@ async function load(days = rangeDays) {
     button.classList.toggle('active', Number(button.dataset.days) === days);
   });
   try {
-    const response = await fetch(`/api/public-stats?days=${days}`, {
+    const response = await fetch(`/api/stats?days=${days}&public=1`, {
       cache: 'no-store',
     });
     const payload = await response.json();

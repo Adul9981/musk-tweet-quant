@@ -31,11 +31,12 @@
 - ✅ 修复范围会话口径：按 `COUNT(DISTINCT session_id)` 聚合，避免跨午夜会话重复计数。
 - ✅ 新存储 `language` 与 `timezone`；原始 IP 不入库，仅使用私有盐生成截断 HMAC 用于限流。
 - ✅ 新增独立 `/analytics.html` 公开统计页，顶部导航“使用统计”可进入，每 60 秒刷新。
-- ✅ `/api/public-stats` 只返回只读匿名聚合；`/api/stats` 继续保留 Bearer Token 保护。
+- ✅ `/api/stats?...&public=1` 只返回只读匿名聚合；不带 `public=1` 时继续保留
+  Bearer Token 保护，并复用同一 Serverless Function 以控制在 Vercel 函数数量限制内。
 - ✅ 新增 `/privacy.html`，说明匿名 ID、数据范围、保留期限和退出方式。
 - ✅ 已通过 GitHub `f6a9f2e` 发布，Vercel 生产部署状态为 success（2026-11-08）。
 - 🔐 完整 `/api/stats` 优先使用 `ANALYTICS_ADMIN_TOKEN`，未配置时回退现有
-  `STATS_SECRET`；公开页面只读取 `/api/public-stats` 聚合结果。
+  `STATS_SECRET`；公开页面只读取带 `public=1` 的聚合结果。
 - ✅ 统计页与站点页脚新增个人咨询 `@serene7mc`、订阅频道 `@polymarket_ad` 导流入口。
 
 ## ⏰ 8/26 订阅上线日（倒计时提醒）

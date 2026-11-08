@@ -42,8 +42,8 @@ npm run check:analytics # 审计匿名事件、会话去重和管理员鉴权
 ## 匿名使用统计
 
 - `/api/track` 接收 `page_view`、`heartbeat`、`page_hide`、`outbound_click`。
-- `/api/public-stats?days=1|7|30|90` 公开返回只读匿名聚合，页面每 60 秒刷新。
-- `/api/stats?days=1|7|30|90` 返回同口径数据，但保留管理员 Bearer Token 保护。
+- `/api/stats?days=1|7|30|90&public=1` 公开返回只读匿名聚合，页面每 60 秒刷新。
+- `/api/stats?days=1|7|30|90`（不带 `public=1`）保留管理员 Bearer Token 保护。
 - `/api/health` 只报告存储与公开统计状态，不返回访问数据。
 - 数据保存在私有 Gist 的 `stats.json`，不保存原始 IP。
 - Vercel 环境变量：`STATS_GIST_ID`、`GITHUB_TOKEN`、
