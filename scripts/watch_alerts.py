@@ -18,8 +18,6 @@ from urllib.request import Request, urlopen
 
 from musk_tgbot import (
     bj_now,
-    compute_mu,
-    fetch_tracking_stats,
     parse_range,
     poisson_prob,
     send_tg,
@@ -28,6 +26,7 @@ from musk_tgbot import (
 
 GAMMA = "https://gamma-api.polymarket.com"
 CLOB = "https://clob.polymarket.com"
+XTRACKER = "https://xtracker.polymarket.com"
 STATE_DIR = Path(os.environ.get("MUSK_ALERT_STATE_DIR", "/var/lib/musk-quant"))
 STATE_FILE = STATE_DIR / "watch-state.json"
 EVENTS_FILE = STATE_DIR / "watch-events.jsonl"
@@ -129,6 +128,7 @@ def discover_active_event():
 
 
 def normalize_market(event):
+    start_date = str(event.get("startDate") or "")
     end_date = str(event.get("endDate") or "")
     ranges = []
     for market in event.get("markets") or []:
@@ -166,11 +166,109 @@ def normalize_market(event):
     return {
         "slug": event.get("slug") or "",
         "title": event.get("title") or "",
+        "start_date": start_date,
         "end_date": end_date,
         "hours_remaining": event_hours_remaining(end_date),
         "ranges": ranges,
         "event_url": f"https://polymarket.com/event/{event.get('slug', '')}",
     }
+
+
+def parse_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def fetch_matching_tracking(market):
+    payload = fetch_json(f"{XTRACKER}/api/users/elonmusk/trackings?activeOnly=true")
+    market_end = parse_datetime(market["end_date"])
+    matched = []
+    for tracking in payload.get("data", []):
+        title = str(tracking.get("title") or "")
+        if "Musk" not in title or "# tweets" not in title:
+            continue
+        try:
+            tracking_end = parse_datetime(tracking.get("endDate"))
+            delta = abs((tracking_end - market_end).total_seconds())
+        except (TypeError, ValueError):
+            continue
+        if delta <= 3 * 3600:
+            matched.append((delta, tracking))
+    if not matched:
+        raise RuntimeError(
+            f"no xtracker period matches market end {market['end_date']}"
+        )
+    matched.sort(key=lambda item: item[0])
+    tracking = matched[0][1]
+    detail = fetch_json(
+        f"{XTRACKER}/api/trackings/{tracking['id']}?includeStats=true"
+    )
+    data = detail.get("data") or {}
+    stats = data.get("stats") or {}
+    if not stats:
+        raise RuntimeError("matched tracking returned no stats")
+    return {
+        "id": tracking["id"],
+        "title": data.get("title") or tracking.get("title"),
+        "start": parse_datetime(data.get("startDate") or tracking.get("startDate")),
+        "end": parse_datetime(data.get("endDate") or tracking.get("endDate")),
+        "stats": stats,
+    }
+
+
+def compute_market_mu(tracking):
+    stats = tracking["stats"]
+    start = tracking["start"]
+    end = tracking["end"]
+    now = utc_now()
+    total = float(stats.get("total") or stats.get("cumulative") or 0)
+    period_hours = max(1.0, (end - start).total_seconds() / 3600)
+    elapsed_hours = max(1.0, min(period_hours, (now - start).total_seconds() / 3600))
+    remaining_hours = max(0.0, (end - now).total_seconds() / 3600)
+
+    hourly = []
+    for point in stats.get("daily") or []:
+        try:
+            ts = parse_datetime(point.get("date"))
+            count = float(point.get("count") or 0)
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if start <= ts <= now:
+            hourly.append((ts, count))
+
+    recent_cutoff = now.timestamp() - 24 * 3600
+    recent = [(ts, count) for ts, count in hourly if ts.timestamp() >= recent_cutoff]
+    recent_hours = max(
+        1.0,
+        min(24.0, (now - max(start, datetime.fromtimestamp(recent_cutoff, timezone.utc))).total_seconds() / 3600),
+    )
+    overall_per_hour = total / elapsed_hours if elapsed_hours else 0.0
+    recent_per_hour = (
+        sum(count for _, count in recent) / recent_hours if recent else overall_per_hour
+    )
+    blended_per_hour = 0.6 * recent_per_hour + 0.4 * overall_per_hour
+    weight = min(0.8, elapsed_hours / period_hours * 1.2)
+    simple_mu = total + overall_per_hour * remaining_hours
+    current_mu = total + blended_per_hour * remaining_hours
+    mu = weight * current_mu + (1 - weight) * simple_mu
+    blended_daily = blended_per_hour * 24
+    meta = {
+        "elapsed_hours": round(elapsed_hours, 2),
+        "remaining_hours": round(remaining_hours, 2),
+        "overall_daily": round(overall_per_hour * 24, 1),
+        "recent_daily": round(recent_per_hour * 24, 1),
+        "blended_daily": round(blended_daily, 1),
+        "deviation_pct": round((blended_daily - 43.4) / 43.4 * 100, 1),
+        "tracking_id": tracking["id"],
+        "tracking_title": tracking["title"],
+    }
+    stats_out = {
+        **stats,
+        "total": int(total),
+        "hours_rem": remaining_hours,
+        "days_rem": remaining_hours / 24,
+        "period_id": f"{start.date().isoformat()}_{end.date().isoformat()}",
+    }
+    return round(mu, 1), meta, stats_out
 
 
 def analyze_ranges(market, mu):
@@ -287,6 +385,7 @@ def send_entry_window(market, rows, center, mu, stats, meta):
     message = (
         f"🟡 *进入 T-3 建仓观察窗口 · 约 {market['hours_remaining']:.0f} 小时到期*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
+        f"期次：{market['title']}\n"
         f"当前推文：{stats.get('total', 0)} 条  预测落点：~{mu:.0f} 条\n"
         f"近期节奏：{daily:.0f} 条/天（偏差 {deviation:+.0f}%）\n\n"
         f"🎯 *当前覆盖结构*\n{format_coverage(rows, center)}\n\n"
@@ -300,6 +399,7 @@ def send_entry_window(market, rows, center, mu, stats, meta):
         "不要追中心，改比相邻区间。\n"
         "• 到 T-2/T-1 再根据落点和价格决定是否加仓。\n"
         "• 仅为提醒，不会自动买入。\n"
+        "数据：Gamma 当前价格 + 同周期 xtracker 推文统计\n"
         f"[打开市场]({market['event_url']})"
     )
     return send_tg(message)
@@ -316,6 +416,7 @@ def send_center_drift(market, rows, center, old_center, old_mu, mu, meta):
     message = (
         "⚠️ *落点发生变化 · 建议重新检查对应区间*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
+        f"期次：{market['title']}\n"
         f"预测落点：{old_mu:.1f} → {mu:.1f} 条（{direction} {delta:+.1f}）\n"
         f"中心区间：{center_text}\n"
         f"剩余时间：{market['hours_remaining']:.1f} 小时\n"
@@ -324,6 +425,7 @@ def send_center_drift(market, rows, center, old_center, old_mu, mu, meta):
         "历史参考：T-1 ±1档覆盖约85%，但中心单档仅约38%，"
         "因此优先检查中心上下相邻区间，不要把注意力只放在单一区间。\n\n"
         "⚠️ 这是区间变化提醒，不是自动买入指令。\n"
+        "数据：Gamma 当前价格 + 同周期 xtracker 推文统计\n"
         f"[打开市场]({market['event_url']})"
     )
     return send_tg(message)
@@ -334,11 +436,13 @@ def send_watch(market, row, mu):
     message = (
         "👀 *低价区间进入关注区*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
+        f"期次：{market['title']}\n"
         f"区间：`{row['range']}`\n"
         f"YES：{row['price']:.1f}¢  NO：{no_price:.0f}¢\n"
         f"模型概率：{row['model_probability']:.1f}%  VR：{row['vr']:.2f}x\n"
         f"当前落点：~{mu:.0f}条  剩余：{market['hours_remaining']:.1f}h\n\n"
         "状态：价格已进入低价观察区，先观察是否止跌，不追跌。\n"
+        "数据：Gamma 价格 + 同周期 xtracker 计数\n"
         f"[打开市场]({market['event_url']})"
     )
     return send_tg(message)
@@ -352,12 +456,14 @@ def send_rebound(market, row, mu, recent_low):
     message = (
         "🚨 *低价区间反弹确认*\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
+        f"期次：{market['title']}\n"
         f"区间：`{row['range']}`\n"
         f"当前：{row['price']:.1f}¢  近30分钟低点：{recent_low['price']:.1f}¢\n"
         f"反弹：+{rise:.1f}¢  低点时间：{low_time:%H:%M} UTC\n"
         f"模型概率：{row['model_probability']:.1f}%  VR：{row['vr']:.2f}x\n"
         f"当前落点：~{mu:.0f}条  剩余：{market['hours_remaining']:.1f}h\n\n"
         "⚠️ 这是关注提醒，不是自动买入。请检查盘口深度、最新推文节奏和仓位上限。\n"
+        "数据：Gamma 价格 + 同周期 xtracker 计数\n"
         f"[打开市场]({market['event_url']})"
     )
     return send_tg(message)
@@ -368,10 +474,8 @@ def run_once(dry_run=False, verbose=False):
     if not event:
         raise RuntimeError("no active Elon tweet market found")
     market = normalize_market(event)
-    stats = fetch_tracking_stats()
-    if not stats:
-        raise RuntimeError("tracking stats unavailable")
-    mu, meta = compute_mu(stats)
+    tracking = fetch_matching_tracking(market)
+    mu, meta, stats = compute_market_mu(tracking)
     rows = analyze_ranges(market, mu)
     state = load_state()
     if state.get("period") != market["slug"]:
@@ -482,7 +586,7 @@ def run_once(dry_run=False, verbose=False):
         range_state["history"] = history[-420:]
 
         midpoint = sum(row["parsed"]) / 2
-        within_mu_path = abs(midpoint - mu) <= 60 or row["vr"] >= 1.5
+        within_mu_path = abs(midpoint - mu) <= 60
         eligible_time = MIN_HOURS_REMAINING <= market["hours_remaining"] <= MAX_HOURS_REMAINING
         candidate = row["price"] <= LOW_PRICE and row["vr"] >= 1.0 and within_mu_path
         if (
