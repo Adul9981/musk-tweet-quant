@@ -1,0 +1,24 @@
+[Unit]
+Description=Musk low-price and rebound Telegram alerts
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/musk-quant
+EnvironmentFile=/opt/musk-quant/.env
+Environment=MUSK_ALERT_STATE_DIR=/var/lib/musk-quant
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /opt/musk-quant/scripts/watch_alerts.py
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/musk-quant
+
+[Install]
+WantedBy=multi-user.target

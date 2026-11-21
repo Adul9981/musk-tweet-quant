@@ -21,6 +21,7 @@ import { StrategyGuide } from './components/StrategyGuide';
 import { PositionManager } from './components/PositionManager';
 import type { Position } from './components/PositionManager';
 import { TelegramAlerts, useTelegramAlerts } from './components/TelegramAlerts';
+import AssistantWidget from './components/AssistantWidget';
 import type { PriceSnapshot } from './components/ProbabilityChart';
 // ProbabilityChart component kept for potential future use; tab removed
 
@@ -2459,6 +2460,7 @@ export default function App() {
           订阅频道
         </a>
       </footer>
+      <AssistantWidget />
     </div>
   );
 }

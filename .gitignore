@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .env
+__pycache__/
+*.py[cod]
 
 # Private operational records (subscription era, keep local only)
 data/leads.md

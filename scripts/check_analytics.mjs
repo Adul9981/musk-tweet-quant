@@ -75,6 +75,31 @@ async function track(event, sessionId = 'session_12345', visitorId = 'visitor_12
   assert.deepEqual(result.body, { ok: true });
 }
 
+async function trackAssistant(action, topic) {
+  const result = response();
+  await handleAnalyticsTrack({
+    method: 'POST',
+    body: {
+      visitorId: 'visitor_12345',
+      sessionId: 'session_12345',
+      event: 'assistant_event',
+      assistantAction: action,
+      assistantTopic: topic,
+      path: '/',
+      durationMs: 65000,
+      maxScrollPct: 72,
+      referrer: '',
+      language: 'zh-CN',
+      timezone: 'Asia/Shanghai',
+    },
+    headers: {
+      'user-agent': 'Mozilla/5.0 Safari/537.36',
+      'x-forwarded-for': '203.0.113.42',
+    },
+  }, result);
+  assert.equal(result.statusCode, 200);
+}
+
 async function stats(days = 1, token = 'test-admin-token') {
   const result = response();
   await handleAnalyticsStats({
@@ -98,6 +123,11 @@ async function publicStats(days = 1) {
 await track('page_view');
 await track('heartbeat');
 await track('outbound_click');
+await trackAssistant('open', 'membership');
+await trackAssistant('question', 'membership');
+await trackAssistant('question', 'entry');
+await trackAssistant('fallback', 'unknown');
+await trackAssistant('cta', 'membership');
 
 let result = await publicStats(1);
 assert.equal(result.statusCode, 200);
@@ -107,6 +137,7 @@ assert.equal(result.body.overview.pageViews, 1);
 assert.equal(result.body.overview.activeNow5m, 1);
 assert.equal(result.body.outbound[0].link_id, 'polymarket_bet');
 assert.equal(result.body.outbound[0].clicks, 1);
+assert.equal(result.body.assistant, undefined);
 assert.equal(state.sites.musk.analyticsV2.sessions.session_12345.language, 'zh-CN');
 assert.equal(state.sites.musk.analyticsV2.sessions.session_12345.timezone, 'Asia/Shanghai');
 assert.equal(state.sites.musk.analyticsV2.sessions.session_12345.ipHash.length, 24);
@@ -139,6 +170,14 @@ assert.equal(result.body.overview.sessions, 2);
 
 result = await stats(1, 'wrong-token');
 assert.equal(result.statusCode, 401);
+
+result = await stats(1);
+assert.equal(result.statusCode, 200);
+assert.equal(result.body.assistant.opens, 1);
+assert.equal(result.body.assistant.questions, 2);
+assert.equal(result.body.assistant.fallbacks, 1);
+assert.equal(result.body.assistant.ctaClicks, 1);
+assert.equal(result.body.assistant.topics[0].count, 1);
 
 const health = response();
 handleAnalyticsHealth({ method: 'GET' }, health);
